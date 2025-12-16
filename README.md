@@ -86,3 +86,5 @@ python3 .claude/skills/fork_terminal/tools/fork_terminal.py claude "Refactoriza 
   - Conectarse a una sesión: `tmux attach -t <nombre_sesion>`
 
 - Para mejor resultado usar terminos consisos, por ejemplo: fork nueva terminal, gemini-cli, fast model, summary history " analiza el "@/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md " y haz un resumen en .claude/docs
+  
+- Este repo esta hecho en base al desarrolador indydevdan y el credito de toda esta idea es totalmente suyo.
