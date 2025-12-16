@@ -1,0 +1,2 @@
+python-dotenv>=1.0.0
+# Añadir dependencias adicionales según las herramientas y LLMs que se integren
