@@ -1,19 +1,26 @@
 # fork_agent
 
-**fork_agent** es un kit de herramientas para construir y gestionar flujos de trabajo agénticos que interactúan directamente con tu terminal. Su capacidad principal es la habilidad de "bifurcar" (fork) tu sesión actual en nuevas ventanas o sesiones de terminal paralelas, permitiéndote ejecutar múltiples agentes o comandos de larga duración simultáneamente sin bloquear tu flujo de trabajo principal.
+**fork_agent** es una plataforma agéntica avanzada diseñada para transformar y optimizar la interacción con tu terminal. Su capacidad central reside en la habilidad `fork_terminal`, que permite "bifurcar" (fork) tu sesión actual a nuevas ventanas o sesiones de terminal paralelas. Esta funcionalidad es esencial para ejecutar comandos de forma controlada y auditable, gestionar flujos de trabajo complejos, aislar tareas o ejecutar operaciones concurrentes sin interrumpir tu proceso principal.
+
+`fork_terminal` actúa como un orquestador, eligiendo la estrategia de ejecución más adecuada para cada solicitud del usuario. Puede lanzar:
+- **Comandos CLI Directos**: Para ejecuciones de shell estándar.
+- **Agentes de Codificación (AI Models)**: Integrando modelos como Claude Code, Codex CLI y Gemini CLI. Estos agentes permiten la generación inteligente de comandos, la ejecución de scripts y la interacción contextual, utilizando el historial de conversación para generar prompts avanzados, especialmente cuando se solicita un "resumen" de la tarea.
+
+Un "Cookbook" interno guía a `fork_agent` para seleccionar la herramienta idónea según la preferencia del usuario y el contexto, asegurando una ejecución eficiente y adaptada. El sistema promueve un entorno seguro y auditable, con recomendaciones clave para el uso de `--dry-run` o entornos aislados.
 
 ## Características Principales
 
-- **Fork Terminal**: Abre instantáneamente nuevas ventanas de terminal para ejecutar comandos.
-- **Soporte Multi-Agente**: "Cookbooks" especializados para lanzar diferentes agentes de IA en sus propios entornos:
-  - **Raw CLI**: Comandos de shell estándar.
-  - **Claude Code**: Lanza una instancia del agente Claude Code.
-  - **Codex CLI**: Lanza un agente Codex CLI.
-  - **Gemini CLI**: Lanza un agente Gemini.
-- **Multi-Plataforma**:
+- **Orquestación de Terminal**: Bifurca sesiones para gestionar tareas complejas y concurrentes.
+- **Soporte Multi-Agente Avanzado**:
+  - **Raw CLI**: Ejecución directa de comandos de shell.
+  - **Claude Code**: Para interacciones programáticas asistidas por IA.
+  - **Codex CLI**: Generación y ejecución de código asistida.
+  - **Gemini CLI**: Integración con el potente modelo Gemini para comandos inteligentes.
+- **Contexto Conversacional**: Utiliza el historial del chat para enriquecer los prompts de los agentes, permitiendo resúmenes de trabajo y una ejecución más inteligente.
+- **Multi-Plataforma Robusta**:
   - **macOS**: Abre ventanas nativas de Terminal.
-  - **Windows**: Abre nuevas ventanas de CMD.
-  - **Linux**: Crea sesiones de `tmux` desconectadas (ideal para entornos headless/remotos).
+  - **Windows**: Inicia nuevas ventanas de CMD.
+  - **Linux**: Prioriza emuladores de terminal comunes; si no los encuentra, crea sesiones de `tmux` desconectadas, ideal para entornos headless o remotos.
 
 ## Instalación
 
