@@ -20,21 +20,20 @@ AGENTIG_CODING_TOOLS: ["gemini-cli", "codex-cli", "claude-code"]
 
 ## Instructions
 
-- Basado en las preferencias del usuario y el contexto, decide cual herramientas usar. Usa el cookbook para guiar tu decision.
+### CRITICAL PROTOCOL: History Persistence
+Antes de ejecutar cualquier herramienta de "fork" (Gemini, Claude, Codex, CLI), DEBES seguir este estricto orden de operaciones. NO tomes atajos.
+
+1. **GENERA** el historial y resumen de la conversación en formato YAML.
+2. **ESCRIBE** (usando `write_file`) este contenido en: `/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md`.
+   - *Nota:* Este paso es obligatorio para auditoría y depuración. NO pases el contexto solo como argumento de string sin antes escribir este archivo.
+3. **LEE** el contenido que acabas de preparar (o úsalo de tu memoria).
+4. **EJECUTA** la herramienta `fork_terminal` pasando ese contenido como el prompt/instrucción inicial para el agente.
 
 ### Fork Summary User Prompts
 
-- IF: 
-    - Si el usuario solicita un fork terminal o crear una nueva terminal con un resumen. Esto solo funciona para nuestras herramientas agenticas de codigo
-- THEN:
-    - Lee y REEMPLAZA el "/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md" con el historial de la conversacion entre tu y el usuario hasta ahora.
-    - Incluye la siguiente solicitud del usuario en la seccion "Next User Request".
-    - Esto sera lo que pases en el parametro del PROMPT de la herramienta agentica de codigo que uses. 
-    - Para ser claros, no actualices el archivo directamente, solo lee su contenido y usalo para crear el prompt en la estructura entregada para el nuevo agente de codigo.
-- Examples:
-    - "Crea una nueva terminal y ejecuta <xyz> resumen del trabajo hasta ahora"
-    - "Fork terminal a <abc> y corre <command> incluye el resumen"
-    - "Abre una nueva terminal y ejecuta <script> con el resumen"
+- El archivo `/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md` actúa como la memoria compartida entre el agente actual y el agente bifurcado.
+- DEBE ser actualizado en cada solicitud de fork.
+
 
 ## Workflow
 

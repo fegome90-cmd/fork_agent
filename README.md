@@ -84,3 +84,5 @@ python3 .claude/skills/fork_terminal/tools/fork_terminal.py claude "Refactoriza 
 - **Usuarios de Linux**: Asegúrense de tener `tmux` instalado (`sudo apt install tmux`). La herramienta crea sesiones desconectadas para evitar bloquear tu shell actual.
   - Listar sesiones activas: `tmux ls`
   - Conectarse a una sesión: `tmux attach -t <nombre_sesion>`
+
+- Para mejor resultado usar terminos consisos, por ejemplo: fork nueva terminal, gemini-cli, fast model, summary history " analiza el "@/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md " y haz un resumen en .claude/docs
