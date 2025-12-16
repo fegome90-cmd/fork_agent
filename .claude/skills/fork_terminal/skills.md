@@ -30,6 +30,7 @@ AGENTIG_CODING_TOOLS: ["gemini-cli", "codex-cli", "claude-code"]
     - Lee y REEMPLAZA el "/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md" con el historial de la conversacion entre tu y el usuario hasta ahora.
     - Incluye la siguiente solicitud del usuario en la seccion "Next User Request".
     - Esto sera lo que pases en el parametro del PROMPT de la herramienta agentica de codigo que uses. 
+    - Para ser claros, no actualices el archivo directamente, solo lee su contenido y usalo para crear el prompt en la estructura entregada para el nuevo agente de codigo.
 - Examples:
     - "Crea una nueva terminal y ejecuta <xyz> resumen del trabajo hasta ahora"
     - "Fork terminal a <abc> y corre <command> incluye el resumen"
