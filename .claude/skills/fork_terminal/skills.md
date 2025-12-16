@@ -14,11 +14,26 @@ ENABLE_RAW_CLI_COMMANDS: "true"
 ENABLE_GEMINI_CLI: "true"
 ENABLE_CODEX_CLI: "true"
 ENABLE_CLAUDE_CODE: "true"
+AGENTIC_CODING_TOOLS = HERRAMIENTAS_AGENTICAS_DE_CODIGO
+AGENTIG_CODING_TOOLS: ["gemini-cli", "codex-cli", "claude-code"]
+
 
 ## Instructions
 
 - Basado en las preferencias del usuario y el contexto, decide cual herramientas usar. Usa el cookbook para guiar tu decision.
 
+### Fork Summary User Prompts
+
+- IF: 
+    - Si el usuario solicita un fork terminal o crear una nueva terminal con un resumen. Esto solo funciona para nuestras herramientas agenticas de codigo
+- THEN:
+    - Lee y REEMPLAZA el "/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md" con el historial de la conversacion entre tu y el usuario hasta ahora.
+    - Incluye la siguiente solicitud del usuario en la seccion "Next User Request".
+    - Esto sera lo que pases en el parametro del PROMPT de la herramienta agentica de codigo que uses. 
+- Examples:
+    - "Crea una nueva terminal y ejecuta <xyz> resumen del trabajo hasta ahora"
+    - "Fork terminal a <abc> y corre <command> incluye el resumen"
+    - "Abre una nueva terminal y ejecuta <script> con el resumen"
 
 ## Workflow
 
