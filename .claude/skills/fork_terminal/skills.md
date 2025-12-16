@@ -38,3 +38,33 @@ ENABLE_CLAUDE_CODE: "true"
     -  "Crea una nueva temrinal a <xyz> con ffmpeg"
     - "Crea una nueva terminmal a <abc> con curl"
     - "Crea una nueva terminal a <xyz> con python"
+
+
+### Claude Code
+
+- If: Si el usuario solicita un agente de Claude code para ejecutar el comando AND "ENABLE_CLAUDE_CODE" es true.
+- Then: Lee y ejecuta el "/fork_agent/.claude/skills/fork_terminal/cookbook/claude_code.md" archivo para determinar que codigo usar.
+- Examples:
+    - "Fork terminal a <xyz> con Claude Code"
+    - "Abre una nueva terminal con claude code a <abc> con curl"
+    - "Crea una nueva terminal a <xyz> con python"
+
+
+### Codex CLI
+
+- If: Si el usuario solicita usar un flujo tipo Codex (generación de código asistida) AND "ENABLE_CODEX_CLI" es true.
+- Then: Lee y ejecuta el "/fork_agent/.claude/skills/fork_terminal/cookbook/codex_cli.md" archivo para determinar que codigo usar.
+- Examples:
+    - "Fork terminal a <xyz> usando Codex CLI"
+    - "Genera y abre una terminal con codex-cli para ejecutar <abc>"
+    - "Crea una nueva terminal y ejecuta el script generado por Codex"
+
+
+### Gemini CLI
+
+- If: Si el usuario solicita usar Gemini/agent CLI AND "ENABLE_GEMINI_CLI" es true.
+- Then: Lee y ejecuta el "/fork_agent/.claude/skills/fork_terminal/cookbook/gemini_cli.md" archivo para determinar que codigo usar.
+- Examples:
+    - "Fork terminal a <xyz> usando Gemini CLI"
+    - "Abre una nueva terminal con gemini-cli para correr <abc>"
+    - "Crea una nueva terminal y ejecuta el flujo de Gemini para <xyz>"
