@@ -82,7 +82,9 @@ def fork_terminal(command: str) -> str:
         safe_command = shlex.quote(command)
 
         if system == "Darwin":  # macOS
-            applescript_command = safe_command.replace('"', '\\"')
+            # For macOS, use the original command to avoid double-quoting issues
+            # AppleScript will handle the command execution properly
+            applescript_command = command.replace('"', '\\"')
             result = subprocess.run(
                 [
                     "osascript",
