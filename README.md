@@ -172,6 +172,161 @@ python3 .claude/skills/fork_terminal/tools/fork_terminal.py claude "Refactoriza 
   - Listar sesiones activas: `tmux ls`
   - Conectarse a una sesión: `tmux attach -t <nombre_sesion>`
 
+### Uso Avanzado con Zellij (Recomendado para Multi-Agentes)
+
+**Zellij** es un multiplexor de terminal moderno que permite supervisar múltiples fork agents en tiempo real desde una sola ventana.
+
+#### Instalación de Zellij
+
+```bash
+# macOS
+brew install zellij
+
+# Linux (Cargo)
+cargo install zellij
+
+# Linux (binario)
+wget https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz
+tar -xvf zellij-x86_64-unknown-linux-musl.tar.gz
+sudo mv zellij /usr/local/bin/
+```
+
+#### Comandos Básicos de Zellij
+
+```bash
+# Listar sesiones activas
+zellij list-sessions
+
+# Crear nueva sesión
+zellij --session mi_sesion
+
+# Attacharse a sesión existente
+zellij attach mi_sesion
+
+# Attacharse o crear si no existe
+zellij attach --create mi_sesion
+
+# Crear sesión en background (sin attacharse)
+zellij attach --create-background mi_sesion
+
+# Eliminar sesión
+zellij delete-session mi_sesion -f
+```
+
+#### Controles de Teclado en Zellij
+
+| Acción | Atajo |
+|--------|-------|
+| **Modo de comandos** | `Ctrl + p` |
+| Detach (salir sin cerrar) | `Ctrl + p` + `d` |
+| Siguiente pane | `Ctrl + p` + `n` |
+| Pane anterior | `Ctrl + p` + `p` |
+| Cerrar pane actual | `Ctrl + p` + `x` |
+| Nuevo pane (horizontal) | `Ctrl + p` + `h` |
+| Nuevo pane (vertical) | `Ctrl + p` + `v` |
+| Modo scroll | `Ctrl + p` + `s` |
+| Salir de Zellij | `Ctrl + p` + `q` |
+
+#### Workflow: Supervisar Fork Agents con Zellij
+
+**Paso 1: Crear sesión de Zellij**
+```bash
+# En tu terminal principal
+zellij --session fork_agents
+```
+
+**Paso 2: Lanzar fork agents en la sesión**
+```bash
+# Desde otra terminal, lanzar agentes en panes de la sesión
+zellij --session fork_agents action new-pane -- \
+  python3 .claude/skills/fork_terminal/tools/fork_terminal.py \
+  "gemini -y -m gemini-3-flash-preview 'Analiza el código'"
+
+# Lanzar segundo agente
+zellij --session fork_agents action new-pane -- \
+  python3 .claude/skills/fork_terminal/tools/fork_terminal.py \
+  "gemini -y -m gemini-3-flash-preview 'Genera tests'"
+
+# Lanzar tercer agente
+zellij --session fork_agents action new-pane -- \
+  python3 .claude/skills/fork_terminal/tools/fork_terminal.py \
+  "gemini -y -m gemini-3-flash-preview 'Documenta funciones'"
+```
+
+**Paso 3: Supervisar desde otra terminal**
+```bash
+# Attacharse a la sesión para ver todos los agentes
+zellij attach fork_agents
+```
+
+**Paso 4: Navegar entre panes**
+- Usa `Ctrl + p` + `n` para ver cada agente
+- Usa `Ctrl + p` + `s` para hacer scroll y revisar output
+- Usa `Ctrl + p` + `d` para detach sin cerrar
+
+#### Ejemplo Completo: 3 Agentes Concurrentes
+
+```bash
+# Terminal 1: Crear sesión
+zellij --session analisis_proyecto
+
+# Terminal 2: Lanzar 3 agentes
+for task in "analizar código" "generar tests" "crear docs"; do
+  zellij --session analisis_proyecto action new-pane -- \
+    python3 .claude/skills/fork_terminal/tools/fork_terminal.py \
+    "gemini -y 'Tarea: $task'"
+done
+
+# Terminal 1 o 3: Supervisar
+zellij attach analisis_proyecto
+# Ahora ves los 3 agentes ejecutándose en paralelo
+```
+
+#### Verificar Resultados con Agent Checkout System
+
+El sistema de checkout automático registra todos los agentes:
+
+```bash
+# Ver log de checkout
+tail -f .claude/logs/agent_checkout.log
+
+# Generar resumen de agentes
+python3 .claude/scripts/generate_agent_summary.py
+
+# Monitoreo en tiempo real
+.claude/scripts/monitor_agents.sh
+```
+
+#### Troubleshooting Zellij
+
+**Problema**: "Session already exists"
+```bash
+# Solución: Attacharse en lugar de crear
+zellij attach nombre_sesion
+```
+
+**Problema**: "Can't find session"
+```bash
+# Solución: Listar sesiones activas
+zellij list-sessions
+```
+
+**Problema**: "Pane no se crea"
+```bash
+# Solución: Verificar que la sesión existe primero
+zellij attach --create-background nombre_sesion
+# Luego crear pane
+zellij --session nombre_sesion action new-pane -- comando
+```
+
+**Problema**: "No puedo salir de Zellij"
+```bash
+# Solución: Detach con Ctrl+p + d
+# O forzar cierre: Ctrl+p + q
+```
+
+
+
 - Para mejor resultado usar terminos consisos, por ejemplo: fork nueva terminal, gemini-cli, fast model, summary history " analiza el "@/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md " y haz un resumen en .claude/docs
   
 - Este repo esta hecho en base al desarrolador indydevdan y el credito de toda esta idea es totalmente suyo.
