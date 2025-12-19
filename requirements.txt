@@ -1,0 +1,6 @@
+python-dotenv==1.0.1
+langchain==0.1.0
+google-generativeai==0.3.2
+langchain-google-genai==0.1.0
+
+# Añadir dependencias adicionales según las herramientas y LLMs que se integren
