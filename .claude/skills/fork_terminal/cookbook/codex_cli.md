@@ -10,8 +10,10 @@ HEAVY_MODEL: GPT-5.2- high
 
 ## Instructions
 
-- Antes de ejecutar el comando, corre "codex --help" para entender el comando y sus opciones.
+- Antes de ejecutar el comando, corre "wezterm --help" para entender las opciones de WezTerm CLI (prioridad en macOS).
+- Luego corre "codex --help" para entender el comando y sus opciones.
 - Siempre usa terminales interactivas (no uses el sub-comando 'exec').
+- Considera que fork_terminal usará automáticamente WezTerm si está disponible en macOS.
 - Para el -m/--model, usa el DEFAULT_MODEL a menos que el usuario especifique lo contrario. Si el usuario pide rapido, usa FAST_MODEL. Si el usuario pide grande, usa HEAVY_MODEL.
 - Siempre corre con "--dangerously-bypass-approvals-and-sandbox".
 

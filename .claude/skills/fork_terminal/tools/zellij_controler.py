@@ -2,7 +2,7 @@
 
 """
 
-Zellij Controler
+Zellij Controller
 
 - Generate a layout.kdl (KDL = KDL) with M panes running commands (bash -lc "...")
 - Launches zellij in a *version-tolerant* way( handles CLI differences).
@@ -19,13 +19,18 @@ import argparse
 import os
 import platform
 import subprocess
+import shlex
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-
+# Constants
+STACKED_PANES_THRESHOLD = 4
+DEFAULT_TAB_NAME = "fork-agents"
+DEFAULT_OUT_DIR = "~/.cache/hemdov/zellij"
+MAX_SESSION_NAME_LENGTH = 32
 
 # ----------------------------
 # Helpers: escaping
@@ -41,9 +46,6 @@ def _kdl_escape(s: str) -> str:
         .replace("\t", "\\t")
     )
 
-def _sh_quote(s: str) -> str:
-    """Single-quote for bash safely."""
-    return "'" + s.replace("'", "'\''") + "'"
 
 def _escape_applescript_string(s: str) -> str:
     """Escape for AppleScript string literal inside osascript."""
@@ -113,6 +115,39 @@ def validate_output_dir(provided_path: str, base_allowlist: list[Path] = None) -
             raise PermissionError(f"Sin permisos para crear el directorio en: {parent}")
 
     return path
+
+
+def validate_session_name(name: str) -> str:
+    """
+    Validate session name to prevent command injection.
+    
+    Only allows alphanumeric characters, underscores, and hyphens.
+    Maximum length is 32 characters.
+    
+    Args:
+        name: Session name provided by user
+        
+    Returns:
+        Validated session name (unchanged if valid)
+        
+    Raises:
+        ValueError: If session name contains invalid characters or exceeds length limit
+        
+    Examples:
+        >>> validate_session_name("my_session")
+        'my_session'
+        >>> validate_session_name("test-123")
+        'test-123'
+        >>> validate_session_name("bad;name")
+        ValueError: Invalid session name
+    """
+    import re
+    if not re.match(r'^[a-zA-Z0-9_-]{1,32}$', name):
+        raise ValueError(
+            f"Invalid session name: '{name}'. "
+            "Only alphanumeric, underscore, and hyphen allowed (max 32 chars)"
+        )
+    return name
 
 
 # ----------------------------
@@ -213,6 +248,24 @@ layout {{
 
 
 def indent(s: str, n: int) -> str:
+    """
+    Indent each line of a multi-line string by n spaces.
+
+    Preserves empty lines without adding indentation to maintain formatting.
+
+    Args:
+        s: The input string to indent (can contain multiple lines)
+        n: Number of spaces to indent each non-empty line
+
+    Returns:
+        str: The indented string with each non-empty line prefixed by n spaces
+
+    Examples:
+        >>> indent("line1\\nline2\\n\\nline3", 4)
+        '    line1\\n    line2\\n\\n    line3'
+        >>> indent("single line", 2)
+        '  single line'
+    """
     pad = " " * n
     return "\n".join(pad + line if line.strip() else line for line in s.splitlines())
 
@@ -233,8 +286,8 @@ def build_zellij_launch_command(session_name: str, layout_path: str) -> str:
 
     Note: --layout is the documented way to apply a layout. :contentReference[oaicite:4]{index=4}
     """
-    s = _sh_quote(session_name)
-    l = _sh_quote(layout_path)
+    session_quoted = shlex.quote(session_name)
+    layout_quoted = shlex.quote(layout_path)
 
     # This is a single bash snippet so you can pass it to your fork_terminal safely.
     cmd = f"""
@@ -243,10 +296,10 @@ set -e
 HELP="$(zellij --help 2>/dev/null || true)"
 if echo "$HELP" | grep -q -- "--new-session-with-layout"; then
   # Newer behavior (documented in issues/discussions)
-  exec zellij --new-session-with-layout {l} -s {s}
+  exec zellij --new-session-with-layout {layout_quoted} -s {session_quoted}
 elif echo "$HELP" | grep -q -- "--layout"; then
   # Try session flag + layout (varies by version)
-  exec zellij -s {s} --layout {l} || exec zellij --layout {l}
+  exec zellij options --layout {layout_quoted} attach --create {session_quoted}
 else
   exec zellij
 fi
@@ -260,12 +313,36 @@ fi
 # ----------------------------
 
 def fork_terminal_macos(command: str) -> str:
+    """
+    Fork a new Terminal window on macOS and execute the specified command.
+
+    This function uses AppleScript via the osascript command to create a new
+    Terminal window and run the provided command in it.
+
+    Args:
+        command: The shell command to execute in the new Terminal window
+
+    Returns:
+        str: The stdout output from the osascript command (typically window ID or tab info)
+
+    Raises:
+        RuntimeError: If osascript command fails or is not found
+        subprocess.CalledProcessError: If AppleScript execution fails
+
+    Examples:
+        >>> fork_terminal_macos("ls -la")
+        >>> fork_terminal_macos("python script.py")
+        >>> fork_terminal_macos("cd /path/to/project && npm start")
+    """
     safe_cmd = _escape_applescript_string(command)
     script = f'tell application "Terminal" to do script "{safe_cmd}"'
-    res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-    if res.returncode != 0:
-        return f"osascript error: {res.stderr.strip()}"
-    return res.stdout.strip()
+    try:
+        res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=True)
+        return res.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to fork terminal on macOS: {e.stderr.strip()}") from e
+    except FileNotFoundError:
+        raise RuntimeError("osascript command not found. Make sure macOS is running properly.")
 
 
 def launch_zellij_session(
@@ -283,13 +360,13 @@ def launch_zellij_session(
 
     # Default policy: stack if too many panes
     if stacked is None:
-        stacked = len(panes) > 4
+        stacked = len(panes) > STACKED_PANES_THRESHOLD
 
     layout_kdl = build_layout_kdl(
         panes,
         root_split_direction=root_split_direction,
         stacked=stacked,
-        tab_name="fork-agents",
+        tab_name=DEFAULT_TAB_NAME,
         include_compact_bar=True,
     )
 
@@ -307,12 +384,18 @@ def launch_zellij_session(
         return fork_terminal_macos(launch_cmd)
     elif system == "Windows":
         # Best effort. If user has zellij installed on Windows.
-        subprocess.Popen(f'start cmd /k {launch_cmd}', shell=True)
-        return "Started zellij (Windows)."
+        try:
+            subprocess.Popen(f'start cmd /k {launch_cmd}', shell=True)
+            return "Started zellij (Windows)."
+        except Exception as e:
+            raise RuntimeError(f"Failed to start zellij on Windows: {e}") from e
     else:
         # Linux: launch in current process if GUI terminal is unknown.
-        subprocess.Popen(launch_cmd, shell=True)
-        return "Started zellij (Linux)."
+        try:
+            subprocess.Popen(launch_cmd, shell=True)
+            return "Started zellij (Linux)."
+        except Exception as e:
+            raise RuntimeError(f"Failed to start zellij on Linux: {e}") from e
 
 
 # ----------------------------
@@ -321,9 +404,22 @@ def launch_zellij_session(
 
 def parse_pane_arg(s: str) -> PaneSpec:
     """
-    Format:
-      --pane "NAME::CMD"
-      --pane "NAME::CMD::CWD"
+    Parse pane specification from CLI argument.
+
+    Format: "NAME::CMD" or "NAME::CMD::CWD"
+
+    Args:
+        s: Pane specification string containing name, command, and optionally working directory
+
+    Returns:
+        PaneSpec object with parsed values including command, name, args, and optional cwd
+
+    Raises:
+        ValueError: If format is invalid (missing name or command components)
+
+    Examples:
+        >>> parse_pane_arg("Agent1::python script.py")
+        >>> parse_pane_arg("Agent2::npm start::/home/user/project")
     """
     parts = s.split("::")
     if len(parts) < 2:
@@ -337,7 +433,7 @@ def parse_pane_arg(s: str) -> PaneSpec:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--session", required=True, help="Session name")
-    ap.add_argument("--out-dir", default="~/.cache/hemdov/zellij", help="Where to write layout files")
+    ap.add_argument("--out-dir", default=DEFAULT_OUT_DIR, help="Where to write layout files")
     ap.add_argument("--pane", action="append", default=[], help='Pane spec: "NAME::CMD" or "NAME::CMD::CWD"')
     ap.add_argument("--stacked", action="store_true", help="Force stacked panes")
     ap.add_argument("--no-fork", action="store_true", help="Do not fork a new terminal; print launch command")
@@ -349,9 +445,12 @@ def main():
         print("ERROR: Provide at least one --pane", file=sys.stderr)
         sys.exit(2)
 
+    # Validate session name to prevent command injection
+    validated_session = validate_session_name(args.session)
+
     result = launch_zellij_session(
         panes,
-        session_name=args.session,
+        session_name=validated_session,
         out_dir=args.out_dir,
         stacked=True if args.stacked else None,
         root_split_direction=args.split,

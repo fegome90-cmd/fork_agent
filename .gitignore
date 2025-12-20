@@ -11,3 +11,7 @@ __pycache__/
 
 # Documentation
 docs/
+
+# Aider Artifacts
+aider_commands.txt
+*.repomap.txt

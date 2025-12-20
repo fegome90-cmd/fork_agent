@@ -5,49 +5,52 @@ import os
 import platform
 import random
 import shlex
+import shutil
 import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
 
 
-def _checkout_agent(command: str, duration: float, status: str, result: str = "") -> None:
+def _checkout_agent(
+    command: str, duration: float, status: str, result: str = ""
+) -> None:
     """Log agent execution to checkout log."""
-    
+
     # Check if checkout is disabled
-    if os.getenv('FORK_TERMINAL_DISABLE_CHECKOUT') == '1':
+    if os.getenv("FORK_TERMINAL_DISABLE_CHECKOUT") == "1":
         return
-    
+
     # Generate agent ID
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    random_suffix = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=3))
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    random_suffix = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=3))
     agent_id = f"agent_{timestamp}_{random_suffix}"
-    
+
     # Determine agent name from command
     command_lower = command.lower()
-    if 'gemini' in command_lower:
+    if "gemini" in command_lower:
         agent_name = "Gemini CLI Agent"
-    elif 'claude' in command_lower:
+    elif "claude" in command_lower:
         agent_name = "Claude Code Agent"
-    elif 'codex' in command_lower:
+    elif "codex" in command_lower:
         agent_name = "Codex CLI Agent"
     else:
         agent_name = "CLI Command"
-    
+
     # Prepare log directory
     try:
-        log_dir = Path.cwd() / '.claude' / 'logs'
+        log_dir = Path.cwd() / ".claude" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / 'agent_checkout.log'
-    except:
+        log_file = log_dir / "agent_checkout.log"
+    except Exception:
         # If can't create in cwd, try home directory
-        log_dir = Path.home() / '.claude' / 'logs'
+        log_dir = Path.home() / ".claude" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / 'agent_checkout.log'
-    
+        log_file = log_dir / "agent_checkout.log"
+
     # Extract summary from command (first 100 chars)
-    summary = command[:100].replace('\n', ' ').replace('"', '\\"')
-    
+    summary = command[:100].replace("\n", " ").replace('"', '\\"')
+
     # Write checkout entry
     checkout_entry = f"""---
 timestamp: "{datetime.now().isoformat()}"
@@ -60,9 +63,9 @@ report_path: null
 summary: "{summary}"
 errors: []
 """
-    
+
     try:
-        with open(log_file, 'a') as f:
+        with open(log_file, "a") as f:
             f.write(checkout_entry)
     except Exception:
         # Silent fail - don't break fork_terminal if checkout fails
@@ -71,21 +74,68 @@ errors: []
 
 def fork_terminal(command: str) -> str:
     """Open a new Terminal window and run the specified command."""
-    
+
     # Record start time for checkout
     start_time = time.time()
     status = "SUCCESS"
     result = ""
-    
+
     try:
         system = platform.system()
         safe_command = shlex.quote(command)
 
+        # PRIORIDAD 0: Detectar si ya estamos dentro de un multiplexor (Tmux/Zellij)
+        # Esto permite que fork_agent funcione "nativamente" dentro del IDE terminal
+        
+        # Check for TMUX
+        if os.environ.get("TMUX"):
+            # Wrap entire command in bash to avoid shell incompatibilities (e.g. fish)
+            # and to support 'read -p' standard syntax.
+            inner_cmd = f"{command}; read -p 'Press enter to close...'"
+            safe_inner = shlex.quote(inner_cmd)
+            subprocess.run(
+                ["tmux", "split-window", "-h", f"bash -c {safe_inner}"],
+                check=True
+            )
+            return "New tmux pane opened."
+
+        # Check for ZELLIJ
+        if os.environ.get("ZELLIJ"):
+            inner_cmd = f"{command}; read -p 'Press enter to close...'"
+            safe_inner = shlex.quote(inner_cmd)
+            subprocess.run(
+                ["zellij", "action", "new-pane", "--", "bash", "-c", inner_cmd],
+                check=True
+            )
+            return "New zellij pane opened."
+
         if system == "Darwin":  # macOS
-            # For macOS, use the original command to avoid double-quoting issues
-            # AppleScript will handle the command execution properly
+            # PRIORIDAD 1: WezTerm CLI si está disponible
+            if shutil.which("wezterm"):
+                try:
+                    # WezTerm con directorio actual según `wezterm start --help`
+                    subprocess.run(
+                        [
+                            "wezterm",
+                            "start",
+                            "--cwd",
+                            os.getcwd(),  # Mantener directorio actual
+                            "--",
+                            "bash",
+                            "-c",
+                            f"{command}; exec bash",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    return "New WezTerm window opened on macOS."
+                except Exception:
+                    pass  # Si falla, continuar con el método original
+
+            # PRIORIDAD 2: Método original con Terminal.app (código existente)
             applescript_command = command.replace('"', '\\"')
-            result = subprocess.run(
+            process_result = subprocess.run(
                 [
                     "osascript",
                     "-e",
@@ -94,17 +144,17 @@ def fork_terminal(command: str) -> str:
                 capture_output=True,
                 text=True,
             )
-            result = result.stdout.strip()
+            result = process_result.stdout.strip()
             return result
 
         elif system == "Windows":
-            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", safe_command], shell=True)
+            subprocess.Popen(
+                ["cmd", "/c", "start", "cmd", "/k", safe_command], shell=True
+            )
             result = "New terminal window opened on Windows."
             return result
 
         elif system == "Linux":
-            import shutil
-
             # Check for common terminal emulators
             terminals = [
                 "gnome-terminal",
@@ -123,7 +173,13 @@ def fork_terminal(command: str) -> str:
                 if found_terminal == "gnome-terminal":
                     # gnome-terminal needs specific handling to keep window open
                     subprocess.Popen(
-                        [found_terminal, "--", "bash", "-c", f"{safe_command}; exec bash"]
+                        [
+                            found_terminal,
+                            "--",
+                            "bash",
+                            "-c",
+                            f"{safe_command}; exec bash",
+                        ]
                     )
                 else:
                     # Standard -e flag for xterm, x-terminal-emulator, etc.
@@ -188,12 +244,12 @@ def fork_terminal(command: str) -> str:
             raise NotImplementedError(
                 "This function is only implemented for macOS, Windows, and Linux."
             )
-    
+
     except Exception as e:
         status = "FAILURE"
         result = f"Error: {str(e)}"
         raise
-    
+
     finally:
         # Calculate duration and checkout agent
         duration = time.time() - start_time

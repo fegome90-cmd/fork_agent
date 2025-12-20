@@ -12,8 +12,10 @@ LOCAL_MODEL: ollama_chat/qwen3-coder:30b
 
 ## Instructions
 
-- Antes de ejecutar el comando, corre "aider --help" para entender el comando y sus opciones.
+- Antes de ejecutar el comando, corre "wezterm --help" para entender las opciones de WezTerm CLI (prioridad en macOS).
+- Luego corre "aider --help" para entender el comando y sus opciones.
 - Siempre usa terminales interactivas (no uses -m/--message para modo no-interactivo a menos que el usuario lo solicite explícitamente).
+- Considera que fork_terminal usará automáticamente WezTerm si está disponible en macOS.
 - Para el --model, usa el DEFAULT_MODEL a menos que el usuario especifique lo contrario. Si el usuario pide rápido, usa FAST_MODEL. Si el usuario pide grande/potente, usa HEAVY_MODEL. Si el usuario pide OpenAI, usa OPENAI_MODEL.
 - Siempre corre con "--yes-always" para evitar prompts interactivos en modo fork.
 - Si el usuario solicita generar un repomap, usa "--show-repo-map".
