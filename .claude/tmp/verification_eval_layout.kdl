@@ -1,0 +1,21 @@
+layout {
+    tab name="verification-eval" {
+        pane split_direction="vertical" {
+            pane name="V1_Technical" {
+                command "bash"
+                args "-lc" "cd /Users/felipe_gonzalez/Developer/fork_agent-main && claude 'TAREA OBLIGATORIA: Crear archivo docs/zellij_fixes_react/EVAL_01_technical_accuracy.md\n\nAGENTE: V1_technical_eval - Technical Accuracy Validator\n\n1. Lee docs/zellij_fixes_react/VERIFICATION_REPORT.md completo\n2. Verifica que los cambios de código reportados coincidan con la implementación real en .claude/skills/fork_terminal/tools/zellij_controler.py\n3. Valida cálculos de security score (2/10 → 5/10)\n4. Verifica números de línea y diffs\n\nESCRIBE docs/zellij_fixes_react/EVAL_01_technical_accuracy.md con:\n\n## Executive Summary\n(3 líneas - precisión técnica del reporte)\n\n## Technical Findings\n- [ACCURATE/INACCURATE] Claim vs Reality\n\n## Security Score Validation\n(justificación del 2→5/10)\n\n## Veredicto\nPASS/FAIL/CONDITIONAL\n\nMínimo 30 líneas. Sé crítico y riguroso.' --dangerously-skip-permissions"
+            }
+            pane name="V2_Workflow" {
+                command "bash"
+                args "-lc" "cd /Users/felipe_gonzalez/Developer/fork_agent-main && claude 'TAREA OBLIGATORIA: Crear archivo docs/zellij_fixes_react/EVAL_02_workflow_quality.md\n\nAGENTE: V2_workflow_eval - ReAct Workflow Quality Analyst\n\n1. Lee docs/zellij_fixes_react/VERIFICATION_REPORT.md\n2. Evalúa calidad de ejecución del patrón THINK → ACT → OBSERVE\n3. Analiza calidad de informes de agentes (detalle, claridad)\n4. Identifica fortalezas y debilidades del workflow\n\nESCRIBE docs/zellij_fixes_react/EVAL_02_workflow_quality.md con:\n\n## Executive Summary\n(3 líneas - calidad del workflow ReAct)\n\n## Workflow Analysis\n- THINK phase quality\n- ACT phase execution\n- OBSERVE phase gaps\n\n## Recommendations\n(mejoras para futuros ReAct)\n\n## Veredicto\nPASS/FAIL/CONDITIONAL\n\nMínimo 30 líneas. Analiza el proceso, no solo resultados.' --dangerously-skip-permissions"
+            }
+            pane name="V3_Risk" {
+                command "bash"
+                args "-lc" "cd /Users/felipe_gonzalez/Developer/fork_agent-main && claude 'TAREA OBLIGATORIA: Crear archivo docs/zellij_fixes_react/EVAL_03_risk_gaps.md\n\nAGENTE: V3_risk_eval - Risk and Gap Analyst\n\n1. Lee docs/zellij_fixes_react/VERIFICATION_REPORT.md\n2. Identifica trabajo no completado (Sprints 2-3, OBSERVE)\n3. Evalúa riesgos de deployar fixes parciales\n4. Analiza completitud de mejoras de seguridad\n\nESCRIBE docs/zellij_fixes_react/EVAL_03_risk_gaps.md con:\n\n## Executive Summary\n(3 líneas - riesgos y gaps)\n\n## Uncompleted Work Analysis\n- Sprint 2 impact\n- Sprint 3 impact\n- Missing OBSERVE phases\n\n## Deployment Risk Assessment\n(ALTO/MEDIO/BAJO y por qué)\n\n## Immediate vs Deferred Actions\n\n## Veredicto\nPASS/FAIL/CONDITIONAL\n\nMínimo 30 líneas. Enfócate en riesgos reales.' --dangerously-skip-permissions"
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+    }
+}

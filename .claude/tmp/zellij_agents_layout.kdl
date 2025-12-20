@@ -1,0 +1,21 @@
+layout {
+    tab name="zellij-analysis" {
+        pane split_direction="vertical" {
+            pane name="A1_Quality" {
+                command "bash"
+                args "-lc" "cd /Users/felipe_gonzalez/Developer/fork_agent-main && claude 'TAREA OBLIGATORIA: Crear archivo docs/zellij_analysis_quality.md\n\n1. Lee .claude/skills/fork_terminal/tools/zellij_controler.py\n2. Analiza: PEP 8, complejidad, docstrings, errores, typos\n3. ESCRIBE el archivo docs/zellij_analysis_quality.md con:\n\n## Executive Summary\n(3 líneas)\n\n## Findings\n- [CRITICAL/HIGH/MEDIUM/LOW] ...\n\n## Recommendations\n1. ...\n\n## Quality Score\nX/10\n\nMínimo 30 líneas. NO respondas por chat, SOLO crea el archivo.' --dangerously-skip-permissions"
+            }
+            pane name="A2_Security" {
+                command "bash"
+                args "-lc" "cd /Users/felipe_gonzalez/Developer/fork_agent-main && claude 'TAREA OBLIGATORIA: Crear archivo docs/zellij_analysis_security.md\n\n1. Lee .claude/skills/fork_terminal/tools/zellij_controler.py\n2. Analiza: command injection, shell escaping fish, AppleScript injection, validación paths\n3. ESCRIBE el archivo docs/zellij_analysis_security.md con:\n\n## Executive Summary\n(3 líneas)\n\n## Security Findings\n- [CRITICAL/HIGH/MEDIUM/LOW] ...\n\n## Recommendations\n1. ...\n\n## Security Score\nX/10\n\nMínimo 30 líneas. NO respondas por chat, SOLO crea el archivo.' --dangerously-skip-permissions"
+            }
+            pane name="A3_Architecture" {
+                command "bash"
+                args "-lc" "cd /Users/felipe_gonzalez/Developer/fork_agent-main && claude 'TAREA OBLIGATORIA: Crear archivo docs/zellij_analysis_architecture.md\n\n1. Lee .claude/skills/fork_terminal/tools/zellij_controler.py\n2. Analiza: API design, integración fork_terminal, compatibilidad Zellij, multiplataforma\n3. ESCRIBE el archivo docs/zellij_analysis_architecture.md con:\n\n## Executive Summary\n(3 líneas)\n\n## Architecture Findings\n- [CRITICAL/HIGH/MEDIUM/LOW] ...\n\n## Recommendations\n1. ...\n\n## Architecture Score\nX/10\n\nMínimo 30 líneas. NO respondas por chat, SOLO crea el archivo.' --dangerously-skip-permissions"
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+    }
+}

@@ -21,14 +21,14 @@ The summary MUST follow this YAML format and include the **mandatory fields**:
 
 ### Project Overview
 - **fork_agent**: Plataforma agéntica para bifurcar sesiones de terminal
-- **Core Skill**: `fork_terminal` - Orquestador de agentes (Gemini CLI, Claude Code, Codex CLI)
+- **Core Skill**: `fork_terminal` - Orquestador de agentes (Gemini CLI, Claude Code, Codex CLI, Aider CLI)
 - **Multi-Platform**: macOS (Terminal.app), Windows (CMD), Linux (tmux/zellij)
 - **Cookbook System**: Guías para selección de herramientas según contexto
 
 ### Key Components
 - `.claude/skills/fork_terminal/tools/fork_terminal.py` - Core implementation
 - `.claude/skills/fork_terminal/skills.md` - Skill specification
-- `.claude/skills/fork_terminal/cookbook/` - Agent selection guides (4 files)
+- `.claude/skills/fork_terminal/cookbook/` - Agent selection guides (5 files)
 - `.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md` - Summary history
 
 ### Recent Improvements
@@ -40,7 +40,7 @@ The summary MUST follow this YAML format and include the **mandatory fields**:
 
 ### Tools & Technologies
 - **Python 3.8+** required
-- **AI Agents**: Gemini CLI, Claude Code, Codex CLI
+- **AI Agents**: Gemini CLI, Claude Code, Codex CLI, Aider CLI
 - **Terminal Multiplexers**: tmux, zellij
 - **Dependencies**: langchain, google-generativeai, python-dotenv
 
@@ -111,6 +111,48 @@ The summary MUST follow this YAML format and include the **mandatory fields**:
       capa_modificada: "Documentation"
       impacto_contrato: "None"
       siguiente_paso_tecnico: "None"
+
+- history:
+    - user_prompt_summary: "Execute codebase analysis workflow (prime.md)"
+      agent_response_summary: "Completed comprehensive review of documentation, core fork_terminal logic, cookbooks, and memory systems. Generated detailed analysis report."
+      capa_modificada: "Documentation"
+      impacto_contrato: "None"
+      siguiente_paso_tecnico: "Maintain architectural alignment during future fork operations"
+
+- history:
+    - user_prompt_summary: "Actualizar GEMINI.md con la integración de Aider CLI"
+      agent_response_summary: "Se actualizó la documentación de memoria para incluir a Aider CLI como agente soportado, actualizando el conteo de cookbooks y las listas de herramientas."
+      capa_modificada: "Documentation"
+      impacto_contrato: "None"
+      siguiente_paso_tecnico: "None"
+
+- history:
+    - user_prompt_summary: "Crear guía de estudio teórica sobre fork_agent"
+      agent_response_summary: "Generado docs/fork_agent_study_guide.md con explicación de arquitectura, sistema de prompts Markdown, comunicación inter-agente, multiplexores de terminal, sistema de checkout y seguridad."
+      capa_modificada: "Documentation"
+      impacto_contrato: "None"
+      siguiente_paso_tecnico: "None"
+
+- history:
+    - user_prompt_summary: "Organizar carpeta docs/ en estructura coherente por temas"
+      agent_response_summary: "Reorganizados 42 archivos markdown en 8 categorías temáticas: analysis/, fixes/, testing/, integrations/, guides/, vision/, agent-reports/, y zellij_fixes_react/. Creado docs/README.md con índice navegable."
+      capa_modificada: "Documentation"
+      impacto_contrato: "None"
+      siguiente_paso_tecnico: "None"
+
+- history:
+    - user_prompt_summary: "Implementar validación de rutas (validate_output_dir) en zellij_controler.py para prevenir Path Traversal"
+      agent_response_summary: "Se implementó validate_output_dir() con lógica de chroot simulado y se integró en launch_zellij_session(). Se documentó el cambio en docs/zellij_fixes_react/04_act_path_impl.md."
+      capa_modificada: "Application"
+      impacto_contrato: "Mejora crítica de seguridad en el manejo de rutas de salida."
+      siguiente_paso_tecnico: "Verificar la implementación con pruebas de penetración de rutas."
+
+- history:
+    - user_prompt_summary: "Corregir typo _scape en zellij_controler.py y generar reporte ACT"
+      agent_response_summary: "Se corrigió el nombre de la función _scape_applescript_string a _escape_applescript_string y el typo 'ApleScript' en el docstring. Se generó docs/zellij_fixes_react/01_act_typo_fix.md."
+      capa_modificada: "Application"
+      impacto_contrato: "Elimina NameError potencial en macOS al sincronizar definición y llamada de función."
+      siguiente_paso_tecnico: "Proceder con la fase de diseño de rutas (04_think_path_design.md)"
 ```
 
 ---

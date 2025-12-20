@@ -15,14 +15,15 @@ ENABLE_RAW_CLI_COMMANDS: "true"
 ENABLE_GEMINI_CLI: "true"
 ENABLE_CODEX_CLI: "true"
 ENABLE_CLAUDE_CODE: "true"
+ENABLE_AIDER_CLI: "true"
 AGENTIC_CODING_TOOLS = HERRAMIENTAS_AGENTICAS_DE_CODIGO
-AGENTIG_CODING_TOOLS: ["gemini-cli", "codex-cli", "claude-code"]
+AGENTIG_CODING_TOOLS: ["gemini-cli", "codex-cli", "claude-code", "aider-cli"]
 
 ## Instructions
 
 ### CRITICAL PROTOCOL: History Persistence
 
-Antes de ejecutar cualquier herramienta de "fork" (Gemini, Claude, Codex, CLI), DEBES seguir este estricto orden de operaciones. NO tomes atajos.
+Antes de ejecutar cualquier herramienta de "fork" (Gemini, Claude, Codex, Aider, CLI), DEBES seguir este estricto orden de operaciones. NO tomes atajos.
 
 1. **GENERA** el historial y resumen de la conversación en formato YAML.
 2. **ESCRIBE** (usando `write_file`) este contenido en: `/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md`.
@@ -79,4 +80,15 @@ Antes de ejecutar cualquier herramienta de "fork" (Gemini, Claude, Codex, CLI), 
   - "Fork terminal a <xyz> usando Gemini CLI"
   - "Abre una nueva terminal con gemini-cli para correr <abc>"
   - "Crea una nueva terminal y ejecuta el flujo de Gemini para <xyz>"
+
+### Aider CLI
+
+- If: Si el usuario solicita usar Aider (AI pair programming) AND "ENABLE_AIDER_CLI" es true.
+- Then: Lee y ejecuta el "/fork_agent/.claude/skills/fork_terminal/cookbook/aider_cli.md" archivo para determinar que codigo usar.
+- Examples:
+  - "Fork terminal con aider para refactorizar el código"
+  - "Abre una nueva terminal con aider-cli usando modelo local"
+  - "Crea un fork de aider para generar un repomap"
+  - "Fork aider con claude sonnet para editar <archivo>"
+  - "Usa aider en fork para analizar el proyecto"
 
