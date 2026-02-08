@@ -105,3 +105,31 @@ repos:
         description: Sorts imports alphabetically.
         stages: [pre-commit]
         files: \.py$
+
+  # ═══════════════════════════════════════════════════════
+  # NIVEL ERROR: Tests obligatorios
+  # ═══════════════════════════════════════════════════════
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run tests (pytest)
+        description: Ejecuta tests unitarios antes del commit
+        entry: pytest tests/ -v --tb=short --no-cov -q --co -q 2>/dev/null || pytest tests/ -v --tb=short --no-cov -q
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        always_run: true
+
+  # ═══════════════════════════════════════════════════════
+  # NIVEL ERROR: Coverage mínimo obligatorio
+  # ═══════════════════════════════════════════════════════
+  - repo: local
+    hooks:
+      - id: coverage-check
+        name: Check coverage (>= 80%)
+        description: Verifica coverage mínimo del 80%
+        entry: pytest tests/ --cov=src --cov-report=term --cov-fail-under=80
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        always_run: true

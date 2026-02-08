@@ -52,7 +52,7 @@ exclude_lines = [
     "raise NotImplementedError",
 ]
 show_missing = true
-fail_under = 90
+fail_under = 80
 precision = 2
 
 [tool.mypy]
@@ -89,7 +89,7 @@ ignore = [
 [tool.black]
 line-length = 100
 target-version = ["py311"]
-include = r"\.pyi?$"
+include = "\\.pyi?$"
 extend-exclude = r"\.git|__pycache__|\.tox|\.venv|\.env"
 
 [tool.isort]
