@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.application.use_cases.fork_terminal import (
     fork_terminal_use_case,
     create_fork_terminal_use_case,
@@ -24,7 +22,7 @@ class TestForkTerminalUseCase:
         """Test successful terminal fork on macOS."""
         # Arrange
         mock_detector = MagicMock(spec=PlatformDetector)
-        mock_detector.detect.return_value = "Darwin"
+        mock_detector.detect.return_value = PlatformType.DARWIN
 
         mock_spawner = MagicMock(spec=TerminalSpawner)
         mock_result = TerminalResult(success=True, output="Done", exit_code=0)
@@ -45,7 +43,7 @@ class TestForkTerminalUseCase:
         """Test successful terminal fork on Linux."""
         # Arrange
         mock_detector = MagicMock(spec=PlatformDetector)
-        mock_detector.detect.return_value = "Linux"
+        mock_detector.detect.return_value = PlatformType.LINUX
 
         mock_spawner = MagicMock(spec=TerminalSpawner)
         mock_result = TerminalResult(success=True, output="Linux terminal", exit_code=0)
@@ -66,7 +64,7 @@ class TestForkTerminalUseCase:
         """Test successful terminal fork on Windows."""
         # Arrange
         mock_detector = MagicMock(spec=PlatformDetector)
-        mock_detector.detect.return_value = "Windows"
+        mock_detector.detect.return_value = PlatformType.WINDOWS
 
         mock_spawner = MagicMock(spec=TerminalSpawner)
         mock_result = TerminalResult(success=True, output="Done", exit_code=0)
@@ -87,7 +85,7 @@ class TestForkTerminalUseCase:
         """Test terminal fork that fails."""
         # Arrange
         mock_detector = MagicMock(spec=PlatformDetector)
-        mock_detector.detect.return_value = "Darwin"
+        mock_detector.detect.return_value = PlatformType.DARWIN
 
         mock_spawner = MagicMock(spec=TerminalSpawner)
         mock_result = TerminalResult(success=False, output="Error", exit_code=1)
@@ -105,7 +103,7 @@ class TestForkTerminalUseCase:
         """Test that command is passed correctly to spawner."""
         # Arrange
         mock_detector = MagicMock(spec=PlatformDetector)
-        mock_detector.detect.return_value = "Linux"
+        mock_detector.detect.return_value = PlatformType.LINUX
 
         mock_spawner = MagicMock(spec=TerminalSpawner)
         mock_spawner.spawn.return_value = TerminalResult(
@@ -128,8 +126,8 @@ class TestCreateForkTerminalUseCase:
     def test_create_fork_terminal_use_case(self) -> None:
         """Test creating use case with pure functions."""
         # Arrange
-        def mock_detect_platform() -> str:
-            return "Darwin"
+        def mock_detect_platform() -> PlatformType:
+            return PlatformType.DARWIN
 
         def mock_spawn_terminal(command: str) -> TerminalResult:
             return TerminalResult(success=True, output="spawned", exit_code=0)
@@ -145,8 +143,8 @@ class TestCreateForkTerminalUseCase:
     def test_create_fork_terminal_with_failure(self) -> None:
         """Test use case with function that returns failure."""
         # Arrange
-        def mock_detect_platform() -> str:
-            return "Windows"
+        def mock_detect_platform() -> PlatformType:
+            return PlatformType.WINDOWS
 
         def mock_spawn_terminal(command: str) -> TerminalResult:
             return TerminalResult(success=False, output="failed", exit_code=127)
@@ -162,12 +160,12 @@ class TestCreateForkTerminalUseCase:
     def test_create_fork_terminal_config_created_correctly(self) -> None:
         """Test that config is created with None terminal."""
         # Arrange
-        platform_detected: str | None = None
+        platform_detected: PlatformType | None = None
 
-        def mock_detect_platform() -> str:
+        def mock_detect_platform() -> PlatformType:
             nonlocal platform_detected
-            platform_detected = "Linux"
-            return "Linux"
+            platform_detected = PlatformType.LINUX
+            return PlatformType.LINUX
 
         def mock_spawn_terminal(command: str) -> TerminalResult:
             return TerminalResult(success=True, output="ok", exit_code=0)
@@ -177,4 +175,4 @@ class TestCreateForkTerminalUseCase:
         execute("echo test")
 
         # Assert
-        assert platform_detected == "Linux"
+        assert platform_detected == PlatformType.LINUX

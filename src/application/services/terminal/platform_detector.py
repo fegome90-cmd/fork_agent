@@ -3,16 +3,18 @@
 import platform
 from abc import ABC, abstractmethod
 
+from src.domain.entities.terminal import PlatformType
+
 
 class PlatformDetector(ABC):
     """Interfaz abstracta para detectar la plataforma."""
 
     @abstractmethod
-    def detect(self) -> str:
+    def detect(self) -> PlatformType:
         """Detecta el sistema operativo actual.
 
         Returns:
-            Nombre del sistema operativo (Darwin, Windows, Linux).
+            Tipo de plataforma detectada.
         """
         ...
 
@@ -20,11 +22,11 @@ class PlatformDetector(ABC):
 class PlatformDetectorImpl(PlatformDetector):
     """Implementación concreta de PlatformDetector."""
 
-    def detect(self) -> str:
+    def detect(self) -> PlatformType:
         """Detecta el sistema operativo actual.
 
         Returns:
-            Nombre del sistema operativo.
+            Plataforma detectada.
         """
         system_name: str = platform.system()
-        return system_name
+        return PlatformType(system_name)

@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from src.application.services.terminal.terminal_spawner import (
+    LINUX_TERMINALS,
     TerminalSpawner,
     TerminalSpawnerImpl,
 )
@@ -126,6 +127,32 @@ class TestTerminalSpawnerImpl:
             spawner.spawn("echo test", config)
 
 
+class TestSanitization:
+    """Tests for command sanitization."""
+
+    def test_sanitize_windows_command_removes_dangerous_chars(self) -> None:
+        """Test that dangerous characters are removed from Windows commands."""
+        spawner = TerminalSpawnerImpl()
+        
+        dangerous_command = "echo hello & dir & echo"
+        sanitized = spawner._sanitize_windows_command(dangerous_command)
+        
+        assert "&" not in sanitized
+        assert "|" not in sanitized
+        assert ";" not in sanitized
+        assert "hello" in sanitized
+        assert "dir" in sanitized
+
+    def test_sanitize_windows_command_preserves_safe_chars(self) -> None:
+        """Test that safe characters are preserved in Windows commands."""
+        spawner = TerminalSpawnerImpl()
+        
+        safe_command = "echo hello world"
+        sanitized = spawner._sanitize_windows_command(safe_command)
+        
+        assert sanitized == safe_command
+
+
 class TestTerminalSpawnerInterface:
     """Tests for TerminalSpawner interface compliance."""
 
@@ -153,3 +180,13 @@ class TestTerminalSpawnerInterface:
         # TerminalSpawner is abstract and cannot be instantiated
         # This test verifies the abstract class is properly defined
         assert hasattr(TerminalSpawner, "__abstractmethods__")
+
+
+class TestLinuxTerminals:
+    """Tests for Linux terminals constant."""
+
+    def test_linux_terminals_is_list(self) -> None:
+        """Test that LINUX_TERMINALS is a list of strings."""
+        assert isinstance(LINUX_TERMINALS, list)
+        assert all(isinstance(t, str) for t in LINUX_TERMINALS)
+        assert len(LINUX_TERMINALS) > 0

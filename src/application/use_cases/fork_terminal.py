@@ -12,7 +12,7 @@ from src.application.services.terminal.terminal_spawner import TerminalSpawner
 
 
 # Tipo para la función de detección de plataforma
-DetectPlatformFn = Callable[[], str]
+DetectPlatformFn = Callable[[], PlatformType]
 
 # Tipo para la función de spawn de terminal
 SpawnTerminalFn = Callable[[str], TerminalResult]
@@ -46,8 +46,7 @@ def fork_terminal_use_case(
         Returns:
             Resultado de la ejecución.
         """
-        platform_str = platform_detector.detect()
-        platform = PlatformType(platform_str)
+        platform = platform_detector.detect()
         config = TerminalConfig(terminal=None, platform=platform)
         return terminal_spawner.spawn(command, config)
 
@@ -73,8 +72,7 @@ def create_fork_terminal_use_case(
 
     def execute(command: str) -> TerminalResult:
         """Ejecuta el comando en una nueva terminal."""
-        platform_str = detect_platform()
-        platform = PlatformType(platform_str)
+        platform = detect_platform()
         config = TerminalConfig(terminal=None, platform=platform)
         return spawn_terminal(command)
 
