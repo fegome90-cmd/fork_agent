@@ -80,9 +80,10 @@ class TestPathTraversalBlocked(TestHookRunnerSecurity):
         self, temp_hooks_dir: Path, temp_workspace_dir: Path
     ) -> None:
         """Test that valid paths resolve correctly."""
-        # Create a valid file
-        test_file = temp_workspace_dir / "test.txt"
-        test_file.write_text("test content")
+        # Create a valid executable file
+        test_file = temp_workspace_dir / "test.sh"
+        test_file.write_text("#!/bin/bash\necho 'test'")
+        test_file.chmod(0o755)  # Make executable
 
         runner = HookRunner(hooks_dir=temp_hooks_dir, timeout=30)
 

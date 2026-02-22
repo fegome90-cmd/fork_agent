@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import typer
 
-from src.application.use_cases.search_observations import SearchObservations
-
 app = typer.Typer()
 
 
@@ -15,9 +13,8 @@ def search(
     query: str = typer.Argument(...),
     limit: int | None = typer.Option(None, "--limit", "-l"),
 ) -> None:
-    repo = ctx.obj
-    use_case = SearchObservations(repo)
-    results = use_case.execute(query=query, limit=limit)
+    memory_service = ctx.obj
+    results = memory_service.search(query=query, limit=limit)
 
     if not results:
         typer.echo("No results found")

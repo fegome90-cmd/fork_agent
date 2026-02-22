@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import typer
 
-from src.application.use_cases.delete_observation import DeleteObservation
-
 app = typer.Typer()
 
 
@@ -15,16 +13,14 @@ def delete(
     observation_id: str = typer.Argument(...),
     force: bool = typer.Option(False, "--force", "-f"),
 ) -> None:
-    repo = ctx.obj
+    memory_service = ctx.obj
     if not force:
         if not typer.confirm(f"Delete observation {observation_id}?"):
             typer.echo("Cancelled")
             raise typer.Exit(0)
 
-    use_case = DeleteObservation(repo)
-
     try:
-        use_case.execute(observation_id=observation_id)
+        memory_service.delete(observation_id)
         typer.echo(f"Deleted: {observation_id}")
     except Exception:
         typer.echo(f"Observation not found: {observation_id}", err=True)

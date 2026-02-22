@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import typer
 
-from src.application.use_cases.list_observations import ListObservations
-
 app = typer.Typer()
 
 
@@ -14,9 +12,8 @@ def list_observations(
     ctx: typer.Context,
     limit: int = typer.Option(10, "--limit", "-l"),
 ) -> None:
-    repo = ctx.obj
-    use_case = ListObservations(repo)
-    results = use_case.execute(limit=limit)
+    memory_service = ctx.obj
+    results = memory_service.get_recent(limit=limit)
 
     if not results:
         typer.echo("No observations found")

@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 
 from src.interfaces.cli.commands import delete, get, list, save, search
-from src.interfaces.cli.dependencies import get_repository
+from src.interfaces.cli.dependencies import get_memory_service
 
 app = typer.Typer(
     name="memory",
@@ -31,8 +31,7 @@ def main(
         help="Path to memory database",
     ),
 ) -> None:
-    repo = get_repository(Path(db_path))
-    ctx.obj = repo
+    ctx.obj = get_memory_service(Path(db_path))
 
 
 if __name__ == "__main__":

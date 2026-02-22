@@ -6,8 +6,6 @@ import json
 
 import typer
 
-from src.application.use_cases.get_observation import GetObservation
-
 app = typer.Typer()
 
 
@@ -16,11 +14,10 @@ def get(
     ctx: typer.Context,
     observation_id: str = typer.Argument(...),
 ) -> None:
-    repo = ctx.obj
-    use_case = GetObservation(repo)
+    memory_service = ctx.obj
 
     try:
-        obs = use_case.execute(observation_id=observation_id)
+        obs = memory_service.get_by_id(observation_id)
         typer.echo(f"ID: {obs.id}")
         typer.echo(f"Timestamp: {obs.timestamp}")
         typer.echo(f"Content: {obs.content}")
