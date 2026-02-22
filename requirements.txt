@@ -1,6 +1,19 @@
+# Production Dependencies
 python-dotenv>=1.0.0
+pydantic>=2.0.0
 langchain
 google-generativeai
 langchain-google-genai
+
+# Development & Quality Tooling
+pytest>=8.0.0
+pytest-cov>=5.0.0
+pytest-mock>=3.12.0
+mypy>=1.9.0
+pre-commit>=3.6.0
+ruff>=0.4.1
+black>=24.0.0
+hypothesis>=6.90.0
+dependency-injector>=4.41.0
 
 # Añadir dependencias adicionales según las herramientas y LLMs que se integren
