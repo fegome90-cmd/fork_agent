@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dependency_injector import containers, providers
 
+from src.application.services.memory_service import MemoryService
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.migrations import MigrationRunner
 from src.infrastructure.persistence.repositories.observation_repository import (
@@ -41,6 +42,11 @@ class Container(containers.DeclarativeContainer):
     observation_repository = providers.Singleton(
         ObservationRepository,
         connection=database_connection,
+    )
+
+    memory_service = providers.Singleton(
+        MemoryService,
+        repository=observation_repository,
     )
 
 

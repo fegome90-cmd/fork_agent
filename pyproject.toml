@@ -18,7 +18,11 @@ dependencies = [
     "dependency-injector>=4.41.0",
     "pyyaml>=6.0.0",
     "click>=8.0.0",
+    "typer>=0.9.0",
 ]
+
+[project.scripts]
+memory = "src.interfaces.cli.main:app"
 
 [project.optional-dependencies]
 dev = [
