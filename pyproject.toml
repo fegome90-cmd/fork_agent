@@ -90,9 +90,12 @@ ignore = [
 line-length = 100
 target-version = ["py311"]
 include = "\\.pyi?$"
-extend-exclude = r"\.git|__pycache__|\.tox|\.venv|\.env"
+extend-exclude = "\\.git|__pycache__|\\.tox|\\.venv|\\.env"
 
 [tool.isort]
 profile = "black"
 line-length = 100
 skip = [".venv", "venv"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
