@@ -4,10 +4,12 @@ import pytest
 from pathlib import Path
 
 from src.application.services.workspace.entities import (
+    HookResult,
     LayoutType,
     WorktreeState,
     Workspace,
     WorkspaceConfig,
+    WorkspaceHook,
 )
 
 
@@ -138,6 +140,68 @@ class TestWorkspace:
                 repo_root="/test/repo",  # type: ignore
             )
 
+    def test_workspace_with_last_setup_hook(self) -> None:
+        """Test creating Workspace with last_setup_hook."""
+        hook_result = HookResult(
+            success=True,
+            exit_code=0,
+            stdout="Setup done",
+            stderr="",
+            duration_ms=50,
+        )
+        workspace = Workspace(
+            name="feature-branch",
+            path=Path("/test/repo/.worktrees/feature-branch"),
+            layout=LayoutType.NESTED,
+            state=WorktreeState.ACTIVE,
+            repo_root=Path("/test/repo"),
+            last_setup_hook=hook_result,
+        )
+        assert workspace.last_setup_hook == hook_result
+
+    def test_workspace_with_last_teardown_hook(self) -> None:
+        """Test creating Workspace with last_teardown_hook."""
+        hook_result = HookResult(
+            success=True,
+            exit_code=0,
+            stdout="Teardown done",
+            stderr="",
+            duration_ms=50,
+        )
+        workspace = Workspace(
+            name="feature-branch",
+            path=Path("/test/repo/.worktrees/feature-branch"),
+            layout=LayoutType.NESTED,
+            state=WorktreeState.ACTIVE,
+            repo_root=Path("/test/repo"),
+            last_teardown_hook=hook_result,
+        )
+        assert workspace.last_teardown_hook == hook_result
+
+    def test_workspace_validates_last_setup_hook_type(self) -> None:
+        """Test that Workspace validates last_setup_hook is HookResult or None."""
+        with pytest.raises(TypeError, match="last_setup_hook debe ser un HookResult o None"):
+            Workspace(
+                name="feature-branch",
+                path=Path("/test/repo/.worktrees/feature-branch"),
+                layout=LayoutType.NESTED,
+                state=WorktreeState.ACTIVE,
+                repo_root=Path("/test/repo"),
+                last_setup_hook="not a hook result",  # type: ignore
+            )
+
+    def test_workspace_validates_last_teardown_hook_type(self) -> None:
+        """Test that Workspace validates last_teardown_hook is HookResult or None."""
+        with pytest.raises(TypeError, match="last_teardown_hook debe ser un HookResult o None"):
+            Workspace(
+                name="feature-branch",
+                path=Path("/test/repo/.worktrees/feature-branch"),
+                layout=LayoutType.NESTED,
+                state=WorktreeState.ACTIVE,
+                repo_root=Path("/test/repo"),
+                last_teardown_hook="not a hook result",  # type: ignore
+            )
+
 
 class TestWorkspaceConfig:
     """Tests for WorkspaceConfig dataclass."""
@@ -217,3 +281,174 @@ class TestWorkspaceConfig:
             hooks_dir=None,
         )
         assert config.hooks_dir is None
+
+
+class TestHookResult:
+    """Tests for HookResult dataclass."""
+
+    def test_create_hook_result(self) -> None:
+        """Test creating a HookResult instance."""
+        result = HookResult(
+            success=True,
+            exit_code=0,
+            stdout="Setup complete",
+            stderr="",
+            duration_ms=100,
+        )
+        assert result.success is True
+        assert result.exit_code == 0
+        assert result.stdout == "Setup complete"
+        assert result.stderr == ""
+        assert result.duration_ms == 100
+
+    def test_hook_result_immutability(self) -> None:
+        """Test that HookResult is immutable (frozen=True)."""
+        result = HookResult(
+            success=True,
+            exit_code=0,
+            stdout="output",
+            stderr="",
+            duration_ms=100,
+        )
+        with pytest.raises(Exception):
+            result.success = False
+        with pytest.raises(Exception):
+            result.exit_code = 1
+
+    def test_hook_result_validates_success_type(self) -> None:
+        """Test that HookResult validates success is a bool."""
+        with pytest.raises(TypeError, match="success debe ser un booleano"):
+            HookResult(
+                success="true",  # type: ignore
+                exit_code=0,
+                stdout="output",
+                stderr="",
+                duration_ms=100,
+            )
+
+    def test_hook_result_validates_exit_code_type(self) -> None:
+        """Test that HookResult validates exit_code is an int."""
+        with pytest.raises(TypeError, match="exit_code debe ser un entero"):
+            HookResult(
+                success=True,
+                exit_code="0",  # type: ignore
+                stdout="output",
+                stderr="",
+                duration_ms=100,
+            )
+
+    def test_hook_result_validates_stdout_type(self) -> None:
+        """Test that HookResult validates stdout is a string."""
+        with pytest.raises(TypeError, match="stdout debe ser un string"):
+            HookResult(
+                success=True,
+                exit_code=0,
+                stdout=123,  # type: ignore
+                stderr="",
+                duration_ms=100,
+            )
+
+    def test_hook_result_validates_stderr_type(self) -> None:
+        """Test that HookResult validates stderr is a string."""
+        with pytest.raises(TypeError, match="stderr debe ser un string"):
+            HookResult(
+                success=True,
+                exit_code=0,
+                stdout="",
+                stderr=123,  # type: ignore
+                duration_ms=100,
+            )
+
+    def test_hook_result_validates_duration_ms_type(self) -> None:
+        """Test that HookResult validates duration_ms is an int."""
+        with pytest.raises(TypeError, match="duration_ms debe ser un entero"):
+            HookResult(
+                success=True,
+                exit_code=0,
+                stdout="",
+                stderr="",
+                duration_ms="100",  # type: ignore
+            )
+
+
+class TestWorkspaceHook:
+    """Tests for WorkspaceHook dataclass."""
+
+    def test_create_workspace_hook(self) -> None:
+        """Test creating a WorkspaceHook instance."""
+        hook = WorkspaceHook(
+            workspace_id="ws-001",
+            setup_path=Path("/test/setup.sh"),
+            teardown_path=Path("/test/teardown.sh"),
+            environment=(("KEY", "value"),),
+        )
+        assert hook.workspace_id == "ws-001"
+        assert hook.setup_path == Path("/test/setup.sh")
+        assert hook.teardown_path == Path("/test/teardown.sh")
+        assert hook.environment == (("KEY", "value"),)
+
+    def test_create_workspace_hook_with_defaults(self) -> None:
+        """Test creating WorkspaceHook with default values."""
+        hook = WorkspaceHook(workspace_id="ws-001")
+        assert hook.workspace_id == "ws-001"
+        assert hook.setup_path is None
+        assert hook.teardown_path is None
+        assert hook.environment == ()
+
+    def test_workspace_hook_immutability(self) -> None:
+        """Test that WorkspaceHook is immutable (frozen=True)."""
+        hook = WorkspaceHook(
+            workspace_id="ws-001",
+            setup_path=Path("/test/setup.sh"),
+        )
+        with pytest.raises(Exception):
+            hook.workspace_id = "ws-002"
+        with pytest.raises(Exception):
+            hook.setup_path = Path("/other/setup.sh")
+
+    def test_workspace_hook_validates_workspace_id_type(self) -> None:
+        """Test that WorkspaceHook validates workspace_id is a string."""
+        with pytest.raises(TypeError, match="workspace_id debe ser un string"):
+            WorkspaceHook(workspace_id=123)  # type: ignore
+
+    def test_workspace_hook_validates_setup_path_type(self) -> None:
+        """Test that WorkspaceHook validates setup_path is a Path or None."""
+        with pytest.raises(TypeError, match="setup_path debe ser un Path o None"):
+            WorkspaceHook(workspace_id="ws-001", setup_path="/not/a/path")  # type: ignore
+
+    def test_workspace_hook_validates_teardown_path_type(self) -> None:
+        """Test that WorkspaceHook validates teardown_path is a Path or None."""
+        with pytest.raises(TypeError, match="teardown_path debe ser un Path o None"):
+            WorkspaceHook(workspace_id="ws-001", teardown_path="/not/a/path")  # type: ignore
+
+    def test_workspace_hook_validates_environment_is_tuple(self) -> None:
+        """Test that WorkspaceHook validates environment is a tuple."""
+        with pytest.raises(TypeError, match="environment debe ser una tupla"):
+            WorkspaceHook(workspace_id="ws-001", environment={"key": "value"})  # type: ignore
+
+    def test_workspace_hook_validates_environment_item_format(self) -> None:
+        """Test that WorkspaceHook validates environment items are tuples of 2."""
+        with pytest.raises(TypeError, match="environment debe ser tupla de tuplas"):
+            WorkspaceHook(workspace_id="ws-001", environment=("not a tuple",))  # type: ignore
+
+    def test_workspace_hook_validates_environment_item_length(self) -> None:
+        """Test that WorkspaceHook validates environment items have length 2."""
+        with pytest.raises(TypeError, match="environment debe ser tupla de tuplas"):
+            WorkspaceHook(workspace_id="ws-001", environment=(("key", "value", "extra"),))  # type: ignore
+
+    def test_workspace_hook_with_empty_environment(self) -> None:
+        """Test creating WorkspaceHook with empty environment tuple."""
+        hook = WorkspaceHook(workspace_id="ws-001", environment=())
+        assert hook.environment == ()
+
+    def test_workspace_hook_with_multiple_env_vars(self) -> None:
+        """Test creating WorkspaceHook with multiple environment variables."""
+        hook = WorkspaceHook(
+            workspace_id="ws-001",
+            environment=(
+                ("VAR1", "value1"),
+                ("VAR2", "value2"),
+                ("VAR3", "value3"),
+            ),
+        )
+        assert len(hook.environment) == 3

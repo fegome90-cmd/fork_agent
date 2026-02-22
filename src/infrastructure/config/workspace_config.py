@@ -16,6 +16,8 @@ class WorkspaceConfigModel(BaseModel):
     auto_cleanup: bool = False
     hooks_dir: Path | None = None
 
+    model_config = {"frozen": True}
+
     @field_validator("default_layout")
     @classmethod
     def validate_layout(cls, v: str) -> str:
@@ -30,6 +32,8 @@ class TmuxConfigModel(BaseModel):
 
     session_prefix: str = "fork-"
     attach_on_create: bool = True
+
+    model_config = {"frozen": True}
 
 
 class ForkAgentConfig(BaseModel):

@@ -25,16 +25,16 @@ class TestDatabaseConfig:
         assert config.busy_timeout_ms == 5000
         assert config.foreign_keys is True
 
-    def test_create_config_with_custom_values(self) -> None:
+    def test_create_config_with_custom_values(self, tmp_path: Path) -> None:
         """Test creating config with custom values."""
         config = DatabaseConfig(
-            db_path=Path("/custom/path.db"),
+            db_path=tmp_path / "custom" / "path.db",
             journal_mode=JournalMode.DELETE,
             busy_timeout_ms=10000,
             foreign_keys=False,
         )
 
-        assert config.db_path == Path("/custom/path.db")
+        assert config.db_path == tmp_path / "custom" / "path.db"
         assert config.journal_mode == "DELETE"
         assert config.busy_timeout_ms == 10000
         assert config.foreign_keys is False

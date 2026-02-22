@@ -207,10 +207,10 @@ class TestGitError:
         error = GitError("Custom", original)
         assert error.original_exception is original
 
-    def test_git_error_inherits_workspace_error(self) -> None:
-        """Test GitError inherits from WorkspaceError."""
+    def test_git_error_inherits_exception(self) -> None:
+        """Test GitError inherits from Exception (infrastructure-level)."""
         error = GitError()
-        assert isinstance(error, WorkspaceError)
+        assert isinstance(error, Exception)
 
 
 class TestGitNotFoundError:
@@ -268,18 +268,19 @@ class TestExceptionHierarchy:
 
     def test_exception_hierarchy(self) -> None:
         """Test that all exceptions form a proper hierarchy."""
-        # All specific exceptions should inherit from WorkspaceError
+        # Workspace-specific exceptions inherit from WorkspaceError
         assert issubclass(WorkspaceExistsError, WorkspaceError)
         assert issubclass(WorkspaceNotFoundError, WorkspaceError)
         assert issubclass(WorkspaceNotCleanError, WorkspaceError)
         assert issubclass(HookExecutionError, WorkspaceError)
         assert issubclass(InvalidLayoutError, WorkspaceError)
         assert issubclass(SecurityError, WorkspaceError)
-        assert issubclass(GitError, WorkspaceError)
 
-        # Git-specific exceptions should also inherit from GitError
+        # Git exceptions are infrastructure-level (inherit from their own base)
         assert issubclass(GitNotFoundError, GitError)
         assert issubclass(GitVersionError, GitError)
+        # GitError inherits from Exception (not WorkspaceError - it's infrastructure)
+        assert issubclass(GitError, Exception)
 
     def test_can_raise_and_catch_all_exceptions(self) -> None:
         """Test that all exceptions can be raised and caught."""
@@ -300,19 +301,27 @@ class TestExceptionHierarchy:
             with pytest.raises(type(exc)):
                 raise exc
 
-    def test_workspace_error_catches_all_specific_exceptions(self) -> None:
-        """Test that catching WorkspaceError catches all specific exceptions."""
-        specific_exceptions = [
+    def test_workspace_error_catches_workspace_exceptions(self) -> None:
+        """Test that catching WorkspaceError catches workspace-specific exceptions."""
+        workspace_exceptions = [
             WorkspaceExistsError(),
             WorkspaceNotFoundError(),
             WorkspaceNotCleanError(),
             HookExecutionError(),
             InvalidLayoutError(),
             SecurityError(),
+        ]
+
+        for exc in workspace_exceptions:
+            assert isinstance(exc, WorkspaceError)
+
+    def test_git_error_catches_git_exceptions(self) -> None:
+        """Test that catching GitError catches all git-specific exceptions."""
+        git_exceptions = [
             GitError(),
             GitNotFoundError(),
             GitVersionError(),
         ]
 
-        for exc in specific_exceptions:
-            assert isinstance(exc, WorkspaceError)
+        for exc in git_exceptions:
+            assert isinstance(exc, GitError)

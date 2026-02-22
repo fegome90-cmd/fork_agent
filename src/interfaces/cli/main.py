@@ -7,6 +7,8 @@ from pathlib import Path
 import typer
 
 from src.interfaces.cli.commands import delete, get, list, save, search
+from src.interfaces.cli.commands.schedule import app as schedule_app
+from src.interfaces.cli.commands.workflow import app as workflow_app
 from src.interfaces.cli.dependencies import get_memory_service
 
 app = typer.Typer(
@@ -19,6 +21,9 @@ app.command(name="search")(search.search)
 app.command(name="list")(list.list_observations)
 app.command(name="get")(get.get)
 app.command(name="delete")(delete.delete)
+
+app.add_typer(schedule_app, name="schedule")
+app.add_typer(workflow_app, name="workflow")
 
 
 @app.callback()

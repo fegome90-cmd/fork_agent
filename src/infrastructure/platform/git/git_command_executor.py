@@ -101,7 +101,7 @@ class GitCommandExecutor:
         args: list[str],
         cwd: Path | None = None,
         check: bool = True,
-    ) -> subprocess.CompletedProcess:
+    ) -> subprocess.CompletedProcess[str]:
         """Run a git command with the given arguments.
 
         Args:
@@ -142,8 +142,30 @@ class GitCommandExecutor:
             GitError: If not in a git repository.
         """
         repo_path = path if path is not None else getattr(self, '_repo_path', None)
-        result = self._run_git_command(["rev-parse", "--show-toplevel"], cwd=repo_path)
-        return Path(result.stdout.strip())
+
+        # Use --git-common-dir to find the main repo from any worktree
+        # This returns the path to the .git directory of the main repository
+        # even when called from within a worktree
+        result = self._run_git_command(["rev-parse", "--git-common-dir"], cwd=repo_path)
+        git_common_dir = Path(result.stdout.strip())
+
+        # Resolve git_common_dir to absolute path relative to repo_path
+        if not git_common_dir.is_absolute():
+            base = repo_path if repo_path else Path.cwd()
+            git_common_dir = (base / git_common_dir).resolve()
+
+        # The repo root is the parent of the .git directory
+        # If --git-common-dir returns a file (like .git file for worktrees), resolve it
+        if git_common_dir.is_file():
+            # It's a .git file, read the actual git dir path
+            git_dir = git_common_dir.read_text().strip()
+            if git_dir.startswith("./"):
+                git_dir = git_dir[2:]
+            # The repo root is the parent of the .git directory
+            return git_common_dir.parent / git_dir
+
+        # Otherwise, it's the .git directory itself, get parent
+        return git_common_dir.parent
 
     def worktree_add(self, path: Path, branch: str, create_branch: bool = True) -> None:
         """Create a new git worktree.

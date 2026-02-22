@@ -46,9 +46,10 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["."]
 branch = true
-omit = ["tests/*", "**/__init__.py", "**/conftest.py"]
+omit = ["tests/*", "**/__init__.py", "**/conftest.py", "**/fork.py", "**/.venv/*", "**/migrations/*"]
+pythonpath = ["."]
 
 [tool.coverage.report]
 exclude_lines = [

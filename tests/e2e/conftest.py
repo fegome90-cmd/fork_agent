@@ -73,7 +73,7 @@ def hooks_dir(git_repo: Path) -> Path:
 @pytest.fixture
 def git_executor(git_repo: Path) -> GitCommandExecutor:
     """Create GitCommandExecutor pointing to test repo."""
-    return GitCommandExecutor()
+    return GitCommandExecutor(repo_path=git_repo)
 
 
 @pytest.fixture

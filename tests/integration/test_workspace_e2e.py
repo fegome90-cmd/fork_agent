@@ -110,7 +110,7 @@ class TestWorkspaceE2E:
     @pytest.fixture
     def git_executor(self, git_repo: Path) -> GitCommandExecutor:
         """Create GitCommandExecutor."""
-        return GitCommandExecutor()
+        return GitCommandExecutor(repo_path=git_repo)
 
     @pytest.fixture
     def hook_runner(self, hooks_dir: Path) -> HookRunner:
