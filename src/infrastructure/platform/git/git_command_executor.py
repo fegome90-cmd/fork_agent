@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from src.application.services.workspace.exceptions import (
+from src.infrastructure.platform.git.exceptions import (
     GitError,
     GitNotFoundError,
     GitVersionError,
@@ -22,14 +22,19 @@ class GitCommandExecutor:
     specifically focused on worktree management with version verification.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, repo_path: Path | None = None) -> None:
         """Initialize GitCommandExecutor and verify git version >= 2.20.
+
+        Args:
+            repo_path: Optional path to the git repository.
+                       If provided, all operations will be performed in this repository.
 
         Raises:
             GitNotFoundError: If git is not installed.
             GitVersionError: If git version is less than 2.20.
         """
         self._version: tuple[int, int, int] | None = None
+        self._repo_path = repo_path
         self._verify_git_available()
         self._verify_git_version()
 
@@ -128,7 +133,7 @@ class GitCommandExecutor:
         """Get the root of the git repository.
 
         Args:
-            path: Optional path within the repository. Defaults to current directory.
+            path: Optional path within the repository. Defaults to repo_path or current directory.
 
         Returns:
             Path to the repository root.
@@ -136,7 +141,8 @@ class GitCommandExecutor:
         Raises:
             GitError: If not in a git repository.
         """
-        result = self._run_git_command(["rev-parse", "--show-toplevel"], cwd=path)
+        repo_path = path if path is not None else getattr(self, '_repo_path', None)
+        result = self._run_git_command(["rev-parse", "--show-toplevel"], cwd=repo_path)
         return Path(result.stdout.strip())
 
     def worktree_add(self, path: Path, branch: str, create_branch: bool = True) -> None:
@@ -158,7 +164,7 @@ class GitCommandExecutor:
             args.append(branch)
         args.append(str(path))
 
-        self._run_git_command(args)
+        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
 
     def worktree_remove(self, path: Path, force: bool = False) -> None:
         """Remove a git worktree.
@@ -175,7 +181,7 @@ class GitCommandExecutor:
             args.append("--force")
         args.append(str(path))
 
-        self._run_git_command(args)
+        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
 
     def worktree_list(self) -> list[dict[str, str]]:
         """List all git worktrees.
@@ -184,7 +190,7 @@ class GitCommandExecutor:
             List of dictionaries containing worktree information.
             Each dict contains 'path', 'branch', and optionally 'HEAD'.
         """
-        result = self._run_git_command(["worktree", "list", "--porcelain"])
+        result = self._run_git_command(["worktree", "list", "--porcelain"], cwd=getattr(self, '_repo_path', None))
         worktrees: list[dict[str, str]] = []
 
         current_worktree: dict[str, str] = {}
@@ -263,7 +269,7 @@ class GitCommandExecutor:
         else:
             args.append(branch)
 
-        self._run_git_command(args)
+        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
 
     def branch_delete(self, branch: str, force: bool = False) -> None:
         """Delete a git branch.
@@ -278,13 +284,13 @@ class GitCommandExecutor:
         args = ["branch", "-d" if not force else "-D"]
         args.append(branch)
 
-        self._run_git_command(args)
+        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
 
-    def is_clean(self, path: Path) -> bool:
+    def is_clean(self, path: Path | None = None) -> bool:
         """Check if the working tree is clean (no uncommitted changes).
 
         Args:
-            path: Path within the repository to check.
+            path: Optional path within the repository to check. Defaults to repo_path.
 
         Returns:
             True if the working tree is clean, False otherwise.
@@ -292,6 +298,7 @@ class GitCommandExecutor:
         Raises:
             GitError: If the check fails.
         """
-        result = self._run_git_command(["status", "--porcelain"], cwd=path)
+        repo_path = path if path is not None else getattr(self, '_repo_path', None)
+        result = self._run_git_command(["status", "--porcelain"], cwd=repo_path)
         # If output is empty, the working tree is clean
         return result.stdout.strip() == ""
