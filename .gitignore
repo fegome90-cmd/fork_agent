@@ -10,3 +10,9 @@ __pycache__/
 
 # Git Worktrees
 .worktrees/
+
+# Database
+data/
+*.db
+*.db-wal
+*.db-shm

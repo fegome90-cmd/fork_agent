@@ -1,0 +1,135 @@
+"""Unit tests for workspace entities."""
+
+import pytest
+from pathlib import Path
+
+from src.application.services.workspace.entities import (
+    LayoutType,
+    WorktreeState,
+    Workspace,
+    WorkspaceConfig,
+)
+
+
+class TestLayoutType:
+    """Tests for LayoutType enum."""
+
+    def test_nested_value(self) -> None:
+        """Test NESTED layout type value."""
+        assert LayoutType.NESTED.value == ".worktrees/<branch>/"
+
+    def test_outer_nested_value(self) -> None:
+        """Test OUTER_NESTED layout type value."""
+        assert LayoutType.OUTER_NESTED.value == "../<repo>.worktrees/<branch>/"
+
+    def test_sibling_value(self) -> None:
+        """Test SIBLING layout type value."""
+        assert LayoutType.SIBLING.value == "../<repo>-<branch>/"
+
+
+class TestWorktreeState:
+    """Tests for WorktreeState enum."""
+
+    def test_active_value(self) -> None:
+        """Test ACTIVE state value."""
+        assert WorktreeState.ACTIVE.value == "active"
+
+    def test_merged_value(self) -> None:
+        """Test MERGED state value."""
+        assert WorktreeState.MERGED.value == "merged"
+
+    def test_removed_value(self) -> None:
+        """Test REMOVED state value."""
+        assert WorktreeState.REMOVED.value == "removed"
+
+
+class TestWorkspace:
+    """Tests for Workspace entity."""
+
+    def test_create_workspace(self) -> None:
+        """Test creating a workspace."""
+        workspace = Workspace(
+            name="feature-branch",
+            path=Path("/home/user/repo/.worktrees/feature-branch"),
+            layout=LayoutType.NESTED,
+            state=WorktreeState.ACTIVE,
+            repo_root=Path("/home/user/repo"),
+        )
+
+        assert workspace.name == "feature-branch"
+        assert workspace.path == Path("/home/user/repo/.worktrees/feature-branch")
+        assert workspace.layout == LayoutType.NESTED
+        assert workspace.state == WorktreeState.ACTIVE
+        assert workspace.repo_root == Path("/home/user/repo")
+
+    def test_workspace_immutability(self) -> None:
+        """Test that Workspace is immutable (frozen=True)."""
+        workspace = Workspace(
+            name="test-branch",
+            path=Path("/tmp/test-branch"),
+            layout=LayoutType.NESTED,
+            state=WorktreeState.ACTIVE,
+            repo_root=Path("/tmp/repo"),
+        )
+
+        with pytest.raises(Exception):
+            workspace.name = "new-name"
+
+    def test_workspace_validation_name(self) -> None:
+        """Test workspace validation for name."""
+        with pytest.raises(TypeError):
+            Workspace(
+                name=123,  # type: ignore
+                path=Path("/tmp/test"),
+                layout=LayoutType.NESTED,
+                state=WorktreeState.ACTIVE,
+                repo_root=Path("/tmp/repo"),
+            )
+
+
+class TestWorkspaceConfig:
+    """Tests for WorkspaceConfig entity."""
+
+    def test_create_config(self) -> None:
+        """Test creating a workspace config."""
+        config = WorkspaceConfig(
+            default_layout=LayoutType.NESTED,
+            auto_cleanup=True,
+            hooks_dir=Path("/home/user/hooks"),
+        )
+
+        assert config.default_layout == LayoutType.NESTED
+        assert config.auto_cleanup is True
+        assert config.hooks_dir == Path("/home/user/hooks")
+
+    def test_create_config_without_hooks(self) -> None:
+        """Test creating a config without hooks directory."""
+        config = WorkspaceConfig(
+            default_layout=LayoutType.SIBLING,
+            auto_cleanup=False,
+            hooks_dir=None,
+        )
+
+        assert config.default_layout == LayoutType.SIBLING
+        assert config.auto_cleanup is False
+        assert config.hooks_dir is None
+
+    def test_config_immutability(self) -> None:
+        """Test that WorkspaceConfig is immutable (frozen=True)."""
+        config = WorkspaceConfig(
+            default_layout=LayoutType.NESTED,
+            auto_cleanup=True,
+            hooks_dir=None,
+        )
+
+        with pytest.raises(Exception):
+            config.auto_cleanup = False
+
+    def test_config_validation_layout(self) -> None:
+        """Test config validation for default_layout."""
+        with pytest.raises(TypeError):
+            WorkspaceConfig(
+                default_layout="nested",  # type: ignore
+                auto_cleanup=True,
+                hooks_dir=None,
+            )
