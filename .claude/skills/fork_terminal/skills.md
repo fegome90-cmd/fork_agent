@@ -104,6 +104,42 @@ Al finalizar una sesión significativa, actualiza este archivo con:
 4. Próximos pasos pendientes
 
 ### Estado Actual del Sistema de Memoria (2026-02-22)
+| Módulo | Coverage | Estado |
+|--------|----------|--------|
+| domain/entities/observation.py | 100% | ✅ |
+| domain/entities/terminal.py | 100% | ✅ |
+| domain/ports/observation_repository.py | 50% | Protocol |
+| application/use_cases/*.py | 100% | ✅ |
+| infrastructure/persistence/migrations.py | 100% | ✅ |
+| infrastructure/persistence/repositories/observation_repository.py | 100% | ✅ |
+| infrastructure/persistence/container.py | 100% | ✅ |
+| interfaces/cli/commands/*.py | 95-100% | ✅ |
+| interfaces/cli/main.py | - | ✅ |
+| interfaces/cli/dependencies.py | - | ✅ |
+
+**Coverage Total: >95%** (target: 95%)
+
+### CLI Memory Commands
+
+```bash
+# Install CLI
+uv sync
+
+# Save observation
+memory save "content here" --metadata '{"key": "value"}'
+
+# Search observations
+memory search "query" --limit 10
+
+# List observations
+memory list --limit 10
+
+# Get observation by ID
+memory get <observation_id>
+
+# Delete observation
+memory delete <observation_id> --force
+```
 
 | Módulo | Coverage | Estado |
 |--------|----------|--------|

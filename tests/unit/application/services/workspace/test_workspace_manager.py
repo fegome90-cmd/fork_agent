@@ -78,7 +78,7 @@ class TestLayoutResolver:
 
         path = resolver.resolve_path("feature-branch", Path("/test/repo"))
 
-        assert path == Path("/test/myrepo.worktrees/feature-branch")
+        assert path == Path("/test/repo.worktrees/feature-branch")
 
     def test_resolve_path_sibling(self) -> None:
         """Test resolving path for SIBLING layout."""

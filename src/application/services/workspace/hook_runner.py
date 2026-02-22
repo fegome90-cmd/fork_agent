@@ -83,17 +83,18 @@ class HookRunner:
             frozenset(allowed_env_vars) if allowed_env_vars else frozenset()
         )
 
-    def _sanitize_path(self, path: Path) -> Path:
+    def _sanitize_path(self, path: Path, expect_file: bool = True) -> Path:
         """Sanitize and validate path.
 
         Implements C-02 path sanitization:
         - Resolves to absolute path
         - Blocks path traversal attempts
-        - Verifies path exists and is a file
-        - Verifies executable permissions
+        - Verifies path exists and is a file or directory
+        - Verifies executable permissions (for files only)
 
         Args:
             path: Path to sanitize.
+            expect_file: If True, validates path is a file. If False, validates path is a directory.
 
         Returns:
             Sanitized absolute path.
@@ -118,13 +119,16 @@ class HookRunner:
         if not resolved_path.exists():
             raise SecurityError(f"Path does not exist: {resolved_path}")
 
-        # Verify path is a file
-        if not resolved_path.is_file():
-            raise SecurityError(f"Path is not a file: {resolved_path}")
-
-        # Verify executable permissions (check read and execute for scripts)
-        if not os.access(resolved_path, os.R_OK | os.X_OK):
-            raise SecurityError(f"Path is not executable: {resolved_path}")
+        # Verify path is a file or directory based on expect_file flag
+        if expect_file:
+            if not resolved_path.is_file():
+                raise SecurityError(f"Path is not a file: {resolved_path}")
+            # Verify executable permissions (check read and execute for scripts)
+            if not os.access(resolved_path, os.R_OK | os.X_OK):
+                raise SecurityError(f"Path is not executable: {resolved_path}")
+        else:
+            if not resolved_path.is_dir():
+                raise SecurityError(f"Path is not a directory: {resolved_path}")
 
         return resolved_path
 
@@ -192,8 +196,8 @@ class HookRunner:
             SecurityError: If paths are invalid.
             HookExecutionError: If hook execution fails or times out.
         """
-        # Sanitize workspace path
-        sanitized_workspace = self._sanitize_path(workspace_path)
+        # Sanitize workspace path (directory)
+        sanitized_workspace = self._sanitize_path(workspace_path, expect_file=False)
 
         # Construct hook path
         hook_path = self._hooks_dir / f"{hook_name}.sh"

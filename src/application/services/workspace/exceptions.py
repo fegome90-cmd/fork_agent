@@ -2,6 +2,13 @@
 
 from typing import Optional
 
+# Re-export Git exceptions from infrastructure to maintain backward compatibility
+from src.infrastructure.platform.git.exceptions import (
+    GitError,
+    GitNotFoundError,
+    GitVersionError,
+)
+
 
 class WorkspaceError(Exception):
     """Base exception for all workspace-related errors."""
