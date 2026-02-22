@@ -17,6 +17,8 @@ Un "Cookbook" interno guía a `fork_agent` para seleccionar la herramienta idón
   - **Codex CLI**: Generación y ejecución de código asistida.
   - **Gemini CLI**: Integración con el potente modelo Gemini para comandos inteligentes.
 - **Contexto Conversacional**: Utiliza el historial del chat para enriquecer los prompts de los agentes, permitiendo resúmenes de trabajo y una ejecución más inteligente.
+- **Workflow Disciplinado**: Sistema de comandos con gates obligatorios (outline → execute → verify → ship).
+- **Hooks de Integración**: Eventos para tmux, memory traces y seguridad git.
 - **Multi-Plataforma Robusta**:
   - **macOS**: Abre ventanas nativas de Terminal.
   - **Windows**: Inicia nuevas ventanas de CMD.
@@ -36,48 +38,152 @@ Un "Cookbook" interno guía a `fork_agent` para seleccionar la herramienta idón
    python3 -m venv .venv
    source .venv/bin/activate
 
-   # Instalar dependencias (si aplica)
-   # pip install -r requirements.txt
+   # Instalar dependencias
+   uv sync --all-extras
    ```
 
    *Nota: La herramienta principal usa librerías estándar de Python, pero los agentes específicos (como `gemini-cli` o `claude-code`) deben estar instalados y disponibles en tu PATH.*
 
-## Uso
+## Uso - Comandos CLI
 
-El punto de entrada principal es la herramienta `fork_terminal.py`.
-
-### Sintaxis Básica
+### Memoria
 
 ```bash
-python3 .claude/skills/fork_terminal/tools/fork_terminal.py [comando]
+# Guardar observación
+memory save "texto a recordar"
+
+# Buscar observaciones
+memory search "query"
+
+# Listar todas
+memory list
+
+# Obtener por ID
+memory get <id>
+
+# Eliminar
+memory delete <id>
 ```
 
-La herramienta está diseñada para ser invocada programáticamente por un agente supervisor, pero también puede usarse manualmente.
+### Workflow ( outline → execute → verify → ship )
 
-### Ejemplos
-
-**1. Ejecutar un comando de shell genérico:**
-Esto abrirá una nueva terminal y ejecutará el comando.
 ```bash
-python3 .claude/skills/fork_terminal/tools/fork_terminal.py "ping google.com"
+# 1. Crear plan
+memory workflow outline "Implementar autenticación"
+
+# 2. Ejecutar plan
+memory workflow execute
+
+# 3. Verificar (ejecuta tests)
+memory workflow verify
+
+# 4. Shipping (requiere verify)
+memory workflow ship
+
+# Ver estado
+memory workflow status
 ```
 
-**2. Lanzar un Agente Gemini (ejemplo completo):**
+### Programación de Tareas
+
 ```bash
-python3 .claude/skills/fork_terminal/tools/fork_terminal.py gemini -i "Resumen del README.md" -m gemini-2.5-flash -y
+# Programar tarea
+memory schedule add "echo hello" 60
+
+# Listar tareas
+memory schedule list
+
+# Ver tarea
+memory schedule show <task_id>
+
+# Cancelar
+memory schedule cancel <task_id>
 ```
 
-**3. Lanzar una sesión de Claude Code:**
+### Workspace
+
 ```bash
-python3 .claude/skills/fork_terminal/tools/fork_terminal.py claude "Refactoriza este archivo"
+# Crear workspace
+memory workspace create my-workspace
+
+# Listar workspaces
+memory workspace list
+
+# Entrar a workspace
+memory workspace enter my-workspace
+
+# Detectar workspace actual
+memory workspace detect
+```
+
+## Hooks de Integración
+
+Sistema de eventos inspirado en claudikins-kernel para automatización:
+
+| Hook | Evento | Descripción |
+|------|--------|-------------|
+| `workspace-init.sh` | SessionStart | Inicializa workspace |
+| `tmux-session-per-agent.sh` | SubagentStart | Crea tmux session por agente |
+| `memory-trace-writer.sh` | SubagentStop | Escribe trace a `.claude/traces/` |
+| `git-branch-guard.sh` | PreToolUse | Bloquea git peligroso |
+
+### Eventos Soportados
+
+- **SessionStart**: Nueva sesión iniciada
+- **SubagentStart**: Agente comienza
+- **SubagentStop**: Agente termina
+- **PreToolUse**: Antes de ejecutar tool
+- **UserCommand**: Comando CLI ejecutado
+- **FileWritten**: Archivo escrito
+
+### Configuración
+
+Los hooks se configuran en `.hooks/hooks.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{ "matcher": ".*", "hooks": [{"type": "command", "command": ".hooks/workspace-init.sh"}] }],
+    "SubagentStart": [{ "matcher": ".*", "hooks": [{"type": "command", "command": ".hooks/tmux-session-per-agent.sh"}] }]
+  }
+}
+```
+
+### Seguridad Git
+
+El hook `git-branch-guard.sh` implementa allowlist de comandos:
+
+- ✅ **Permitidos**: add, commit, status, diff, log, show, blame, branch, fetch
+- ❌ **Bloqueados**: checkout, switch, reset, clean, push, pull, rebase, merge, stash, cherry-pick
+
+## Uso - Programático
+
+```python
+from src.application.services.orchestration.hook_service import HookService
+from src.application.services.orchestration.events import SessionStartEvent
+
+# Cargar hooks y dispatch eventos
+service = HookService()
+service.dispatch(SessionStartEvent(session_id='mi-sesion'))
 ```
 
 ## Estructura del Proyecto
 
-- `.claude/skills/fork_terminal/`: Contiene la lógica del skill de bifurcación.
-  - `tools/`: Los scripts de Python que realizan las operaciones del sistema.
-  - `cookbook/`: Configuración y estrategias de prompts para diferentes agentes.
-  - `prompts/`: Prompts del sistema reutilizables.
+```
+src/
+├── domain/              # Entidades inmutables, Protocol (ports)
+├── application/         # Services, Use Cases
+│   ├── services/
+│   │   ├── orchestration/  # Eventos, actions, specs, hook_service
+│   │   └── workflow/       # Estado persistente
+├── infrastructure/     # DB, DI, platform-specific
+│   └── orchestration/  # RuleLoader, ShellActionRunner
+└── interfaces/         # CLI (Typer)
+    └── commands/      # save, search, list, workflow, schedule
+
+.hooks/                 # Hook scripts
+.claude/               # Estado (plan-state.json, traces/)
+```
 
 ## Notas por Plataforma
 
@@ -85,6 +191,4 @@ python3 .claude/skills/fork_terminal/tools/fork_terminal.py claude "Refactoriza 
   - Listar sesiones activas: `tmux ls`
   - Conectarse a una sesión: `tmux attach -t <nombre_sesion>`
 
-- Para mejor resultado usar terminos consisos, por ejemplo: fork nueva terminal, gemini-cli, fast model, summary history " analiza el "@/workspaces/fork_agent/.claude/skills/fork_terminal/prompts/fork_summary_user_prompts.md " y haz un resumen en .claude/docs
-  
-- Este repo esta hecho en base al desarrolador indydevdan y el credito de toda esta idea es totalmente suyo.
+- Este repo esta hecho en base al desarrollador indydevdan y el crédito de toda esta idea es totalmente suyo.

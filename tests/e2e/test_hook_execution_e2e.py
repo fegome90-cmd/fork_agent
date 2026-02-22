@@ -155,6 +155,16 @@ class TestHookExecutionE2E:
         hooks_dir: Path,
     ) -> None:
         """Test that multiple workspaces each run their own hooks."""
+        # Create setup hook that creates a log file
+        hook_path = hooks_dir / "setup.sh"
+        hook_path.write_text(
+            "#!/bin/bash\n"
+            "WORKSPACE_PATH=$1\n"
+            "echo 'setup ran' > \"$WORKSPACE_PATH/.setup_log\"\n"
+            "exit 0\n"
+        )
+        hook_path.chmod(0o755)
+
         # Create first workspace
         workspace1 = workspace_manager.create_workspace("multi-hook-1")
 

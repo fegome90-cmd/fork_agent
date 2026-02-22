@@ -46,6 +46,9 @@ tests/
 
 - **CLI:** `memory` → `src.interfaces.cli.main:app` (pyproject.toml console_scripts)
 - **Comandos:** save, search, list, get, delete (en `src/interfaces/cli/commands/`)
+- **Workflow:** outline, execute, verify, ship, status (en `src/interfaces/cli/commands/workflow.py`)
+- **Schedule:** add, list, show, cancel (en `src/interfaces/cli/commands/schedule.py`)
+- **Workspace:** create, list, enter, detect (en `src/interfaces/cli/workspace_commands.py`)
 
 ---
 
@@ -159,3 +162,5 @@ Ver `pyproject.toml` para configuración completa.
 - **Dependency Injection:** `src/infrastructure/persistence/container.py`
 - **MemoryService:** Fachada de lógica de negocio (`src/application/services/`)
 - **Repository Pattern:** Protocol en `domain/ports/`, implementación en `infrastructure/`
+- **Orchestration:** Eventos, acciones y hooks (`src/application/services/orchestration/`)
+- **Workflow:** Estado persistente (`src/application/services/workflow/`)
