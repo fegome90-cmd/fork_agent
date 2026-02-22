@@ -2,6 +2,24 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
+
+
+def _validate_type(
+    value: Any,
+    name: str,
+    expected: type,
+    type_name: str | None = None,
+    allow_none: bool = False,
+) -> None:
+    """Valida el tipo de un valor."""
+    if allow_none and value is None:
+        return
+    if not isinstance(value, expected):
+        display_name = type_name or expected.__name__
+        if allow_none:
+            display_name = f"{display_name} o None"
+        raise TypeError(f"{name} debe ser un {display_name}")
 
 
 class PlatformType(Enum):
@@ -12,7 +30,7 @@ class PlatformType(Enum):
     LINUX = "Linux"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TerminalResult:
     """Resultado de una operación de terminal.
 
@@ -25,35 +43,24 @@ class TerminalResult:
     exit_code: int
 
     def __post_init__(self) -> None:
-        """Valida el estado del resultado."""
-        if not isinstance(self.success, bool):
-            raise TypeError("success debe ser un booleano")
-        if not isinstance(self.output, str):
-            raise TypeError("output debe ser un string")
-        if not isinstance(self.exit_code, int):
-            raise TypeError("exit_code debe ser un entero")
+        _validate_type(self.success, "success", bool, "booleano")
+        _validate_type(self.output, "output", str, "string")
+        _validate_type(self.exit_code, "exit_code", int, "entero")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TerminalConfig:
-    """Configuración para la creación de una terminal.
-
-    Entidad inmutable que contiene la configuración necesaria
-    para abrir una nueva ventana de terminal.
-    """
+    """Configuración para la creación de una terminal."""
 
     terminal: str | None
     platform: PlatformType
 
     def __post_init__(self) -> None:
-        """Valida la configuración."""
-        if self.terminal is not None and not isinstance(self.terminal, str):
-            raise TypeError("terminal debe ser un string o None")
-        if not isinstance(self.platform, PlatformType):
-            raise TypeError("platform debe ser un PlatformType")
+        _validate_type(self.terminal, "terminal", str, "string", allow_none=True)
+        _validate_type(self.platform, "platform", PlatformType, "PlatformType")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TerminalInfo:
     """Información sobre el ejecutable de terminal encontrado."""
 
@@ -62,10 +69,6 @@ class TerminalInfo:
     is_available: bool
 
     def __post_init__(self) -> None:
-        """Valida la información."""
-        if not isinstance(self.name, str):
-            raise TypeError("name debe ser un string")
-        if self.path is not None and not isinstance(self.path, str):
-            raise TypeError("path debe ser un string o None")
-        if not isinstance(self.is_available, bool):
-            raise TypeError("is_available debe ser un booleano")
+        _validate_type(self.name, "name", str, "string")
+        _validate_type(self.path, "path", str, "string", allow_none=True)
+        _validate_type(self.is_available, "is_available", bool, "booleano")

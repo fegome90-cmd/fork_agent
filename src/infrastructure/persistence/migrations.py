@@ -17,22 +17,16 @@ MIGRATION_PATTERN: Final[re.Pattern[str]] = re.compile(r"^(\d+)_(.+)\.sql$")
 class MigrationError(Exception):
     """Base exception for migration errors."""
 
-    pass
-
 
 class MigrationLoadError(MigrationError):
     """Raised when a migration file cannot be loaded."""
-
-    pass
 
 
 class MigrationAlreadyAppliedError(MigrationError):
     """Raised when attempting to apply an already-applied migration."""
 
-    pass
 
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Migration:
     """Represents a single database migration."""
 

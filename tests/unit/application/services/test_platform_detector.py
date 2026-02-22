@@ -6,6 +6,7 @@ from src.application.services.terminal.platform_detector import (
     PlatformDetector,
     PlatformDetectorImpl,
 )
+from src.domain.entities.terminal import PlatformType
 
 
 class TestPlatformDetectorImpl:
@@ -19,7 +20,7 @@ class TestPlatformDetectorImpl:
         detector = PlatformDetectorImpl()
         result = detector.detect()
 
-        assert result == "Darwin"
+        assert result == PlatformType.DARWIN
         mock_system.assert_called_once()
 
     @patch("platform.system")
@@ -30,7 +31,7 @@ class TestPlatformDetectorImpl:
         detector = PlatformDetectorImpl()
         result = detector.detect()
 
-        assert result == "Linux"
+        assert result == PlatformType.LINUX
         mock_system.assert_called_once()
 
     @patch("platform.system")
@@ -41,7 +42,7 @@ class TestPlatformDetectorImpl:
         detector = PlatformDetectorImpl()
         result = detector.detect()
 
-        assert result == "Windows"
+        assert result == PlatformType.WINDOWS
         mock_system.assert_called_once()
 
     def test_platform_detector_is_abstract(self) -> None:
@@ -54,18 +55,18 @@ class TestPlatformDetectorImpl:
 class TestPlatformDetectorInterface:
     """Tests for PlatformDetector interface compliance."""
 
-    def test_detect_returns_string(self) -> None:
-        """Test that detect method returns a string."""
+    def test_detect_returns_platform_type(self) -> None:
+        """Test that detect method returns a PlatformType."""
         detector = PlatformDetectorImpl()
         result = detector.detect()
-        assert isinstance(result, str)
+        assert isinstance(result, PlatformType)
 
     @patch("platform.system")
     def test_detect_returns_valid_platform_name(
         self, mock_system: MagicMock
     ) -> None:
-        """Test that detect returns valid platform name."""
-        valid_platforms = ["Darwin", "Linux", "Windows"]
+        """Test that detect returns valid platform type."""
+        valid_platforms = [PlatformType.DARWIN, PlatformType.LINUX, PlatformType.WINDOWS]
         mock_system.return_value = "Linux"
 
         detector = PlatformDetectorImpl()

@@ -83,3 +83,52 @@ Antes de ejecutar cualquier herramienta de "fork" (Gemini, Claude, Codex, CLI), 
     - "Fork terminal a <xyz> usando Gemini CLI"
     - "Abre una nueva terminal con gemini-cli para correr <abc>"
     - "Crea una nueva terminal y ejecuta el flujo de Gemini para <xyz>"
+
+## Session Memory
+
+El archivo `prompts/fork_summary_user_prompts.md` contiene la memoria de la sesión actual. Contiene:
+
+- Historial de conversaciones y tareas completadas
+- Estado actual del proyecto (coverage, tests, módulos)
+- Patrones clave utilizados
+- Tareas pendientes
+- Instrucciones para continuar en una nueva sesión
+
+### Actualización de Memoria
+
+Al finalizar una sesión significativa, actualiza este archivo con:
+
+1. Tareas completadas y resultados
+2. Coverage alcanzado
+3. Problemas encontrados y soluciones
+4. Próximos pasos pendientes
+
+### Estado Actual del Sistema de Memoria (2026-02-22)
+
+| Módulo | Coverage | Estado |
+|--------|----------|--------|
+| domain/entities/observation.py | 100% | ✅ |
+| domain/entities/terminal.py | 100% | ✅ |
+| infrastructure/persistence/migrations.py | 100% | ✅ |
+| infrastructure/persistence/repositories/observation_repository.py | 100% | ✅ |
+| infrastructure/persistence/container.py | 100% | ✅ |
+| application/services/memory_service.py | 100% | ✅ |
+| infrastructure/persistence/database.py | 97% | ✅ |
+
+**Coverage Total: 96.61%** (target: 95%)
+
+### Comandos Útiles
+
+```bash
+# Run tests with coverage
+uv run pytest tests/unit/ -v --cov=src --cov-report=term-missing
+
+# Type checking
+uv run mypy src/
+
+# Linting
+uv run ruff check src/
+
+# Run memory system tests only
+uv run pytest tests/unit/infrastructure/ tests/unit/domain/ -v --cov=src
+```

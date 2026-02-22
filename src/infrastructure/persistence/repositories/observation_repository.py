@@ -215,13 +215,8 @@ class ObservationRepository:
 
     def _serialize_metadata(self, metadata: dict[str, Any] | None) -> str | None:
         """Serialize metadata dict to JSON string."""
-        if metadata is None:
-            return None
-        return json.dumps(metadata)
+        return json.dumps(metadata) if metadata is not None else None
 
     def _deserialize_metadata(self, metadata_json: str | None) -> dict[str, Any] | None:
         """Deserialize JSON string to metadata dict."""
-        if metadata_json is None:
-            return None
-        result: dict[str, Any] = json.loads(metadata_json)
-        return result
+        return json.loads(metadata_json) if metadata_json is not None else None
