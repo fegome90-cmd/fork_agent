@@ -40,7 +40,6 @@ class Workspace:
     last_teardown_hook: HookResult | None = None
 
     def __post_init__(self) -> None:
-        """Valida el estado del workspace."""
         if not isinstance(self.name, str):
             raise TypeError("name debe ser un string")
         if not isinstance(self.path, Path):
@@ -70,7 +69,6 @@ class WorkspaceConfig:
     hooks_dir: Path | None
 
     def __post_init__(self) -> None:
-        """Valida la configuración."""
         if not isinstance(self.default_layout, LayoutType):
             raise TypeError("default_layout debe ser un LayoutType")
         if not isinstance(self.auto_cleanup, bool):
@@ -93,7 +91,6 @@ class HookResult:
     duration_ms: int
 
     def __post_init__(self) -> None:
-        """Validate hook result fields."""
         if not isinstance(self.success, bool):
             raise TypeError("success debe ser un booleano")
         if not isinstance(self.exit_code, int):
@@ -120,7 +117,6 @@ class WorkspaceHook:
     environment: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
-        """Validate hook configuration."""
         if not isinstance(self.workspace_id, str):
             raise TypeError("workspace_id debe ser un string")
         if self.setup_path is not None and not isinstance(self.setup_path, Path):

@@ -71,7 +71,6 @@ def create_fork_terminal_use_case(
     """
 
     def execute(command: str) -> TerminalResult:
-        """Ejecuta el comando en una nueva terminal."""
         platform = detect_platform()
         config = TerminalConfig(terminal=None, platform=platform)
         return spawn_terminal(command)

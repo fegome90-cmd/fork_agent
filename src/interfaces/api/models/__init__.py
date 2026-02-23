@@ -127,7 +127,7 @@ class WorkflowShip(BaseModel):
 class WorkflowResponse(BaseModel):
     """Response generico de workflow."""
 
-    data: dict[str, str | datetime]
+    data: dict[str, str | datetime | float | dict[str, int]]
 
 
 class ObservationCreate(BaseModel):

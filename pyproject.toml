@@ -29,7 +29,7 @@ dependencies = [
 
 [project.scripts]
 memory = "src.interfaces.cli.main:app"
-fork-api = "src.interfaces.api.main:app"
+fork-api = "src.interfaces.api.main:main"
 
 [project.optional-dependencies]
 dev = [

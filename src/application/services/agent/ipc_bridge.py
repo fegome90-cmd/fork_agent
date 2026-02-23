@@ -60,7 +60,7 @@ class IPCBridge:
         self._inbox: queue.Queue[Message] = queue.Queue()
         self._outbox: queue.Queue[Message] = queue.Queue()
         self._handlers: dict[str, Callable[[Message], None]] = {}
-        self._pending_requests: dict[str, Message] = {}
+        self._pending_requests: dict[str, queue.Queue[Message]] = {}
         self._lock = threading.Lock()
         self._running = False
         self._worker_thread: threading.Thread | None = None
@@ -126,27 +126,41 @@ class IPCBridge:
             timestamp=time.time(),
         )
 
+        response_queue: queue.Queue[Message] = queue.Queue()
         with self._lock:
-            self._pending_requests[request_id] = request
+            self._pending_requests[request_id] = response_queue
 
         try:
             self._outbox.put(request, timeout=self._timeout)
 
-            start_time = time.time()
-            while time.time() - start_time < self._timeout:
-                try:
-                    response = self._inbox.get(timeout=1.0)
-                    if response.message_id == f"{request_id}-response":
-                        return response
-                except queue.Empty:
-                    continue
-
-            logger.warning(f"Request {request_id} timed out after {self._timeout}s")
-            return None
+            try:
+                response = response_queue.get(timeout=self._timeout)
+                return response
+            except queue.Empty:
+                logger.warning(f"Request {request_id} timed out after {self._timeout}s")
+                return None
 
         finally:
             with self._lock:
                 self._pending_requests.pop(request_id, None)
+
+    def receive_message(self, message: Message) -> None:
+        self._route_incoming(message)
+
+    def _route_incoming(self, message: Message) -> None:
+        response_key = message.message_id.replace("-response", "")
+        with self._lock:
+            response_queue = self._pending_requests.get(response_key)
+
+        if response_queue is not None:
+            try:
+                response_queue.put_nowait(message)
+                return
+            except queue.Full:
+                logger.warning(f"Response queue full for request {response_key}")
+
+        self._inbox.put(message, timeout=1.0)
+        self._process_incoming(message)
 
     def broadcast(self, payload: dict[str, Any], recipients: list[str]) -> dict[str, bool]:
         results = {}

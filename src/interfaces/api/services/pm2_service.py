@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -11,9 +12,8 @@ from src.interfaces.api.models import ProcessInfo
 class PM2Service:
     """Servicio para gestionar procesos PM2."""
 
-    def __init__(self) -> None:
-        """Inicializa el servicio PM2."""
-        self._base_dir = Path("/Users/felipe_gonzalez/Developer/tmux_fork")
+    def __init__(self, base_dir: Path | None = None) -> None:
+        self._base_dir = base_dir or Path(os.environ.get("PM2_BASE_DIR", Path.cwd()))
 
     async def list_processes(self) -> list[ProcessInfo]:
         """Lista todos los procesos PM2."""
@@ -24,7 +24,7 @@ class PM2Service:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await result.communicate()
+            stdout, _stderr = await result.communicate()
 
             if result.returncode != 0:
                 return []
@@ -76,15 +76,16 @@ class PM2Service:
         if cwd:
             cmd.extend(["--cwd", cwd])
 
-        if env:
-            for key, value in env.items():
-                cmd.extend(["--env", f"{key}={value}"])
-
         try:
+            subprocess_env = os.environ.copy()
+            if env:
+                subprocess_env.update(env)
+
             result = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=subprocess_env,
             )
             await result.communicate()
 

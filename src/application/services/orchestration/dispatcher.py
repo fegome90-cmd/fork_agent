@@ -29,12 +29,10 @@ class EventDispatcher:
 
     @property
     def rules(self) -> list[Rule]:
-        """Return the list of rules."""
         return self._rules
 
     @property
     def runner(self) -> IActionRunner:
-        """Return the action runner."""
         return self._runner
 
     def dispatch(self, event: Event) -> None:

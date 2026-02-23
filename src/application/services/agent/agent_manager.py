@@ -310,11 +310,8 @@ class AgentManager:
                 logger.warning(f"Agent {config.name} already exists")
                 return None
 
-            agent: Agent
-            if config.tmux_session is not None or True:
-                agent = TmuxAgent(config)
-            else:
-                raise ValueError("Unknown agent type")
+            # Currently only TmuxAgent is supported
+            agent: Agent = TmuxAgent(config)
 
             if agent.spawn():
                 self._agents[config.name] = agent

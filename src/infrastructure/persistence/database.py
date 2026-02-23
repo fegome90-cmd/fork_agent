@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 import threading
 from enum import Enum
@@ -66,29 +67,38 @@ class DatabaseConnection:
     to maintain isolation between instances.
     """
 
-    __slots__ = ("_config", "_is_in_memory")
+    __slots__ = ("_config", "_is_in_memory", "_local_conn")
 
     def __init__(self, config: DatabaseConfig) -> None:
         self._config = config
         self._is_in_memory = str(config.db_path) == ":memory:"
+        self._local_conn: sqlite3.Connection | None = None
 
     def _get_connection_key(self) -> str:
         return f"db_connection_{self._config.db_path}"
 
     def __enter__(self) -> sqlite3.Connection:
         key = self._get_connection_key()
-        if self._is_in_memory or not hasattr(_thread_local, key):
+        if self._is_in_memory:
+            # In-memory: create new connection, track locally for __exit__
             conn = sqlite3.connect(
                 str(self._config.db_path),
                 check_same_thread=False,
             )
             conn.row_factory = sqlite3.Row
             self._apply_pragmas(conn)
-            if not self._is_in_memory:
-                setattr(_thread_local, key, conn)
-        if self._is_in_memory:
+            self._local_conn = conn
             return conn
-        return getattr(_thread_local, key)
+        # File-backed: use thread-local cache
+        if not hasattr(_thread_local, key):
+            conn = sqlite3.connect(
+                str(self._config.db_path),
+                check_same_thread=False,
+            )
+            conn.row_factory = sqlite3.Row
+            self._apply_pragmas(conn)
+            setattr(_thread_local, key, conn)
+        return getattr(_thread_local, key)  # type: ignore[no-any-return]
 
     def __exit__(
         self,
@@ -96,6 +106,21 @@ class DatabaseConnection:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
+        if self._is_in_memory:
+            # In-memory: commit/close the local connection
+            conn = self._local_conn
+            self._local_conn = None
+            if conn is None:
+                return
+            if exc_type is None:
+                conn.commit()
+            else:
+                conn.rollback()
+            with contextlib.suppress(Exception):
+                conn.close()
+            return
+
+        # File-backed: commit but keep cached connection
         key = self._get_connection_key()
         conn = getattr(_thread_local, key, None)
         if conn is None:
@@ -104,12 +129,6 @@ class DatabaseConnection:
             conn.commit()
         else:
             conn.rollback()
-        try:
-            conn.close()
-        except Exception:
-            pass
-        if hasattr(_thread_local, key):
-            delattr(_thread_local, key)
 
     def _apply_pragmas(self, conn: sqlite3.Connection) -> None:
         conn.execute(f"PRAGMA journal_mode={self._config.journal_mode.value}")
@@ -122,11 +141,10 @@ class DatabaseConnection:
         key = self._get_connection_key()
         conn = getattr(_thread_local, key, None)
         if conn is not None:
-            try:
+            with contextlib.suppress(Exception):
                 conn.close()
-            except Exception:
-                pass
             delattr(_thread_local, key)
+
     @staticmethod
     def close_all() -> None:
         """Close all cached connections in current thread."""
@@ -134,10 +152,8 @@ class DatabaseConnection:
             if attr.startswith("db_connection_"):
                 conn = getattr(_thread_local, attr, None)
                 if conn is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         conn.close()
-                    except Exception:
-                        pass
                 delattr(_thread_local, attr)
 
     @classmethod
