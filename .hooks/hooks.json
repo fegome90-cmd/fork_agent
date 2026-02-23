@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "description": "Hooks de integración para fork_agent - Fase 1 (tmux + memory)",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workspace-init.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/tmux-session-per-agent.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/memory-trace-writer.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash.*git.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/git-branch-guard.sh",
+            "timeout": 1
+          }
+        ]
+      }
+    ]
+  }
+}

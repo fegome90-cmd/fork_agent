@@ -1,6 +1,8 @@
 {
-  "active_plan": "/home/user/fork_agent/.sisyphus/plans/memory-service-cli-integration.md",
-  "started_at": "2026-02-22T11:28:00.000Z",
-  "session_ids": ["ses_37af5ae7effeYpncSq8rFt4klz"],
-  "plan_name": "memory-service-cli-integration"
+  "active_plan": "/Users/felipe_gonzalez/Developer/tmux_fork/.sisyphus/plans/fix-workspace-tests.md",
+  "started_at": "2026-02-22T11:50:00.000Z",
+  "completed_at": "2026-02-22T12:15:00.000Z",
+  "session_ids": ["ses_37af5ae7effeYpncSq8rFt4klz", "ses_current"],
+  "plan_name": "fix-workspace-tests",
+  "status": "completed"
 }

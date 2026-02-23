@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+from src.domain.entities.scheduled_task import ScheduledTask, TaskStatus
+
+
+class ScheduledTaskRepository(Protocol):
+    """Protocol for scheduled task persistence."""
+
+    def create(self, task: ScheduledTask) -> None: ...
+
+    def get_by_id(self, task_id: str) -> ScheduledTask | None: ...
+
+    def get_pending(self) -> list[ScheduledTask]: ...
+
+    def get_overdue(self, current_time: int) -> list[ScheduledTask]: ...
+
+    def update_status(self, task_id: str, status: TaskStatus) -> None: ...
+
+    def delete(self, task_id: str) -> None: ...
+
+    def get_all(self) -> list[ScheduledTask]: ...

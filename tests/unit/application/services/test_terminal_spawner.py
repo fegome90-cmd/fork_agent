@@ -18,10 +18,7 @@ from src.domain.exceptions.terminal import TerminalNotFoundError
 
 
 class TestTerminalSpawnerImpl:
-    """Tests for TerminalSpawnerImpl class."""
-
     def test_spawn_macos(self) -> None:
-        """Test spawning terminal on macOS."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
@@ -39,7 +36,6 @@ class TestTerminalSpawnerImpl:
             mock_run.assert_called_once()
 
     def test_spawn_windows(self) -> None:
-        """Test spawning terminal on Windows."""
         with patch("subprocess.Popen") as mock_popen:
             mock_popen.return_value = MagicMock()
 
@@ -55,9 +51,9 @@ class TestTerminalSpawnerImpl:
 
     @patch("shutil.which")
     def test_spawn_linux_with_gnome_terminal(self, mock_which: MagicMock) -> None:
-        """Test spawning terminal on Linux with gnome-terminal."""
         def get_terminal(term: str) -> str | None:
             return "gnome-terminal" if term == "gnome-terminal" else None
+
         mock_which.side_effect = get_terminal
 
         with patch("subprocess.Popen") as mock_popen:
@@ -74,9 +70,9 @@ class TestTerminalSpawnerImpl:
 
     @patch("shutil.which")
     def test_spawn_linux_with_xterm(self, mock_which: MagicMock) -> None:
-        """Test spawning terminal on Linux with xterm."""
         def get_terminal(term: str) -> str | None:
             return "xterm" if term == "xterm" else None
+
         mock_which.side_effect = get_terminal
 
         with patch("subprocess.Popen") as mock_popen:
@@ -90,15 +86,20 @@ class TestTerminalSpawnerImpl:
             assert result.success is True
             assert "xterm" in result.output
 
-    @pytest.mark.skip(reason="Mock configuration issues - patch path not working correctly for shutil.which in this module")
-    @patch("src.application.services.terminal.terminal_spawner.shutil.which")
+    @patch("shutil.which")
     @patch("uuid.uuid4")
     def test_spawn_linux_fallback_to_tmux(
         self, mock_uuid: MagicMock, mock_which: MagicMock
     ) -> None:
-        """Test spawning terminal on Linux falls back to tmux."""
-        mock_which.return_value = None  # No terminal found
-        mock_uuid.return_value = "test-uuid-1234"
+        def which_side_effect(cmd: str) -> str | None:
+            if cmd in LINUX_TERMINALS:
+                return None
+            if cmd == "tmux":
+                return "/usr/bin/tmux"
+            return None
+
+        mock_which.side_effect = which_side_effect
+        mock_uuid.return_value = MagicMock(__str__=lambda self: "test-uuid-1234")
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
@@ -110,17 +111,11 @@ class TestTerminalSpawnerImpl:
 
             assert result.success is True
             assert "tmux" in result.output
-            assert "test-uuid-1234" in result.output
             mock_run.assert_called_once()
 
-    @pytest.mark.skip(reason="Mock configuration issues - patch path not working correctly for shutil.which in this module")
-    @patch("src.application.services.terminal.terminal_spawner.shutil.which")
-    def test_spawn_linux_no_terminal_raises_error(
-        self, mock_which: MagicMock
-    ) -> None:
-        """Test that missing terminal on Linux raises TerminalNotFoundError."""
-        # side_effect returns None for both terminal check and tmux check
-        mock_which.side_effect = [None, None]
+    @patch("shutil.which")
+    def test_spawn_linux_no_terminal_raises_error(self, mock_which: MagicMock) -> None:
+        mock_which.return_value = None
 
         config = TerminalConfig(terminal=None, platform=PlatformType.LINUX)
         spawner = TerminalSpawnerImpl()
@@ -128,17 +123,33 @@ class TestTerminalSpawnerImpl:
         with pytest.raises(TerminalNotFoundError):
             spawner.spawn("echo test", config)
 
+    @patch("shutil.which")
+    @patch("uuid.uuid4")
+    def test_spawn_with_tmux_creates_session(
+        self, mock_uuid: MagicMock, mock_which: MagicMock
+    ) -> None:
+        mock_which.return_value = "/usr/bin/tmux"
+        mock_uuid.return_value = MagicMock(__str__=lambda self: "abc12345")
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+
+            spawner = TerminalSpawnerImpl()
+            result = spawner._spawn_with_tmux("echo test")
+
+            assert result.success is True
+            assert "tmux" in result.output
+            assert "abc12345" in result.output
+            mock_run.assert_called_once()
+
 
 class TestSanitization:
-    """Tests for command sanitization."""
-
     def test_sanitize_windows_command_removes_dangerous_chars(self) -> None:
-        """Test that dangerous characters are removed from Windows commands."""
         spawner = TerminalSpawnerImpl()
-        
+
         dangerous_command = "echo hello & dir & echo"
         sanitized = spawner._sanitize_windows_command(dangerous_command)
-        
+
         assert "&" not in sanitized
         assert "|" not in sanitized
         assert ";" not in sanitized
@@ -146,20 +157,16 @@ class TestSanitization:
         assert "dir" in sanitized
 
     def test_sanitize_windows_command_preserves_safe_chars(self) -> None:
-        """Test that safe characters are preserved in Windows commands."""
         spawner = TerminalSpawnerImpl()
-        
+
         safe_command = "echo hello world"
         sanitized = spawner._sanitize_windows_command(safe_command)
-        
+
         assert sanitized == safe_command
 
 
 class TestTerminalSpawnerInterface:
-    """Tests for TerminalSpawner interface compliance."""
-
     def test_spawn_returns_terminal_result(self) -> None:
-        """Test that spawn method returns TerminalResult."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
@@ -178,17 +185,11 @@ class TestTerminalSpawnerInterface:
             assert hasattr(result, "exit_code")
 
     def test_spawner_is_abstract(self) -> None:
-        """Test that TerminalSpawner is an abstract base class."""
-        # TerminalSpawner is abstract and cannot be instantiated
-        # This test verifies the abstract class is properly defined
         assert hasattr(TerminalSpawner, "__abstractmethods__")
 
 
 class TestLinuxTerminals:
-    """Tests for Linux terminals constant."""
-
     def test_linux_terminals_is_list(self) -> None:
-        """Test that LINUX_TERMINALS is a list of strings."""
         assert isinstance(LINUX_TERMINALS, list)
         assert all(isinstance(t, str) for t in LINUX_TERMINALS)
         assert len(LINUX_TERMINALS) > 0

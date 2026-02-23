@@ -1,1 +1,0 @@
-Lista todas las skills disponibles de tu system prompt

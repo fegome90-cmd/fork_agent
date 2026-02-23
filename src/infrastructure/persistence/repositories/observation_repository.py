@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from typing import Any
 
@@ -77,17 +78,31 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observation: {e}", e) from e
 
-    def get_all(self) -> list[Observation]:
-        """Retrieve all observations ordered by timestamp descending.
+    def get_all(self, limit: int | None = None, offset: int | None = None) -> list[Observation]:
+        """Retrieve observations ordered by timestamp descending with optional pagination.
+
+        Args:
+            limit: Optional maximum number of observations to return. If None, no limit is applied.
+            offset: Optional number of observations to skip before starting to return results. Requires limit to be set for predictable pagination.
 
         Returns:
-            List of all observation entities.
+            List of observation entities.
         """
         try:
+            sql = (
+                "SELECT id, timestamp, content, metadata FROM observations ORDER BY timestamp DESC"
+            )
+            params: list[str | int] = []
+
+            if limit is not None and offset is not None:
+                sql += " LIMIT ? OFFSET ?"
+                params.extend([limit, offset])
+            elif limit is not None:
+                sql += " LIMIT ?"
+                params.append(limit)
+
             with self._connection as conn:
-                cursor = conn.execute(
-                    "SELECT id, timestamp, content, metadata FROM observations ORDER BY timestamp DESC"
-                )
+                cursor = conn.execute(sql, params)
                 rows = cursor.fetchall()
 
             return [self._row_to_observation(row) for row in rows]
@@ -157,6 +172,9 @@ class ObservationRepository:
             List of matching observation entities, ordered by timestamp descending.
         """
         try:
+            sanitized_query = self._sanitize_fts_query(query)
+            if not sanitized_query:
+                return []
             sql = """
                 SELECT o.id, o.timestamp, o.content, o.metadata
                 FROM observations o
@@ -164,7 +182,7 @@ class ObservationRepository:
                 WHERE observations_fts MATCH ?
                 ORDER BY o.timestamp DESC
             """
-            params: list[str | int] = [query]
+            params: list[str | int] = [sanitized_query]
 
             if limit is not None:
                 sql += " LIMIT ?"
@@ -220,3 +238,11 @@ class ObservationRepository:
     def _deserialize_metadata(self, metadata_json: str | None) -> dict[str, Any] | None:
         """Deserialize JSON string to metadata dict."""
         return json.loads(metadata_json) if metadata_json is not None else None
+
+    def _sanitize_fts_query(self, query: str) -> str:
+        if not query or not query.strip():
+            return ""
+        sanitized = re.sub(r'[\*\^"\'\(\)\-]', " ", query)
+        reserved = {"AND", "OR", "NOT", "NEAR", "COLUMN"}
+        words = sanitized.split()
+        return " ".join(w for w in words if w.upper() not in reserved)

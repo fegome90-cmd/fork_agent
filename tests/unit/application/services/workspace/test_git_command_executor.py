@@ -81,14 +81,10 @@ class TestGitCommandExecutorVersion:
     @patch("subprocess.run")
     def test_get_git_version_cached(self, mock_run: MagicMock) -> None:
         """Test that get_git_version uses cached version."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="git version 2.43.0",
-            strip=lambda: "git version 2.43.0",
-        )
-
-        executor = GitCommandExecutor()
+        # Create executor without calling __init__ to avoid subprocess.run call
+        executor = GitCommandExecutor.__new__(GitCommandExecutor)
         executor._version = (2, 43, 0)  # Set cached version
+        executor._repo_path = None
 
         version = executor.get_git_version()
 
@@ -207,8 +203,8 @@ class TestGitCommandExecutorRepoOperations:
         """Test getting repository root."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="/test/repo\n",
-            strip=lambda: "/test/repo",
+            stdout="/test/repo/.git\n",
+            strip=lambda: "/test/repo/.git",
         )
 
         executor = GitCommandExecutor.__new__(GitCommandExecutor)

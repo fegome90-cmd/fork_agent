@@ -83,6 +83,36 @@ class MigrationRunner:
                 (migration.version, migration.name, timestamp),
             )
 
+    def rollback_migration(self, migration: Migration) -> None:
+        """Rollback a specific migration.
+
+        This removes the migration from the tracking table and optionally
+        executes a rollback SQL file if it exists (e.g., 001_rollback.sql).
+
+        Args:
+            migration: The migration to rollback.
+
+        Raises:
+            MigrationError: If the migration is not currently applied.
+        """
+        applied = self.get_applied_versions()
+        if migration.version not in applied:
+            raise MigrationError(
+                f"Migration version {migration.version} is not currently applied"
+            )
+
+        rollback_file = self._migrations_dir / f"{migration.version:03d}_rollback.sql"
+
+        with DatabaseConnection(self._config) as conn:
+            if rollback_file.exists():
+                rollback_sql = rollback_file.read_text(encoding="utf-8")
+                conn.executescript(rollback_sql)
+
+            conn.execute(
+                "DELETE FROM _migrations WHERE version = ?",
+                (migration.version,),
+            )
+
 
 def load_migrations(migrations_dir: Path) -> list[Migration]:
     if not migrations_dir.exists():

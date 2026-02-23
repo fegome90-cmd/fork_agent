@@ -1,4 +1,5 @@
 # fork_agent - AGENTS.md
+> Guía para agentes de codificación autónomos. **Generated:** 2026-02-23 | **Project:** tmux_fork | **Scale:** 5892 files, 425k lines
 
 > Guía para agentes de codificación autónomos.
 
@@ -46,6 +47,9 @@ tests/
 
 - **CLI:** `memory` → `src.interfaces.cli.main:app` (pyproject.toml console_scripts)
 - **Comandos:** save, search, list, get, delete (en `src/interfaces/cli/commands/`)
+- **Workflow:** outline, execute, verify, ship, status (en `src/interfaces/cli/commands/workflow.py`)
+- **Schedule:** add, list, show, cancel (en `src/interfaces/cli/commands/schedule.py`)
+- **Workspace:** create, list, enter, detect (en `src/interfaces/cli/workspace_commands.py`)
 
 ---
 
@@ -159,3 +163,39 @@ Ver `pyproject.toml` para configuración completa.
 - **Dependency Injection:** `src/infrastructure/persistence/container.py`
 - **MemoryService:** Fachada de lógica de negocio (`src/application/services/`)
 - **Repository Pattern:** Protocol en `domain/ports/`, implementación en `infrastructure/`
+- **Orchestration:** Eventos, acciones y hooks (`src/application/services/orchestration/`)
+- **Workflow:** Estado persistente (`src/application/services/workflow/`)
+
+---
+
+## SESSION CHECKPOINT PROCEDURE
+
+Al finalizar una sesión de trabajo, SIEMPRE ejecutar en PARALELO:
+
+```bash
+# 1. Guardar handoff en .claude/sessions/
+/fork-checkpoint
+
+# 2. Guardar context bundle (en paralelo)
+/cm-save <nombre-session>
+```
+
+**IMPORTANTE:** Ambos comandos deben ejecutarse. El handoff es para continuidad humana, cm-save es para contexto machine-readable.
+
+---
+
+## SUBAGENTES OPENCODE
+
+**TODOS los subagentes de OpenCode deben invocarse con modelos "free".**
+
+Esto es un REQUISITO OBLIGATORIO para minimizar costos. OpenCode permite especificar el modelo al invocar subagentes.
+
+```python
+# ✅ CORRECTO - usar modelo free
+task(category="explore", model="free", ...)
+
+# ❌ INCORRECTO - NO usar modelos paid
+task(category="explore", model="sonnet", ...)
+```
+
+Verificar siempre antes de invocar subagentes que el modelo sea "free".

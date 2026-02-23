@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, field_validator
+
+
+_thread_local = threading.local()
 
 
 class JournalMode(str, Enum):
@@ -54,25 +58,37 @@ class DatabaseConfig(BaseModel):
 
 
 class DatabaseConnection:
-    """Context manager for SQLite database connections.
+    """Thread-safe SQLite database connection using thread-local storage.
 
-    Provides automatic commit/rollback, WAL mode, and proper configuration.
+    Each thread gets its own connection, ensuring thread safety while
+    maintaining SQLite's check_same_thread=False for performance with WAL mode.
+    For in-memory databases, each context manager creates a new connection
+    to maintain isolation between instances.
     """
 
-    __slots__ = ("_config", "_connection")
+    __slots__ = ("_config", "_is_in_memory")
 
     def __init__(self, config: DatabaseConfig) -> None:
         self._config = config
-        self._connection: sqlite3.Connection | None = None
+        self._is_in_memory = str(config.db_path) == ":memory:"
+
+    def _get_connection_key(self) -> str:
+        return f"db_connection_{self._config.db_path}"
 
     def __enter__(self) -> sqlite3.Connection:
-        self._connection = sqlite3.connect(
-            str(self._config.db_path),
-            check_same_thread=False,
-        )
-        self._connection.row_factory = sqlite3.Row
-        self._apply_pragmas(self._connection)
-        return self._connection
+        key = self._get_connection_key()
+        if self._is_in_memory or not hasattr(_thread_local, key):
+            conn = sqlite3.connect(
+                str(self._config.db_path),
+                check_same_thread=False,
+            )
+            conn.row_factory = sqlite3.Row
+            self._apply_pragmas(conn)
+            if not self._is_in_memory:
+                setattr(_thread_local, key, conn)
+        if self._is_in_memory:
+            return conn
+        return getattr(_thread_local, key)
 
     def __exit__(
         self,
@@ -80,22 +96,49 @@ class DatabaseConnection:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
-        if self._connection is None:
+        key = self._get_connection_key()
+        conn = getattr(_thread_local, key, None)
+        if conn is None:
             return
-
         if exc_type is None:
-            self._connection.commit()
+            conn.commit()
         else:
-            self._connection.rollback()
-
-        self._connection.close()
-        self._connection = None
+            conn.rollback()
+        try:
+            conn.close()
+        except Exception:
+            pass
+        if hasattr(_thread_local, key):
+            delattr(_thread_local, key)
 
     def _apply_pragmas(self, conn: sqlite3.Connection) -> None:
         conn.execute(f"PRAGMA journal_mode={self._config.journal_mode.value}")
         conn.execute(f"PRAGMA busy_timeout={self._config.busy_timeout_ms}")
         foreign_keys = "ON" if self._config.foreign_keys else "OFF"
         conn.execute(f"PRAGMA foreign_keys={foreign_keys}")
+
+    def close(self) -> None:
+        """Explicitly close the connection for the current thread."""
+        key = self._get_connection_key()
+        conn = getattr(_thread_local, key, None)
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            delattr(_thread_local, key)
+    @staticmethod
+    def close_all() -> None:
+        """Close all cached connections in current thread."""
+        for attr in list(dir(_thread_local)):
+            if attr.startswith("db_connection_"):
+                conn = getattr(_thread_local, attr, None)
+                if conn is not None:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                delattr(_thread_local, attr)
 
     @classmethod
     def create_in_memory(cls) -> "DatabaseConnection":

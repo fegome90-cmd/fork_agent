@@ -88,3 +88,10 @@ plans/
 
 # Coverage data file (keep htmlcov/ for reports)
 .coverage
+# Temporary analysis files
+.stash/
+data/
+examples/
+.kilocode/
+.sisyphus/
+temp_engram/

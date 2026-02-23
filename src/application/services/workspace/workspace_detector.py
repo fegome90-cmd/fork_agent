@@ -35,7 +35,7 @@ class WorkspaceDetector:
             Git command executor.
         """
         # Access the private _git attribute from WorkspaceManager
-        return self._manager._git  # type: ignore[attr-defined]
+        return self._manager._git
 
     def detect(self, path: Path | None = None) -> Workspace | None:
         """Detect workspace from current directory or given path.

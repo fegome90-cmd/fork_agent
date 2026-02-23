@@ -4,9 +4,9 @@ Ejecuta un agente de Gemini CLI nuevo para ejecutar el comando.
 
 ## Variables
 
-DEFAULT_MODEL: gemini-3.0-pro-preview
-FAST_MODEL: gemini-3-flash-preview
-HEAVY_MODEL: gemini-3-pro-preview
+DEFAULT_MODEL: gemini-2.5-pro
+FAST_MODEL: gemini-2.5-flash
+HEAVY_MODEL: gemini-3.0-pro-preview
 
 ## Instructions
 

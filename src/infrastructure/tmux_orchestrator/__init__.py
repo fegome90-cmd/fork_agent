@@ -5,12 +5,15 @@ Enables coordination of multiple OpenCode agent sessions via tmux.
 
 from __future__ import annotations
 
+import logging
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 ORCHESTRATOR_DIR = PROJECT_ROOT / ".tmux-orchestrator"
@@ -41,11 +44,16 @@ class TmuxOrchestrator:
         self._max_lines_capture = 1000
 
     def get_sessions(self) -> list[TmuxSession]:
-        result = subprocess.run(
-            ["tmux", "list-sessions", "-F", "#{session_name}:#{session_attached}"],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                ["tmux", "list-sessions", "-F", "#{session_name}:#{session_attached}"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout getting tmux sessions")
+            return []
         if result.returncode != 0:
             return []
 
@@ -65,18 +73,23 @@ class TmuxOrchestrator:
         return sessions
 
     def _get_windows(self, session_name: str) -> list[TmuxWindow]:
-        result = subprocess.run(
-            [
-                "tmux",
-                "list-windows",
-                "-t",
-                session_name,
-                "-F",
-                "#{window_index}:#{window_name}:#{window_active}",
-            ],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    "tmux",
+                    "list-windows",
+                    "-t",
+                    session_name,
+                    "-F",
+                    "#{window_index}:#{window_name}:#{window_active}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Timeout getting windows for session {session_name}")
+            return []
         if result.returncode != 0:
             return []
 
@@ -99,48 +112,72 @@ class TmuxOrchestrator:
     def capture_content(self, session: str, window: int, lines: int = 50) -> str:
         if lines > self._max_lines_capture:
             lines = self._max_lines_capture
-        result = subprocess.run(
-            ["tmux", "capture-pane", "-t", f"{session}:{window}", "-p", "-S", f"-{lines}"],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                ["tmux", "capture-pane", "-t", f"{session}:{window}", "-p", "-S", f"-{lines}"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Timeout capturing content from {session}:{window}")
+            return ""
         return result.stdout if result.returncode == 0 else ""
 
     def send_message(self, session: str, window: int, message: str) -> bool:
         if self._safety_mode:
             print(f"SAFETY: Would send to {session}:{window}: {message[:50]}...")
             return True
-        result = subprocess.run(
-            ["tmux", "send-keys", "-t", f"{session}:{window}", message],
-            capture_output=True,
-        )
-        if result.returncode != 0:
+        try:
+            result = subprocess.run(
+                ["tmux", "send-keys", "-t", f"{session}:{window}", message],
+                capture_output=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                return False
+            subprocess.run(["tmux", "send-keys", "-t", f"{session}:{window}", "Enter"], timeout=5)
+            return True
+        except subprocess.TimeoutExpired:
+            logger.error(f"Timeout sending message to {session}:{window}")
             return False
-        subprocess.run(["tmux", "send-keys", "-t", f"{session}:{window}", "Enter"])
-        return True
 
     def create_session(self, name: str, working_dir: Path | None = None) -> bool:
         cmd = ["tmux", "new-session", "-d", "-s", name]
         if working_dir:
             cmd.extend(["-c", str(working_dir)])
-        result = subprocess.run(cmd, capture_output=True)
-        return result.returncode == 0
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=10)
+            return result.returncode == 0
+        except subprocess.TimeoutExpired:
+            logger.error(f"Timeout creating session {name}")
+            return False
 
     def create_window(self, session: str, name: str) -> int | None:
-        result = subprocess.run(
-            ["tmux", "new-window", "-t", session, "-n", name],
-            capture_output=True,
-        )
+        try:
+            result = subprocess.run(
+                ["tmux", "new-window", "-t", session, "-n", name],
+                capture_output=True,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            logger.error(f"Timeout creating window {name} in {session}")
+            return None
         if result.returncode != 0:
             return None
         windows = self._get_windows(session)
         return max(w.window_index for w in windows) if windows else None
 
     def kill_session(self, session: str) -> bool:
-        result = subprocess.run(
-            ["tmux", "kill-session", "-t", session],
-            capture_output=True,
-        )
+        try:
+            result = subprocess.run(
+                ["tmux", "kill-session", "-t", session],
+                capture_output=True,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            logger.error(f"Timeout killing session {session}")
+            return False
         return result.returncode == 0
 
     def launch_agent(

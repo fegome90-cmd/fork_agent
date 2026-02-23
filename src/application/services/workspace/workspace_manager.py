@@ -366,6 +366,9 @@ class WorkspaceManager(WorkspaceManagerABC):
         # Remove the worktree
         self._git.worktree_remove(workspace.path, force=force)
 
+        # Delete the branch
+        self._git.branch_delete(name, force=force)
+
     def merge_workspace(self, name: str, delete_branch: bool = True) -> None:
         """Merge a workspace branch to main.
 
@@ -418,10 +421,16 @@ class WorkspaceManager(WorkspaceManagerABC):
         except (OSError, ValueError):
             return None
 
+        # Check if path exists
+        if not target_path.exists():
+            return None
+
         # Get repo root
         try:
             repo_root = self._git.get_repo_root(target_path)
-        except GitError:
+        except (GitError, FileNotFoundError, OSError):
+            # FileNotFoundError: path doesn't exist (worktree was removed)
+            # OSError: other filesystem issues
             return None
 
         # Check if we're in the main repo (not a worktree)
@@ -430,9 +439,14 @@ class WorkspaceManager(WorkspaceManagerABC):
 
         # Find the worktree that contains this path
         worktrees = self._git.worktree_list()
+        repo_root_resolved = repo_root.resolve()
 
         for wt in worktrees:
             wt_path = Path(wt["path"]).resolve()
+
+            # Skip the main repo - we only want worktrees
+            if wt_path == repo_root_resolved:
+                continue
 
             # Check if target path is this worktree or inside it
             try:

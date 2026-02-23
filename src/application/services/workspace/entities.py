@@ -104,3 +104,31 @@ class HookResult:
             raise TypeError("stderr debe ser un string")
         if not isinstance(self.duration_ms, int):
             raise TypeError("duration_ms debe ser un entero")
+
+
+@dataclass(frozen=True)
+class WorkspaceHook:
+    """Configuración de hooks para un workspace.
+
+    Entidad inmutable que define las rutas de scripts de setup
+    y teardown, junto con variables de entorno opcionales.
+    """
+
+    workspace_id: str
+    setup_path: Path | None = None
+    teardown_path: Path | None = None
+    environment: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate hook configuration."""
+        if not isinstance(self.workspace_id, str):
+            raise TypeError("workspace_id debe ser un string")
+        if self.setup_path is not None and not isinstance(self.setup_path, Path):
+            raise TypeError("setup_path debe ser un Path o None")
+        if self.teardown_path is not None and not isinstance(self.teardown_path, Path):
+            raise TypeError("teardown_path debe ser un Path o None")
+        if not isinstance(self.environment, tuple):
+            raise TypeError("environment debe ser una tupla")
+        for item in self.environment:
+            if not isinstance(item, tuple) or len(item) != 2:
+                raise TypeError("environment debe ser tupla de tuplas (key, value)")
