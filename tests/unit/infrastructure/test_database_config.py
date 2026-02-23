@@ -134,18 +134,21 @@ class TestDatabaseConnection:
 
         assert result[0] == 1
 
-    def test_connection_context_manager_closes_on_exit(self, tmp_path: Path) -> None:
-        """Test that connection is properly closed after context exit."""
+    def test_connection_persists_after_context_exit(self, tmp_path: Path) -> None:
+        """Test that connection persists after context exit (thread-local storage)."""
         db_path = tmp_path / "test.db"
         config = DatabaseConfig(db_path=db_path)
 
         conn: sqlite3.Connection
         with DatabaseConnection(config) as conn:
-            pass
+            conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
 
-        # Connection should be closed
-        with pytest.raises(sqlite3.ProgrammingError):
-            conn.execute("SELECT 1")
+        # Connection remains open (thread-local storage for reuse)
+        # Can still execute queries without reopening
+        with DatabaseConnection(config) as conn2:
+            cursor = conn2.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+            assert "test" in tables
 
     def test_connection_commits_on_success(self, tmp_path: Path) -> None:
         """Test that transaction is committed on successful context exit."""

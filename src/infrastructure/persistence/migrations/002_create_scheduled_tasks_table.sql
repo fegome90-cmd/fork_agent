@@ -12,3 +12,7 @@ CREATE TABLE scheduled_tasks (
 
 CREATE INDEX idx_scheduled_tasks_scheduled_at ON scheduled_tasks (scheduled_at);
 CREATE INDEX idx_scheduled_tasks_status ON scheduled_tasks (status);
+
+
+-- Composite index for overdue queries (status + scheduled_at)
+CREATE INDEX idx_scheduled_tasks_status_scheduled_at ON scheduled_tasks (status, scheduled_at);

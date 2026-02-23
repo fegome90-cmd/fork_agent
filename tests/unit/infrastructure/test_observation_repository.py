@@ -397,6 +397,9 @@ class TestObservationRepositoryTimestampRange:
 class TestObservationRepositoryErrorHandling:
     """Tests for ObservationRepository error handling."""
 
+    def setup_method(self) -> None:
+        DatabaseConnection.close_all()
+
     @pytest.fixture
     def failing_db_path(self, tmp_path: Path) -> Path:
         db_path = tmp_path / "corrupted.db"

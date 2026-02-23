@@ -8,7 +8,7 @@ Lee el handoff más reciente y presenta resumen para continuar.
 
 ## ACCIÓN
 
-1. Buscar archivos en `.claude/sessions/*.md`
+1. Buscar archivos con `ls -t .claude/sessions/*.md` (ordena por fecha)
 2. Ordenar por fecha (más reciente primero)
 3. Leer el más reciente
 4. Presentar resumen estructurado

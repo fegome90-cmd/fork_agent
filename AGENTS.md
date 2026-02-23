@@ -1,4 +1,5 @@
 # fork_agent - AGENTS.md
+> Guía para agentes de codificación autónomos. **Generated:** 2026-02-23 | **Project:** tmux_fork | **Scale:** 5892 files, 425k lines
 
 > Guía para agentes de codificación autónomos.
 
@@ -164,3 +165,37 @@ Ver `pyproject.toml` para configuración completa.
 - **Repository Pattern:** Protocol en `domain/ports/`, implementación en `infrastructure/`
 - **Orchestration:** Eventos, acciones y hooks (`src/application/services/orchestration/`)
 - **Workflow:** Estado persistente (`src/application/services/workflow/`)
+
+---
+
+## SESSION CHECKPOINT PROCEDURE
+
+Al finalizar una sesión de trabajo, SIEMPRE ejecutar en PARALELO:
+
+```bash
+# 1. Guardar handoff en .claude/sessions/
+/fork-checkpoint
+
+# 2. Guardar context bundle (en paralelo)
+/cm-save <nombre-session>
+```
+
+**IMPORTANTE:** Ambos comandos deben ejecutarse. El handoff es para continuidad humana, cm-save es para contexto machine-readable.
+
+---
+
+## SUBAGENTES OPENCODE
+
+**TODOS los subagentes de OpenCode deben invocarse con modelos "free".**
+
+Esto es un REQUISITO OBLIGATORIO para minimizar costos. OpenCode permite especificar el modelo al invocar subagentes.
+
+```python
+# ✅ CORRECTO - usar modelo free
+task(category="explore", model="free", ...)
+
+# ❌ INCORRECTO - NO usar modelos paid
+task(category="explore", model="sonnet", ...)
+```
+
+Verificar siempre antes de invocar subagentes que el modelo sea "free".

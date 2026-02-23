@@ -15,14 +15,21 @@ authors = [
 dependencies = [
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
     "dependency-injector>=4.41.0",
     "pyyaml>=6.0.0",
     "click>=8.0.0",
     "typer>=0.9.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.26.0",
+    "python-multipart>=0.0.6",
+    "aiofiles>=23.0.0",
 ]
 
 [project.scripts]
 memory = "src.interfaces.cli.main:app"
+fork-api = "src.interfaces.api.main:app"
 
 [project.optional-dependencies]
 dev = [
@@ -104,7 +111,7 @@ ignore = [
 line-length = 100
 target-version = ["py311"]
 include = "\\.pyi?$"
-extend-exclude = "\\.git|__pycache__|\\.tox|\\.venv|\\.env"
+extend_exclude = "\\.git|__pycache__|\\.tox|\\.venv|\\.env"
 
 [tool.isort]
 profile = "black"

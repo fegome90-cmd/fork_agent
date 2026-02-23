@@ -1,0 +1,217 @@
+"""Modelos Pydantic para la API."""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class ProcessInfo(BaseModel):
+    """Información de un proceso PM2."""
+
+    name: str
+    pm_id: int
+    pid: int
+    status: str
+    cpu: float
+    memory: str
+    uptime: datetime
+    restarts: int
+    health: str
+    env: dict[str, str] | None = None
+
+
+class ProcessListResponse(BaseModel):
+    """Response para listar procesos."""
+
+    data: list[ProcessInfo]
+    meta: dict[str, int | str]
+
+
+class ProcessStartRequest(BaseModel):
+    """Request para iniciar un proceso."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+    script: str = Field(..., min_length=1)
+    args: str | None = None
+    cwd: str | None = None
+    env: dict[str, str] | None = None
+
+
+class ProcessScaleRequest(BaseModel):
+    """Request para escalar un proceso."""
+
+    instances: int = Field(..., ge=1, le=16, description="Number of instances (1-16)")
+
+
+class ProcessResponse(BaseModel):
+    """Response generico de proceso."""
+
+    data: dict[str, int | str]
+
+
+class AgentSession(BaseModel):
+    """Sesion de un agente."""
+
+    session_id: str
+    agent_type: str
+    status: str
+    started_at: datetime
+    tmux_session: str | None = None
+    hooks: list[dict[str, str]] | None = None
+
+
+class AgentSessionCreate(BaseModel):
+    """Request para crear sesion de agente."""
+
+    agent_type: str = Field(..., min_length=1)
+    task: str = Field(..., min_length=1)
+    workspace: str | None = None
+    hooks: bool = True
+    tmux: bool = True
+
+
+class AgentSessionResponse(BaseModel):
+    """Response de sesion de agente."""
+
+    data: AgentSession
+
+
+class SessionListResponse(BaseModel):
+    """Response para listar sesiones."""
+
+    data: list[AgentSession]
+
+
+class WorkflowPlanRequest(BaseModel):
+    """Request para crear plan de workflow."""
+
+    task: str = Field(..., min_length=1)
+    description: str | None = None
+
+
+class WorkflowPlan(BaseModel):
+    """Plan de workflow."""
+
+    plan_id: str
+    task: str
+    status: str
+    created_at: datetime
+
+
+class WorkflowExecute(BaseModel):
+    """Execution de workflow."""
+
+    execute_id: str
+    plan_id: str
+    status: str
+    started_at: datetime
+
+
+class WorkflowVerify(BaseModel):
+    """Verificacion de workflow."""
+
+    verify_id: str
+    execute_id: str
+    status: str
+    tests: dict[str, int]
+    coverage: float
+
+
+class WorkflowShip(BaseModel):
+    """Ship de workflow."""
+
+    branch: str
+    commit_message: str
+
+
+class WorkflowResponse(BaseModel):
+    """Response generico de workflow."""
+
+    data: dict[str, str | datetime]
+
+
+class ObservationCreate(BaseModel):
+    """Request para crear observacion."""
+
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
+class Observation(BaseModel):
+    """Observacion guardada."""
+
+    id: str
+    content: str
+    created_at: datetime
+
+
+class ObservationResponse(BaseModel):
+    """Response de observacion."""
+
+    data: Observation
+
+
+class ObservationListResponse(BaseModel):
+    """Response para listar observaciones."""
+
+    data: list[Observation]
+
+
+class HealthResponse(BaseModel):
+    """Response de health check."""
+
+    status: str
+    pm2: dict[str, str | int]
+    version: str
+
+
+class MetricsResponse(BaseModel):
+    """Response de metricas."""
+
+    cpu: float
+    memory: str
+    uptime: int
+    requests_total: int
+    errors_total: int
+
+
+class ErrorResponse(BaseModel):
+    """Response de error."""
+
+    error: dict[str, str | dict]
+
+
+class WebhookCreate(BaseModel):
+    """Request para crear webhook."""
+
+    url: str = Field(..., pattern=r"^https?://")
+    events: list[str] = Field(..., min_length=1)
+    secret: str | None = None
+
+
+class Webhook(BaseModel):
+    """Webhook configurado (interno)."""
+
+    id: str
+    url: str
+    events: list[str]
+    secret: str | None = None
+
+
+class WebhookSafe(BaseModel):
+    """Webhook sin secret para respuestas."""
+
+    id: str
+    url: str
+    events: list[str]
+
+
+class WebhookResponse(BaseModel):
+    """Response de webhook (sin secret)."""
+
+    data: WebhookSafe
+
+
+class WebhookListResponse(BaseModel):
+    """Response para listar webhooks."""
+
+    data: list[WebhookSafe]
