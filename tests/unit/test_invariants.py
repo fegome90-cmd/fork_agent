@@ -32,7 +32,17 @@ class TestWorkflowPhaseOrdering:
     This test verifies the state files are properly checked.
     """
 
-    def test_execute_requires_plan_state(self, tmp_path: Path) -> None:
+    def test_execute_requires_plan_state(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Monkeypatch path functions to use tmp_path
+        monkeypatch.setattr(
+            "src.application.services.workflow.state.get_plan_state_path",
+            lambda: tmp_path / "plan-state.json",
+        )
+        monkeypatch.setattr(
+            "src.application.services.workflow.state.get_execute_state_path",
+            lambda: tmp_path / "execute-state.json",
+        )
+
         plan_path = get_plan_state_path()
         if plan_path.exists():
             plan_path.unlink()
@@ -44,7 +54,16 @@ class TestWorkflowPhaseOrdering:
         plan = PlanState.load(plan_path)
         assert plan is None
 
-    def test_verify_requires_execute_state(self, tmp_path: Path) -> None:
+    def test_verify_requires_execute_state(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "src.application.services.workflow.state.get_execute_state_path",
+            lambda: tmp_path / "execute-state.json",
+        )
+        monkeypatch.setattr(
+            "src.application.services.workflow.state.get_verify_state_path",
+            lambda: tmp_path / "verify-state.json",
+        )
+
         exec_path = get_execute_state_path()
         if exec_path.exists():
             exec_path.unlink()
@@ -56,7 +75,12 @@ class TestWorkflowPhaseOrdering:
         exec_state = ExecuteState.load(exec_path)
         assert exec_state is None
 
-    def test_ship_requires_verify_state_with_unlock(self, tmp_path: Path) -> None:
+    def test_ship_requires_verify_state_with_unlock(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "src.application.services.workflow.state.get_verify_state_path",
+            lambda: tmp_path / "verify-state.json",
+        )
+
         verify_path = get_verify_state_path()
 
         verify_state = VerifyState(
@@ -70,7 +94,12 @@ class TestWorkflowPhaseOrdering:
         assert loaded is not None
         assert loaded.unlock_ship is False
 
-    def test_ship_allowed_with_unlock(self, tmp_path: Path) -> None:
+    def test_ship_allowed_with_unlock(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "src.application.services.workflow.state.get_verify_state_path",
+            lambda: tmp_path / "verify-state.json",
+        )
+
         verify_path = get_verify_state_path()
 
         verify_state = VerifyState(

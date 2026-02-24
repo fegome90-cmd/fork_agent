@@ -22,6 +22,10 @@ ForkTerminalFn = Callable[[str], TerminalResult]
 # Doctor app
 doctor_app = typer.Typer(name="doctor", help="Diagnóstico y reparación del sistema")
 
+# Root app that combines fork CLI and doctor commands
+root_app = typer.Typer(name="fork", help="Fork terminal operations and doctor diagnostics")
+root_app.add_typer(doctor_app)
+
 
 def create_fork_cli(
     fork_terminal: ForkTerminalFn,
@@ -56,6 +60,24 @@ def create_fork_cli(
             return 1
 
     return main
+
+
+@root_app.command("run")
+def fork_run(
+    command: str = typer.Argument(..., help="Command to execute in forked terminal"),
+) -> None:
+    """Run a command in a forked terminal."""
+    from src.application.services.terminal.platform_detector import PlatformDetectorImpl
+    from src.application.services.terminal.terminal_spawner import TerminalSpawnerImpl
+    from src.application.use_cases.fork_terminal import fork_terminal_use_case
+
+    platform_detector = PlatformDetectorImpl()
+    terminal_spawner = TerminalSpawnerImpl()
+    fork_terminal = fork_terminal_use_case(platform_detector, terminal_spawner)
+
+    result = fork_terminal(command)
+    print(result.output)
+    raise typer.Exit(code=result.exit_code)
 
 
 @doctor_app.command("reconcile")
@@ -136,24 +158,10 @@ def run_cli() -> int:
     Returns:
         Código de salida.
     """
-    from src.application.services.terminal.platform_detector import PlatformDetectorImpl
-    from src.application.services.terminal.terminal_spawner import TerminalSpawnerImpl
-    from src.application.use_cases.fork_terminal import fork_terminal_use_case
-
-    # Dependency Injection manual
-    platform_detector = PlatformDetectorImpl()
-    terminal_spawner = TerminalSpawnerImpl()
-    fork_terminal = fork_terminal_use_case(platform_detector, terminal_spawner)
-
-    cli = create_fork_cli(fork_terminal)
-    return cli()
+    # Run the root app with sys.argv
+    root_app()
+    return 0
 
 
 if __name__ == "__main__":
-    # Check if we're running a doctor subcommand
-    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
-        # Strip 'doctor' from args and run typer
-        sys.argv = [sys.argv[0]] + sys.argv[2:]
-        doctor_app()
-    else:
-        sys.exit(run_cli())
+    root_app()

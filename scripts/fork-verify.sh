@@ -225,7 +225,12 @@ except:
             
             while IFS= read -r cmd; do
                 [[ -z "$cmd" ]] && continue
-                local hook_file="${cmd#./*/}"
+                # Normalize: remove leading "./" if present
+                local normalized_cmd="${cmd#./}"
+                # Get agent basename (e.g., ".claude") and remove that prefix
+                local agent_basename
+                agent_basename=$(basename "$agent_dir")
+                local hook_file="${normalized_cmd#${agent_basename}/}"
                 if [[ -f "$agent_dir/$hook_file" ]] || [[ -f "$agent_dir/hooks/$hook_file" ]]; then
                     log_ok "Hook existente: $hook_file"
                 else

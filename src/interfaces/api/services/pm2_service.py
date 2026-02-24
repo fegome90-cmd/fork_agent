@@ -73,8 +73,9 @@ class PM2Service:
         if args:
             cmd.extend(["--", *args.split()])
 
-        if cwd:
-            cmd.extend(["--cwd", cwd])
+        # Use stored base_dir if cwd not provided
+        effective_cwd = cwd if cwd else str(self._base_dir)
+        cmd.extend(["--cwd", effective_cwd])
 
         try:
             subprocess_env = os.environ.copy()

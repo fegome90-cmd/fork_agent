@@ -67,12 +67,11 @@ class DatabaseConnection:
     to maintain isolation between instances.
     """
 
-    __slots__ = ("_config", "_is_in_memory", "_local_conn")
+    __slots__ = ("_config", "_is_in_memory")
 
     def __init__(self, config: DatabaseConfig) -> None:
         self._config = config
         self._is_in_memory = str(config.db_path) == ":memory:"
-        self._local_conn: sqlite3.Connection | None = None
 
     def _get_connection_key(self) -> str:
         return f"db_connection_{self._config.db_path}"
@@ -80,14 +79,20 @@ class DatabaseConnection:
     def __enter__(self) -> sqlite3.Connection:
         key = self._get_connection_key()
         if self._is_in_memory:
-            # In-memory: create new connection, track locally for __exit__
+            # In-memory: create new connection, push onto thread-local stack
             conn = sqlite3.connect(
                 str(self._config.db_path),
                 check_same_thread=False,
             )
             conn.row_factory = sqlite3.Row
             self._apply_pragmas(conn)
-            self._local_conn = conn
+            # Use thread-local stack for nested contexts
+            if not hasattr(_thread_local, "in_memory_stack"):
+                _thread_local.in_memory_stack = {}  # type: ignore[attr-defined]
+            stack = _thread_local.in_memory_stack  # type: ignore[assignment]
+            if key not in stack:
+                stack[key] = []
+            stack[key].append(conn)
             return conn
         # File-backed: use thread-local cache
         if not hasattr(_thread_local, key):
@@ -107,11 +112,12 @@ class DatabaseConnection:
         exc_tb: object,
     ) -> None:
         if self._is_in_memory:
-            # In-memory: commit/close the local connection
-            conn = self._local_conn
-            self._local_conn = None
-            if conn is None:
+            # In-memory: pop from thread-local stack
+            key = self._get_connection_key()
+            stack = getattr(_thread_local, "in_memory_stack", {})
+            if key not in stack or not stack[key]:
                 return
+            conn = stack[key].pop()
             if exc_type is None:
                 conn.commit()
             else:

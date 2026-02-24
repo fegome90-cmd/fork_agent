@@ -46,7 +46,7 @@ test_case ".claude with errors returns 2" 2 \
 
 # Test 3: Script runs without args
 test_case "Script runs without error" 0 \
-    bash -c '"$VERIFY_SCRIPT" . 2>&1 | head -1'
+    "$VERIFY_SCRIPT" .
 
 echo ""
 echo "========================================"
