@@ -9,7 +9,9 @@
           {
             "type": "command",
             "command": ".hooks/workspace-init.sh",
-            "timeout": 5
+            "timeout": 5,
+            "critical": true,
+            "on_failure": "abort"
           }
         ]
       }
@@ -21,7 +23,9 @@
           {
             "type": "command",
             "command": ".hooks/tmux-session-per-agent.sh",
-            "timeout": 10
+            "timeout": 10,
+            "critical": true,
+            "on_failure": "abort"
           }
         ]
       }
@@ -33,7 +37,9 @@
           {
             "type": "command",
             "command": ".hooks/memory-trace-writer.sh",
-            "timeout": 5
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
           }
         ]
       }
@@ -45,7 +51,9 @@
           {
             "type": "command",
             "command": ".hooks/git-branch-guard.sh",
-            "timeout": 1
+            "timeout": 1,
+            "critical": true,
+            "on_failure": "abort"
           }
         ]
       }

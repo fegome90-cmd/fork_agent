@@ -5,6 +5,12 @@ import threading
 import time
 from enum import Enum
 
+from src.infrastructure.tmux_orchestrator.resilience_policy import (
+    DEFAULT_POLICY,
+    ResiliencePolicy,
+    get_default_policy,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,26 +22,39 @@ class CircuitState(Enum):
 
 
 class TmuxCircuitBreaker:
-    """Circuit breaker specifically for tmux operations.
-
-    Tracks failures for tmux operations (spawn, send, capture) and prevents
-    cascading failures when tmux becomes unresponsive.
-    """
-
     def __init__(
         self,
-        failure_threshold: int = 3,
-        recovery_timeout: int = 30,
-        half_open_max_calls: int = 2,
+        policy: ResiliencePolicy | None = None,
+        failure_threshold: int | None = None,
+        recovery_timeout: int | None = None,
+        half_open_max_calls: int | None = None,
     ) -> None:
-        self._failure_threshold = failure_threshold
-        self._recovery_timeout = recovery_timeout
-        self._half_open_max_calls = half_open_max_calls
+        if policy is not None:
+            p = policy
+        elif failure_threshold is not None or recovery_timeout is not None or half_open_max_calls is not None:
+            p = ResiliencePolicy(
+                failure_threshold=failure_threshold if failure_threshold is not None else DEFAULT_POLICY.failure_threshold,
+                recovery_timeout_seconds=recovery_timeout if recovery_timeout is not None else DEFAULT_POLICY.recovery_timeout_seconds,
+                half_open_max_calls=half_open_max_calls if half_open_max_calls is not None else DEFAULT_POLICY.half_open_max_calls,
+            )
+        else:
+            p = get_default_policy()
+        self._failure_threshold = p.failure_threshold
+        self._recovery_timeout = p.recovery_timeout_seconds
+        self._half_open_max_calls = p.half_open_max_calls
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._last_failure_time: float = 0.0
         self._half_open_calls = 0
         self._lock = threading.Lock()
+
+    @property
+    def policy(self) -> ResiliencePolicy:
+        return ResiliencePolicy(
+            failure_threshold=self._failure_threshold,
+            recovery_timeout_seconds=self._recovery_timeout,
+            half_open_max_calls=self._half_open_max_calls,
+        )
 
     @property
     def state(self) -> CircuitState:

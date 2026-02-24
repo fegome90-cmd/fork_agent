@@ -5,12 +5,37 @@ import subprocess
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Callable
+
+from src.infrastructure.tmux_orchestrator.circuit_breaker import (
+    CircuitState,
+    TmuxCircuitBreaker,
+)
+
+# Alias for backward compatibility
+CircuitBreaker = TmuxCircuitBreaker
+
+# Re-export for backward compatibility
+__all__ = [
+    "AgentManager",
+    "AgentStatus",
+    "AgentConfig",
+    "AgentMetrics",
+    "ReconcileResult",
+    "CleanupResult",
+    "CircuitBreaker",
+    "CircuitState",
+    "get_agent_manager",
+]
 
 logger = logging.getLogger(__name__)
+
+# Session prefix for fork_agent managed sessions
+FORK_SESSION_PREFIX = "fork-"
+AGENT_SESSION_PREFIX = "agent-"
 
 
 class AgentStatus(Enum):
@@ -21,12 +46,6 @@ class AgentStatus(Enum):
     TERMINATING = "terminating"
     TERMINATED = "terminated"
     FAILED = "failed"
-
-
-class CircuitState(Enum):
-    CLOSED = "closed"
-    OPEN = "open"
-    HALF_OPEN = "half_open"
 
 
 @dataclass
@@ -54,53 +73,24 @@ class AgentMetrics:
     memory_mb: float = 0
 
 
-class CircuitBreaker:
-    def __init__(
-        self,
-        failure_threshold: int = 5,
-        recovery_timeout: int = 60,
-        half_open_max_calls: int = 3,
-    ) -> None:
-        self._failure_threshold = failure_threshold
-        self._recovery_timeout = recovery_timeout
-        self._half_open_max_calls = half_open_max_calls
-        self._state = CircuitState.CLOSED
-        self._failure_count = 0
-        self._last_failure_time: float = 0.0
-        self._half_open_calls = 0
-        self._lock = threading.Lock()
+@dataclass(frozen=True)
+class ReconcileResult:
+    """Result of a reconcile operation."""
 
-    @property
-    def state(self) -> CircuitState:
-        with self._lock:
-            if self._state == CircuitState.OPEN:
-                if time.time() - self._last_failure_time >= self._recovery_timeout:
-                    self._state = CircuitState.HALF_OPEN
-                    self._half_open_calls = 0
-            return self._state
+    registered_agents: set[str]
+    runtime_sessions: set[str]
+    orphaned_sessions: set[str]
+    missing_sessions: set[str]
+    status: str  # "ok", "warning", "error"
 
-    def record_success(self) -> None:
-        with self._lock:
-            self._failure_count = 0
-            self._state = CircuitState.CLOSED
 
-    def record_failure(self) -> None:
-        with self._lock:
-            self._failure_count += 1
-            self._last_failure_time = time.time()
-            if self._failure_count >= self._failure_threshold:
-                self._state = CircuitState.OPEN
+@dataclass
+class CleanupResult:
+    """Result of a cleanup operation."""
 
-    def can_execute(self) -> bool:
-        state = self.state
-        if state == CircuitState.CLOSED:
-            return True
-        if state == CircuitState.HALF_OPEN:
-            with self._lock:
-                if self._half_open_calls < self._half_open_max_calls:
-                    self._half_open_calls += 1
-                    return True
-        return False
+    cleaned_sessions: list[str]
+    failed_sessions: list[str]
+    dry_run: bool
 
 
 class Agent(ABC):
@@ -170,10 +160,10 @@ class TmuxAgent(Agent):
 
     def spawn(self, validate: bool = True) -> bool:
         """Spawn the agent in a tmux session.
-        
+
         Args:
             validate: If True, wait for session to be ready after creation.
-            
+
         Returns:
             True if spawn succeeded, False otherwise.
         """
@@ -204,7 +194,9 @@ class TmuxAgent(Agent):
 
             # Validate session is ready
             if validate and not self._wait_for_session(timeout=self._config.session_timeout):
-                logger.error(f"Session {self._tmux_session} not ready after {self._config.session_timeout}s")
+                logger.error(
+                    f"Session {self._tmux_session} not ready after {self._config.session_timeout}s"
+                )
                 self._safe_kill(self._tmux_session)
                 self._update_status(AgentStatus.FAILED)
                 self._record_failure()
@@ -216,7 +208,7 @@ class TmuxAgent(Agent):
             logger.info(f"Agent {self._config.name} spawned in tmux session {self._tmux_session}")
             return True
 
-        except Exception as e:
+        except Exception:
             logger.exception(f"Failed to spawn agent {self._config.name}")
             self._update_status(AgentStatus.FAILED)
             self._record_failure()
@@ -244,8 +236,8 @@ class TmuxAgent(Agent):
                 capture_output=True,
                 timeout=5,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to kill session {session_name}: {e}")
 
     def terminate(self) -> bool:
         try:
@@ -262,7 +254,7 @@ class TmuxAgent(Agent):
             logger.info(f"Agent {self._config.name} terminated")
             return True
 
-        except Exception as e:
+        except Exception:
             logger.exception(f"Failed to terminate agent {self._config.name}")
             self._update_status(AgentStatus.FAILED)
             return False
@@ -277,8 +269,8 @@ class TmuxAgent(Agent):
             )
             if result.returncode == 0 and result.stdout.strip():
                 return int(result.stdout.strip().split("\n")[0])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to get PID for {self._tmux_session}: {e}")
         return None
 
     def send_input(self, message: str) -> bool:
@@ -353,7 +345,7 @@ class AgentManager:
         while self._running:
             try:
                 self._check_agent_health()
-            except Exception as e:
+            except Exception:
                 logger.exception("Error in health monitor loop")
             time.sleep(self._health_check_interval)
 
@@ -368,6 +360,162 @@ class AgentManager:
                 if pid is None and agent.status == AgentStatus.HEALTHY:
                     logger.warning(f"Agent {name} process not found, marking unhealthy")
                     agent._update_status(AgentStatus.UNHEALTHY)
+
+    def list_runtime_sessions(self) -> set[str]:
+        """List all tmux sessions matching fork_agent prefixes.
+
+        Returns:
+            Set of session names matching fork- or agent- prefix.
+        """
+        sessions: set[str] = set()
+        try:
+            result = subprocess.run(
+                ["tmux", "list-sessions", "-F", "#{session_name}"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                # No sessions or error - return empty set
+                return sessions
+
+            for line in result.stdout.strip().split("\n"):
+                if not line:
+                    continue
+                # Only include sessions with our prefixes
+                if line.startswith(FORK_SESSION_PREFIX) or line.startswith(AGENT_SESSION_PREFIX):
+                    sessions.add(line)
+
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout listing tmux sessions")
+        except Exception as e:
+            logger.error(f"Error listing tmux sessions: {e}")
+
+        return sessions
+
+    def reconcile_sessions(self) -> ReconcileResult:
+        """Reconcile runtime tmux sessions with registered agents.
+
+        Compares:
+        - Runtime sessions (from tmux) vs registered agents
+        - Identifies orphaned sessions (in tmux but not registered)
+        - Identifies missing sessions (registered but not in tmux)
+
+        Returns:
+            ReconcileResult with orphan and missing session info.
+        """
+        with self._lock:
+            # Get runtime sessions
+            runtime_sessions = self.list_runtime_sessions()
+
+            # Get registered agent sessions
+            registered_sessions: set[str] = set()
+            for agent in self._agents.values():
+                if isinstance(agent, TmuxAgent):
+                    registered_sessions.add(agent.tmux_session)
+
+            # Find orphaned sessions (in tmux but not registered)
+            orphaned = runtime_sessions - registered_sessions
+
+            # Find missing sessions (registered but not in tmux)
+            missing = registered_sessions - runtime_sessions
+
+            # Determine status
+            if not orphaned and not missing:
+                status = "ok"
+            elif orphaned or missing:
+                status = "warning"
+            else:
+                status = "error"
+
+            return ReconcileResult(
+                registered_agents=registered_sessions,
+                runtime_sessions=runtime_sessions,
+                orphaned_sessions=orphaned,
+                missing_sessions=missing,
+                status=status,
+            )
+
+    def cleanup_orphans(self, dry_run: bool = False, min_age_seconds: int = 0) -> CleanupResult:
+        """Clean up orphaned tmux sessions.
+
+        Args:
+            dry_run: If True, only report what would be cleaned without actually cleaning.
+            min_age_seconds: Only clean sessions older than this many seconds.
+
+        Returns:
+            CleanupResult with cleaned and failed session lists.
+        """
+        result = self.reconcile_sessions()
+        cleaned: list[str] = []
+        failed: list[str] = []
+
+        for session in result.orphaned_sessions:
+            # Optional age check - skip sessions younger than min_age_seconds
+            if min_age_seconds > 0:
+                session_age = self._get_session_age(session)
+                if session_age < min_age_seconds:
+                    logger.info(
+                        f"Skipping young session {session} (age: {session_age}s < {min_age_seconds}s)"
+                    )
+                    continue
+
+            if dry_run:
+                logger.info(f"[DRY RUN] Would clean orphan session: {session}")
+                cleaned.append(session)
+            else:
+                logger.info(f"Cleaning orphan session: {session}")
+                if self._kill_session(session):
+                    cleaned.append(session)
+                else:
+                    failed.append(session)
+                    logger.error(f"Failed to clean orphan session: {session}")
+
+        return CleanupResult(
+            cleaned_sessions=cleaned,
+            failed_sessions=failed,
+            dry_run=dry_run,
+        )
+
+    def _get_session_age(self, session_name: str) -> float:
+        """Get the age of a tmux session in seconds."""
+        try:
+            result = subprocess.run(
+                ["tmux", "list-sessions", "-F", "#{session_created}", "-t", session_name],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                created_ts = int(result.stdout.strip())
+                return time.time() - created_ts
+        except Exception as e:
+            logger.warning(f"Could not get age for session {session_name}: {e}")
+        return 0.0
+
+    def _kill_session(self, session_name: str) -> bool:
+        """Kill a tmux session."""
+        try:
+            result = subprocess.run(
+                ["tmux", "kill-session", "-t", session_name],
+                capture_output=True,
+                timeout=5,
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.error(f"Error killing session {session_name}: {e}")
+            return False
+
+    def get_health_status(self) -> dict[str, object]:
+        """Get health status including orphan session info."""
+        reconcile = self.reconcile_sessions()
+        return {
+            "orphan_sessions_count": len(reconcile.orphaned_sessions),
+            "orphan_sessions": list(reconcile.orphaned_sessions),
+            "reconcile_status": reconcile.status,
+            "registered_count": len(self._agents),
+            "runtime_sessions_count": len(reconcile.runtime_sessions),
+        }
 
 
 _agent_manager: AgentManager | None = None

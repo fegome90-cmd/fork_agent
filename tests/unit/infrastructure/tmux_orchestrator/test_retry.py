@@ -81,3 +81,8 @@ class TestRetrySync:
         result = retry_sync(failing_func, config)
         assert result.success is False
         assert result.attempts == 2
+
+    def test_retry_result_str(self):
+        result = RetryResult(success=True, result="test", error=None, attempts=1)
+        assert result.success is True
+        assert result.result == "test"
