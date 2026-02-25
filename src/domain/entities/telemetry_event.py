@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import types
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -94,11 +97,11 @@ class TelemetryEvent:
     event_category: str
     timestamp: int  # Unix timestamp in milliseconds
     received_at: int  # Unix timestamp in milliseconds
-    attributes: dict[str, Any]
+    attributes: Mapping[str, Any]
     session_id: str | None = None
     correlation_id: str | None = None
     parent_event_id: str | None = None
-    metrics: dict[str, float] | None = None
+    metrics: Mapping[str, float] | None = None
     expires_at: int | None = None  # Unix timestamp for TTL
 
     @classmethod
@@ -117,14 +120,15 @@ class TelemetryEvent:
 
         Automatically generates ID, timestamps, and expiration.
         """
-        now_ms = int(datetime.utcnow().timestamp() * 1000)
+        now_ts = datetime.now(timezone.utc).timestamp()
+        now_ms = int(now_ts * 1000)
 
         # Calculate expiration based on category
         category = (
             EventCategory(event_category) if isinstance(event_category, str) else event_category
         )
         retention_days = RETENTION_DAYS.get(category, 30)
-        expires_at = int((datetime.utcnow().timestamp() + retention_days * 86400) * 1000)
+        expires_at = int((now_ts + retention_days * 86400) * 1000)
 
         return cls(
             id=str(uuid.uuid4()),
@@ -132,18 +136,16 @@ class TelemetryEvent:
             event_category=category.value,
             timestamp=timestamp or now_ms,
             received_at=now_ms,
-            attributes=attributes,
+            attributes=types.MappingProxyType(attributes),
             session_id=session_id,
             correlation_id=correlation_id,
             parent_event_id=parent_event_id,
-            metrics=metrics,
+            metrics=types.MappingProxyType(metrics) if metrics is not None else None,
             expires_at=expires_at,
         )
 
     def to_json(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
-        import json
-
         return {
             "id": self.id,
             "event_type": self.event_type,
@@ -153,16 +155,24 @@ class TelemetryEvent:
             "session_id": self.session_id,
             "correlation_id": self.correlation_id,
             "parent_event_id": self.parent_event_id,
-            "attributes": json.dumps(self.attributes),
-            "metrics": json.dumps(self.metrics) if self.metrics else None,
+            "attributes": json.dumps(dict(self.attributes)),
+            "metrics": json.dumps(dict(self.metrics)) if self.metrics else None,
             "expires_at": self.expires_at,
         }
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> TelemetryEvent:
         """Deserialize from JSON dict."""
-        import json
-
+        attrs_raw = (
+            json.loads(data["attributes"])
+            if isinstance(data["attributes"], str)
+            else data["attributes"]
+        )
+        metrics_raw = (
+            json.loads(data["metrics"])
+            if data.get("metrics") and isinstance(data["metrics"], str)
+            else data.get("metrics")
+        )
         return cls(
             id=data["id"],
             event_type=data["event_type"],
@@ -172,12 +182,8 @@ class TelemetryEvent:
             session_id=data.get("session_id"),
             correlation_id=data.get("correlation_id"),
             parent_event_id=data.get("parent_event_id"),
-            attributes=json.loads(data["attributes"])
-            if isinstance(data["attributes"], str)
-            else data["attributes"],
-            metrics=json.loads(data["metrics"])
-            if data.get("metrics") and isinstance(data["metrics"], str)
-            else data.get("metrics"),
+            attributes=types.MappingProxyType(attrs_raw),
+            metrics=types.MappingProxyType(metrics_raw) if metrics_raw is not None else None,
             expires_at=data.get("expires_at"),
         )
 
@@ -189,7 +195,7 @@ class MetricBucket:
     id: str
     metric_name: str
     metric_type: str  # counter, gauge, histogram
-    labels: dict[str, str]
+    labels: Mapping[str, str]
     labels_hash: str
     bucket_start: int  # Unix timestamp in seconds
     bucket_duration: int  # Duration in seconds
@@ -201,8 +207,7 @@ class MetricBucket:
     updated_at: int
 
 
-`@dataclass`(frozen=True)
-class SessionSummary:
+@dataclass(frozen=True)
 class SessionSummary:
     """Summary of a telemetry session."""
 
