@@ -29,11 +29,6 @@ class WorkspaceDetector:
 
     @property
     def _git(self) -> GitCommandExecutor:
-        """Get the git executor from the workspace manager.
-
-        Returns:
-            Git command executor.
-        """
         # Access the private _git attribute from WorkspaceManager
         return self._manager._git
 

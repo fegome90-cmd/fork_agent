@@ -79,20 +79,44 @@ class TestShellActionRunner:
             call_kwargs = mock_run.call_args[1]
             assert call_kwargs["timeout"] == 30
 
-    def test_run_raises_on_non_zero_exit(self, tmp_path: Path) -> None:
-        """Should raise RuntimeError on non-zero exit code."""
+    def test_run_raises_on_non_zero_exit_critical(self, tmp_path: Path) -> None:
+        """Should raise HookExecutionError on non-zero exit for critical hook."""
+        from src.application.services.orchestration.actions import ShellCommandAction
+        from src.infrastructure.orchestration.shell_action_runner import (
+            HookExecutionError,
+            ShellActionRunner,
+        )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="exit 1", critical=True)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error message")
+
+            with pytest.raises(HookExecutionError, match="Action failed"):
+                runner.run(action)
+
+    def test_run_continues_on_non_zero_exit_non_critical(self, tmp_path: Path) -> None:
+        """Should not raise for non-critical hook failure."""
+        from src.application.services.orchestration.actions import (
+            OnFailurePolicy,
+            ShellCommandAction,
+        )
         from src.infrastructure.orchestration.shell_action_runner import (
             ShellActionRunner,
         )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
-        action = ShellCommandAction(command="exit 1")
+        action = ShellCommandAction(
+            command="exit 1",
+            critical=False,
+            on_failure=OnFailurePolicy.CONTINUE
+        )
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error message")
 
-            with pytest.raises(RuntimeError, match="Action failed"):
-                runner.run(action)
+            runner.run(action)
 
     def test_run_uses_safe_environment(self, tmp_path: Path) -> None:
         """Should filter dangerous environment variables."""
@@ -132,17 +156,42 @@ class TestShellActionRunner:
             assert "HOOKS_DIR" in env
             assert env["HOOKS_DIR"] == str(tmp_path)
 
-    def test_run_handles_timeout(self, tmp_path: Path) -> None:
-        """Should raise RuntimeError on timeout."""
+    def test_run_handles_timeout_critical(self, tmp_path: Path) -> None:
+        """Should raise HookExecutionError on timeout for critical hook."""
+        from src.application.services.orchestration.actions import ShellCommandAction
+        from src.infrastructure.orchestration.shell_action_runner import (
+            HookExecutionError,
+            ShellActionRunner,
+        )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path, default_timeout=1)
+        action = ShellCommandAction(command="sleep 10", timeout=1, critical=True)
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd="sleep 10", timeout=1)
+
+            with pytest.raises(HookExecutionError, match="timed out"):
+                runner.run(action)
+
+    def test_run_handles_timeout_non_critical(self, tmp_path: Path) -> None:
+        """Should not raise on timeout for non-critical hook."""
+        from src.application.services.orchestration.actions import (
+            OnFailurePolicy,
+            ShellCommandAction,
+        )
         from src.infrastructure.orchestration.shell_action_runner import (
             ShellActionRunner,
         )
 
         runner = ShellActionRunner(hooks_dir=tmp_path, default_timeout=1)
-        action = ShellCommandAction(command="sleep 10", timeout=1)
+        action = ShellCommandAction(
+            command="sleep 10",
+            timeout=1,
+            critical=False,
+            on_failure=OnFailurePolicy.CONTINUE
+        )
 
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="sleep 10", timeout=1)
 
-            with pytest.raises(RuntimeError, match="timed out"):
-                runner.run(action)
+            runner.run(action)

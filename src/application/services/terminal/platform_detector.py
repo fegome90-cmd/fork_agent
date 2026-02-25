@@ -20,7 +20,6 @@ class PlatformDetector(ABC):
 
 
 class PlatformDetectorImpl(PlatformDetector):
-    """Implementación concreta de PlatformDetector."""
 
     def detect(self) -> PlatformType:
         """Detecta el sistema operativo actual.

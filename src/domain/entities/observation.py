@@ -26,7 +26,6 @@ class Observation:
     metadata: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
-        """Validates the observation data."""
         if not isinstance(self.id, str):
             raise TypeError("id debe ser un string")
         if not self.id:

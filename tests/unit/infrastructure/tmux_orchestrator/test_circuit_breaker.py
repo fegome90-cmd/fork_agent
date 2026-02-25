@@ -68,3 +68,59 @@ class TestTmuxCircuitBreaker:
         cb.reset()
         assert cb.state == CircuitState.CLOSED
         assert cb.can_execute() is True
+
+
+class TestCircuitBreakerTransitions:
+    def test_closed_to_open(self):
+        cb = TmuxCircuitBreaker(failure_threshold=2)
+        assert cb.state == CircuitState.CLOSED
+
+        cb.record_failure()
+        assert cb.state == CircuitState.CLOSED
+
+        cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+    def test_open_to_half_open_after_timeout(self):
+        cb = TmuxCircuitBreaker(failure_threshold=1, recovery_timeout=1)
+        cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+        import time
+        time.sleep(1.1)
+        assert cb.state == CircuitState.HALF_OPEN
+
+    def test_half_open_to_closed_on_success(self):
+        cb = TmuxCircuitBreaker(failure_threshold=1, recovery_timeout=1)
+        cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+        import time
+        time.sleep(1.1)
+        assert cb.state == CircuitState.HALF_OPEN
+
+        cb.record_success()
+        assert cb.state == CircuitState.CLOSED
+
+    def test_half_open_to_open_on_failure(self):
+        cb = TmuxCircuitBreaker(failure_threshold=1, recovery_timeout=1, half_open_max_calls=1)
+        cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+        import time
+        time.sleep(1.1)
+        assert cb.state == CircuitState.HALF_OPEN
+
+        cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+    def test_half_open_allows_limited_calls(self):
+        cb = TmuxCircuitBreaker(failure_threshold=1, recovery_timeout=1, half_open_max_calls=2)
+        cb.record_failure()
+
+        import time
+        time.sleep(1.1)
+
+        assert cb.can_execute() is True
+        assert cb.can_execute() is True
+        assert cb.can_execute() is False

@@ -38,7 +38,6 @@ class ScheduledTask:
     context: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
-        """Validates the scheduled task data."""
         if not isinstance(self.id, str):
             raise TypeError("id debe ser un string")
         if not self.id:

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 import threading
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, field_validator
@@ -13,7 +14,7 @@ from pydantic import BaseModel, field_validator
 _thread_local = threading.local()
 
 
-class JournalMode(str, Enum):
+class JournalMode(StrEnum):
     """Valid SQLite journal modes."""
 
     DELETE = "DELETE"
@@ -77,18 +78,32 @@ class DatabaseConnection:
 
     def __enter__(self) -> sqlite3.Connection:
         key = self._get_connection_key()
-        if self._is_in_memory or not hasattr(_thread_local, key):
+        if self._is_in_memory:
+            # In-memory: create new connection, push onto thread-local stack
             conn = sqlite3.connect(
                 str(self._config.db_path),
                 check_same_thread=False,
             )
             conn.row_factory = sqlite3.Row
             self._apply_pragmas(conn)
-            if not self._is_in_memory:
-                setattr(_thread_local, key, conn)
-        if self._is_in_memory:
+            # Use thread-local stack for nested contexts
+            if not hasattr(_thread_local, "in_memory_stack"):
+                _thread_local.in_memory_stack = {}  # type: ignore[attr-defined]
+            stack = _thread_local.in_memory_stack  # type: ignore[assignment]
+            if key not in stack:
+                stack[key] = []
+            stack[key].append(conn)
             return conn
-        return getattr(_thread_local, key)
+        # File-backed: use thread-local cache
+        if not hasattr(_thread_local, key):
+            conn = sqlite3.connect(
+                str(self._config.db_path),
+                check_same_thread=False,
+            )
+            conn.row_factory = sqlite3.Row
+            self._apply_pragmas(conn)
+            setattr(_thread_local, key, conn)
+        return getattr(_thread_local, key)  # type: ignore[no-any-return]
 
     def __exit__(
         self,
@@ -96,6 +111,22 @@ class DatabaseConnection:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
+        if self._is_in_memory:
+            # In-memory: pop from thread-local stack
+            key = self._get_connection_key()
+            stack = getattr(_thread_local, "in_memory_stack", {})
+            if key not in stack or not stack[key]:
+                return
+            conn = stack[key].pop()
+            if exc_type is None:
+                conn.commit()
+            else:
+                conn.rollback()
+            with contextlib.suppress(Exception):
+                conn.close()
+            return
+
+        # File-backed: commit but keep cached connection
         key = self._get_connection_key()
         conn = getattr(_thread_local, key, None)
         if conn is None:
@@ -104,12 +135,6 @@ class DatabaseConnection:
             conn.commit()
         else:
             conn.rollback()
-        try:
-            conn.close()
-        except Exception:
-            pass
-        if hasattr(_thread_local, key):
-            delattr(_thread_local, key)
 
     def _apply_pragmas(self, conn: sqlite3.Connection) -> None:
         conn.execute(f"PRAGMA journal_mode={self._config.journal_mode.value}")
@@ -122,11 +147,10 @@ class DatabaseConnection:
         key = self._get_connection_key()
         conn = getattr(_thread_local, key, None)
         if conn is not None:
-            try:
+            with contextlib.suppress(Exception):
                 conn.close()
-            except Exception:
-                pass
             delattr(_thread_local, key)
+
     @staticmethod
     def close_all() -> None:
         """Close all cached connections in current thread."""
@@ -134,14 +158,12 @@ class DatabaseConnection:
             if attr.startswith("db_connection_"):
                 conn = getattr(_thread_local, attr, None)
                 if conn is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         conn.close()
-                    except Exception:
-                        pass
                 delattr(_thread_local, attr)
 
     @classmethod
-    def create_in_memory(cls) -> "DatabaseConnection":
+    def create_in_memory(cls) -> DatabaseConnection:
         return cls(
             DatabaseConfig(
                 db_path=Path(":memory:"),
@@ -150,5 +172,5 @@ class DatabaseConnection:
         )
 
     @classmethod
-    def from_path(cls, db_path: Path) -> "DatabaseConnection":
+    def from_path(cls, db_path: Path) -> DatabaseConnection:
         return cls(DatabaseConfig(db_path=db_path))

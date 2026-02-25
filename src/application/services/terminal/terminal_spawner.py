@@ -38,7 +38,6 @@ class TerminalSpawner(ABC):
 
 
 class TerminalSpawnerImpl(TerminalSpawner):
-    """Implementación de TerminalSpawner."""
 
     def spawn(self, command: str, config: TerminalConfig) -> TerminalResult:
         """Abre una terminal y ejecuta un comando.

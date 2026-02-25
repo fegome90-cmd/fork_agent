@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 from pathlib import Path
 
 from src.application.services.orchestration.actions import ShellCommandAction
 from src.domain.ports.event_ports import Action
+
+logger = logging.getLogger(__name__)
 
 DANGEROUS_ENV_VARS: frozenset[str] = frozenset(
     {
@@ -44,6 +47,10 @@ SAFE_DEFAULT_ENV_VARS: frozenset[str] = frozenset(
         "SHLVL",
     }
 )
+
+
+class HookExecutionError(Exception):
+    """Raised when a critical hook fails."""
 
 
 class ShellActionRunner:
@@ -100,7 +107,7 @@ class ShellActionRunner:
 
         Raises:
             TypeError: If action is not a ShellCommandAction.
-            RuntimeError: If command execution fails or times out.
+            HookExecutionError: If critical hook fails.
         """
         if not isinstance(action, ShellCommandAction):
             raise TypeError(
@@ -120,8 +127,23 @@ class ShellActionRunner:
                 env=safe_env,
             )
         except subprocess.TimeoutExpired as e:
-            raise RuntimeError(f"Action timed out after {timeout} seconds: {action.command}") from e
+            error_msg = f"Action timed out after {timeout} seconds: {action.command}"
+            if action.continue_on_failure:
+                logger.warning("%s", error_msg)
+                return
+            raise HookExecutionError(error_msg) from e
 
         if result.returncode != 0:
             error_msg = result.stderr[:200] if result.stderr else "Unknown error"
-            raise RuntimeError(f"Action failed (exit {result.returncode}): {error_msg}")
+            full_msg = f"Action failed (exit {result.returncode}): {error_msg}"
+
+            if action.continue_on_failure:
+                logger.warning(
+                    "Hook '%s' failed (exit %d) but continuing: %s",
+                    action.command,
+                    result.returncode,
+                    error_msg,
+                )
+                return
+
+            raise HookExecutionError(full_msg)

@@ -78,7 +78,7 @@ async def root():
     return {"message": "Fork Agent API", "version": "1.0.0", "docs": "/docs"}
 
 
-if __name__ == "__main__":
+def main() -> None:
     import uvicorn
 
     uvicorn.run(
@@ -87,3 +87,7 @@ if __name__ == "__main__":
         port=api_settings.port,
         reload=api_settings.debug,
     )
+
+
+if __name__ == "__main__":
+    main()

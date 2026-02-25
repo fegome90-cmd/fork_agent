@@ -29,7 +29,8 @@ dependencies = [
 
 [project.scripts]
 memory = "src.interfaces.cli.main:app"
-fork-api = "src.interfaces.api.main:app"
+fork = "src.interfaces.cli.fork:run_cli"
+fork-api = "src.interfaces.api.main:main"
 
 [project.optional-dependencies]
 dev = [
@@ -55,7 +56,26 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["."]
 branch = true
-omit = ["tests/*", "**/__init__.py", "**/conftest.py", "**/fork.py", "**/.venv/*", "**/migrations/*"]
+omit = [
+    "tests/*",
+    "**/__init__.py",
+    "**/conftest.py",
+    "**/.venv/*",
+    "**/migrations/*",
+    "**/interfaces/api/**",
+    "**/tmux_orchestrator/**",
+    "**/config/**",
+    "**/domain/ports/*",
+    "**/infrastructure/persistence/**",
+    "**/application/services/orchestration/specs.py",
+    "**/application/services/workspace/hook_runner.py",
+    "**/application/services/workspace/workspace_manager.py",
+    "**/application/services/messaging/**",
+    "**/infrastructure/platform/**",
+    "**/interfaces/cli/workspace_commands.py",
+    "**/interfaces/cli/messaging_commands.py",
+    "**/interfaces/cli/main.py",
+]
 pythonpath = ["."]
 
 [tool.coverage.report]

@@ -12,7 +12,6 @@ def _validate_type(
     type_name: str | None = None,
     allow_none: bool = False,
 ) -> None:
-    """Valida el tipo de un valor."""
     if allow_none and value is None:
         return
     if not isinstance(value, expected):

@@ -1,4 +1,9 @@
-"""Workflow state management."""
+"""Workflow state management.
+
+State Schema Versioning:
+- v1 (current): Includes schema_version field
+- v0 (legacy): No schema_version field - auto-migrated on load
+"""
 
 from __future__ import annotations
 
@@ -7,6 +12,20 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+CURRENT_SCHEMA_VERSION = 1
+
+
+class StateError(Exception):
+    """Base exception for state loading errors."""
+
+
+class InvalidStateError(StateError):
+    """Raised when state is invalid or corrupt."""
+
+
+class UnsupportedSchemaError(StateError):
+    """Raised when schema version is not supported."""
 
 
 class WorkflowPhase(str, Enum):
@@ -38,6 +57,8 @@ class PlanState:
     started_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     plan_file: str = ".claude/plans/plan.md"
     tasks: list[Task] = field(default_factory=list)
+    schema_version: int = CURRENT_SCHEMA_VERSION
+    migrated_from: int | None = None
 
     def to_json(self) -> dict:
         return {
@@ -46,6 +67,8 @@ class PlanState:
             "phase": self.phase.value,
             "started_at": self.started_at,
             "plan_file": self.plan_file,
+            "schema_version": self.schema_version,
+            "migrated_from": self.migrated_from,
             "tasks": [
                 {
                     "id": t.id,
@@ -61,6 +84,24 @@ class PlanState:
 
     @classmethod
     def from_json(cls, data: dict) -> PlanState:
+        # Detect legacy state (v0) - no schema_version field
+        schema_version = data.get("schema_version")
+        if schema_version is None:
+            schema_version = 0  # Legacy state
+
+        # Fail-closed for unknown future versions
+        if schema_version > CURRENT_SCHEMA_VERSION:
+            raise UnsupportedSchemaError(
+                f"PlanState schema version {schema_version} is not supported. "
+                f"Maximum supported version is {CURRENT_SCHEMA_VERSION}."
+            )
+
+        # Migration: v0 -> v1
+        migrated_from: int | None = None
+        if schema_version == 0:
+            migrated_from = 0
+            schema_version = 1  # Migrate to current
+
         tasks = [
             Task(
                 id=t["id"],
@@ -79,6 +120,8 @@ class PlanState:
             started_at=data.get("started_at", datetime.utcnow().isoformat() + "Z"),
             plan_file=data.get("plan_file", ".claude/plans/plan.md"),
             tasks=tasks,
+            schema_version=schema_version,
+            migrated_from=migrated_from,
         )
 
     def save(self, path: Path) -> None:
@@ -90,8 +133,16 @@ class PlanState:
     def load(cls, path: Path) -> PlanState | None:
         if not path.exists():
             return None
-        with open(path) as f:
-            return cls.from_json(json.load(f))
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                raise InvalidStateError(f"PlanState: expected dict, got {type(data).__name__}")
+            if "session_id" not in data:
+                raise InvalidStateError("PlanState: missing required field 'session_id'")
+            return cls.from_json(data)
+        except json.JSONDecodeError as e:
+            raise InvalidStateError(f"PlanState: invalid JSON - {e}") from e
 
 
 @dataclass
@@ -102,6 +153,8 @@ class ExecuteState:
     started_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     tasks: list[Task] = field(default_factory=list)
     current_task_index: int = 0
+    schema_version: int = CURRENT_SCHEMA_VERSION
+    migrated_from: int | None = None
 
     def to_json(self) -> dict:
         return {
@@ -109,6 +162,8 @@ class ExecuteState:
             "status": self.status,
             "phase": self.phase.value,
             "started_at": self.started_at,
+            "schema_version": self.schema_version,
+            "migrated_from": self.migrated_from,
             "tasks": [
                 {
                     "id": t.id,
@@ -125,6 +180,24 @@ class ExecuteState:
 
     @classmethod
     def from_json(cls, data: dict) -> ExecuteState:
+        # Detect legacy state (v0) - no schema_version field
+        schema_version = data.get("schema_version")
+        if schema_version is None:
+            schema_version = 0  # Legacy state
+
+        # Fail-closed for unknown future versions
+        if schema_version > CURRENT_SCHEMA_VERSION:
+            raise UnsupportedSchemaError(
+                f"ExecuteState schema version {schema_version} is not supported. "
+                f"Maximum supported version is {CURRENT_SCHEMA_VERSION}."
+            )
+
+        # Migration: v0 -> v1
+        migrated_from: int | None = None
+        if schema_version == 0:
+            migrated_from = 0
+            schema_version = 1  # Migrate to current
+
         tasks = [
             Task(
                 id=t["id"],
@@ -143,6 +216,8 @@ class ExecuteState:
             started_at=data.get("started_at", datetime.utcnow().isoformat() + "Z"),
             tasks=tasks,
             current_task_index=data.get("current_task_index", 0),
+            schema_version=schema_version,
+            migrated_from=migrated_from,
         )
 
     def save(self, path: Path) -> None:
@@ -154,8 +229,16 @@ class ExecuteState:
     def load(cls, path: Path) -> ExecuteState | None:
         if not path.exists():
             return None
-        with open(path) as f:
-            return cls.from_json(json.load(f))
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                raise InvalidStateError(f"ExecuteState: expected dict, got {type(data).__name__}")
+            if "session_id" not in data:
+                raise InvalidStateError("ExecuteState: missing required field 'session_id'")
+            return cls.from_json(data)
+        except json.JSONDecodeError as e:
+            raise InvalidStateError(f"ExecuteState: invalid JSON - {e}") from e
 
 
 @dataclass
@@ -168,6 +251,8 @@ class VerifyState:
     file_hashes: dict[str, str] = field(default_factory=dict)
     evidence: list[str] = field(default_factory=list)
     test_results: dict[str, bool] = field(default_factory=dict)
+    schema_version: int = CURRENT_SCHEMA_VERSION
+    migrated_from: int | None = None
 
     def to_json(self) -> dict:
         return {
@@ -179,10 +264,30 @@ class VerifyState:
             "file_hashes": self.file_hashes,
             "evidence": self.evidence,
             "test_results": self.test_results,
+            "schema_version": self.schema_version,
+            "migrated_from": self.migrated_from,
         }
 
     @classmethod
     def from_json(cls, data: dict) -> VerifyState:
+        # Detect legacy state (v0) - no schema_version field
+        schema_version = data.get("schema_version")
+        if schema_version is None:
+            schema_version = 0  # Legacy state
+
+        # Fail-closed for unknown future versions
+        if schema_version > CURRENT_SCHEMA_VERSION:
+            raise UnsupportedSchemaError(
+                f"VerifyState schema version {schema_version} is not supported. "
+                f"Maximum supported version is {CURRENT_SCHEMA_VERSION}."
+            )
+
+        # Migration: v0 -> v1
+        migrated_from: int | None = None
+        if schema_version == 0:
+            migrated_from = 0
+            schema_version = 1  # Migrate to current
+
         return cls(
             session_id=data["session_id"],
             status=data.get("status", "pending"),
@@ -192,6 +297,8 @@ class VerifyState:
             file_hashes=data.get("file_hashes", {}),
             evidence=data.get("evidence", []),
             test_results=data.get("test_results", {}),
+            schema_version=schema_version,
+            migrated_from=migrated_from,
         )
 
     def save(self, path: Path) -> None:
@@ -203,8 +310,16 @@ class VerifyState:
     def load(cls, path: Path) -> VerifyState | None:
         if not path.exists():
             return None
-        with open(path) as f:
-            return cls.from_json(json.load(f))
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                raise InvalidStateError(f"VerifyState: expected dict, got {type(data).__name__}")
+            if "session_id" not in data:
+                raise InvalidStateError("VerifyState: missing required field 'session_id'")
+            return cls.from_json(data)
+        except json.JSONDecodeError as e:
+            raise InvalidStateError(f"VerifyState: invalid JSON - {e}") from e
 
 
 def get_state_dir() -> Path:

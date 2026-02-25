@@ -43,12 +43,10 @@ class AgentMessenger:
 
     @property
     def orchestrator(self) -> "TmuxOrchestrator":
-        """Get the orchestrator instance."""
         return self._orchestrator
 
     @property
     def store(self) -> "MessageStore":
-        """Get the message store instance."""
         return self._store
 
     def send(self, msg: AgentMessage) -> bool:

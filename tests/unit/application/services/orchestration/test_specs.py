@@ -163,3 +163,33 @@ class TestRegexMatcherSpec:
         event = UserCommandEvent(command_name="anything")
 
         assert spec.is_satisfied_by(event) is True
+
+    def test_matches_session_start_by_id(self) -> None:
+        """Should match SessionStartEvent by session_id."""
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+        from src.application.services.orchestration.events import SessionStartEvent
+
+        spec = RegexMatcherSpec(event_type="SessionStart", matcher="session-.*")
+        event = SessionStartEvent(session_id="session-123")
+
+        assert spec.is_satisfied_by(event) is True
+
+    def test_matches_subagent_start_by_name(self) -> None:
+        """Should match SubagentStartEvent by agent_name."""
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+        from src.application.services.orchestration.events import SubagentStartEvent
+
+        spec = RegexMatcherSpec(event_type="SubagentStart", matcher="agent-.*")
+        event = SubagentStartEvent(agent_name="agent-test")
+
+        assert spec.is_satisfied_by(event) is True
+
+    def test_matches_subagent_stop_by_name(self) -> None:
+        """Should match SubagentStopEvent by agent_name."""
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+        from src.application.services.orchestration.events import SubagentStopEvent
+
+        spec = RegexMatcherSpec(event_type="SubagentStop", matcher="agent-.*")
+        event = SubagentStopEvent(agent_name="agent-test")
+
+        assert spec.is_satisfied_by(event) is True

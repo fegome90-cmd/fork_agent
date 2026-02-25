@@ -4,9 +4,10 @@ import logging
 import queue
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class Message:
     payload: dict[str, Any]
     message_id: str
     timestamp: float
+    correlation_id: str | None = None
 
 
 class RetryStrategy:
@@ -60,7 +62,7 @@ class IPCBridge:
         self._inbox: queue.Queue[Message] = queue.Queue()
         self._outbox: queue.Queue[Message] = queue.Queue()
         self._handlers: dict[str, Callable[[Message], None]] = {}
-        self._pending_requests: dict[str, Message] = {}
+        self._pending_requests: dict[str, queue.Queue[Message]] = {}
         self._lock = threading.Lock()
         self._running = False
         self._worker_thread: threading.Thread | None = None
@@ -124,29 +126,53 @@ class IPCBridge:
             payload=payload,
             message_id=request_id,
             timestamp=time.time(),
+            correlation_id=request_id,
         )
 
+        response_queue: queue.Queue[Message] = queue.Queue()
         with self._lock:
-            self._pending_requests[request_id] = request
+            self._pending_requests[request_id] = response_queue
 
         try:
             self._outbox.put(request, timeout=self._timeout)
 
-            start_time = time.time()
-            while time.time() - start_time < self._timeout:
-                try:
-                    response = self._inbox.get(timeout=1.0)
-                    if response.message_id == f"{request_id}-response":
-                        return response
-                except queue.Empty:
-                    continue
-
-            logger.warning(f"Request {request_id} timed out after {self._timeout}s")
-            return None
+            try:
+                response = response_queue.get(timeout=self._timeout)
+                return response
+            except queue.Empty:
+                logger.warning(f"Request {request_id} timed out after {self._timeout}s")
+                return None
 
         finally:
             with self._lock:
                 self._pending_requests.pop(request_id, None)
+
+    def receive_message(self, message: Message) -> None:
+        self._route_incoming(message)
+
+    def _route_incoming(self, message: Message) -> None:
+        # Use correlation_id for response matching if available
+        response_key = message.correlation_id
+        if response_key is None:
+            # Fallback: derive from message_id if it ends with -response
+            if message.message_id.endswith("-response"):
+                response_key = message.message_id[:-9]  # Strip "-response" suffix
+            else:
+                response_key = message.message_id
+
+        with self._lock:
+            response_queue = self._pending_requests.get(response_key)
+
+        if response_queue is not None:
+            try:
+                response_queue.put_nowait(message)
+                return
+            except queue.Full:
+                logger.warning(f"Response queue full for request {response_key}")
+
+        # Non-matching message: put in inbox for later processing
+        # Don't call _process_incoming here - let the consumer handle it
+        self._inbox.put(message, timeout=1.0)
 
     def broadcast(self, payload: dict[str, Any], recipients: list[str]) -> dict[str, bool]:
         results = {}

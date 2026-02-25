@@ -23,7 +23,6 @@ class Rule:
     action: Action
 
     def __post_init__(self) -> None:
-        """Validate that spec and action are not None."""
         if self.spec is None:
             raise ValueError("spec cannot be None")
         if self.action is None:
