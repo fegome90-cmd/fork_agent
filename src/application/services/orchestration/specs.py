@@ -2,18 +2,51 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
+from functools import cached_property
+from typing import Protocol, runtime_checkable
 
-from src.application.services.orchestration.events import (
-    FileWrittenEvent,
-    SessionStartEvent,
-    SubagentStartEvent,
-    SubagentStopEvent,
-    ToolPreExecutionEvent,
-    UserCommandEvent,
-)
 from src.domain.ports.event_ports import Event
+
+logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _HasPlanId(Protocol):
+    """Protocol for events with plan_id field."""
+    plan_id: str
+
+
+@runtime_checkable
+class _HasSessionId(Protocol):
+    """Protocol for events with session_id field."""
+    session_id: str
+
+
+@runtime_checkable
+class _HasAgentName(Protocol):
+    """Protocol for events with agent_name field."""
+    agent_name: str
+
+
+@runtime_checkable
+class _HasCommandName(Protocol):
+    """Protocol for events with command_name field."""
+    command_name: str
+
+
+@runtime_checkable
+class _HasPath(Protocol):
+    """Protocol for events with path field."""
+    path: str
+
+
+@runtime_checkable
+class _HasToolName(Protocol):
+    """Protocol for events with tool_name field."""
+    tool_name: str
 
 
 @dataclass(frozen=True)
@@ -50,6 +83,11 @@ class CommandNameSpec:
 
     name_pattern: str
 
+    @cached_property
+    def _pattern(self) -> re.Pattern[str]:
+        """Compiled regex pattern."""
+        return re.compile(self.name_pattern)
+
     def is_satisfied_by(self, event: Event) -> bool:
         """Check if event matches the command name pattern.
 
@@ -59,9 +97,9 @@ class CommandNameSpec:
         Returns:
             True if event is UserCommandEvent and command_name matches pattern.
         """
-        if not isinstance(event, UserCommandEvent):
-            return False
-        return bool(re.search(self.name_pattern, event.command_name))
+        if isinstance(event, _HasCommandName):
+            return bool(self._pattern.search(event.command_name))
+        return False
 
 
 @dataclass(frozen=True)
@@ -74,6 +112,11 @@ class FilePathSpec:
 
     path_pattern: str
 
+    @cached_property
+    def _pattern(self) -> re.Pattern[str]:
+        """Compiled regex pattern."""
+        return re.compile(self.path_pattern)
+
     def is_satisfied_by(self, event: Event) -> bool:
         """Check if event matches the path pattern.
 
@@ -83,9 +126,9 @@ class FilePathSpec:
         Returns:
             True if event is FileWrittenEvent and path matches pattern.
         """
-        if not isinstance(event, FileWrittenEvent):
-            return False
-        return bool(re.search(self.path_pattern, event.path))
+        if isinstance(event, _HasPath):
+            return bool(self._pattern.search(event.path))
+        return False
 
 
 @dataclass(frozen=True)
@@ -103,6 +146,15 @@ class RegexMatcherSpec:
     event_type: str
     matcher: str
 
+    @cached_property
+    def _pattern(self) -> re.Pattern[str]:
+        """Compiled regex pattern with error handling."""
+        try:
+            return re.compile(self.matcher)
+        except re.error:
+            logger.warning("Invalid regex pattern '%s', using match-all", self.matcher)
+            return re.compile(".*")
+
     def is_satisfied_by(self, event: Event) -> bool:
         """Check if event matches the type and pattern.
 
@@ -116,19 +168,18 @@ class RegexMatcherSpec:
         if event_type_name != self.event_type:
             return False
 
-        pattern = re.compile(self.matcher)
-
-        if isinstance(event, UserCommandEvent):
-            return bool(pattern.search(event.command_name))
-        if isinstance(event, FileWrittenEvent):
-            return bool(pattern.search(event.path))
-        if isinstance(event, ToolPreExecutionEvent):
-            return bool(pattern.search(event.tool_name))
-        if isinstance(event, SessionStartEvent):
-            return bool(pattern.search(event.session_id))
-        if isinstance(event, SubagentStartEvent):
-            return bool(pattern.search(event.agent_name))
-        if isinstance(event, SubagentStopEvent):
-            return bool(pattern.search(event.agent_name))
+        # Use protocol-based matching to extract the relevant field
+        if isinstance(event, _HasPlanId):
+            return bool(self._pattern.search(event.plan_id))
+        if isinstance(event, _HasSessionId):
+            return bool(self._pattern.search(event.session_id))
+        if isinstance(event, _HasAgentName):
+            return bool(self._pattern.search(event.agent_name))
+        if isinstance(event, _HasCommandName):
+            return bool(self._pattern.search(event.command_name))
+        if isinstance(event, _HasPath):
+            return bool(self._pattern.search(event.path))
+        if isinstance(event, _HasToolName):
+            return bool(self._pattern.search(event.tool_name))
 
         return False
