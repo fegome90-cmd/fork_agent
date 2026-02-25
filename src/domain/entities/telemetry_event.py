@@ -203,6 +203,7 @@ class MetricBucket:
 
 `@dataclass`(frozen=True)
 class SessionSummary:
+class SessionSummary:
     """Summary of a telemetry session."""
 
     session_id: str
