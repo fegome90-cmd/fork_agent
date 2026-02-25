@@ -198,4 +198,50 @@ task(category="explore", model="free", ...)
 task(category="explore", model="sonnet", ...)
 ```
 
-Verificar siempre antes de invocar subagentes que el modelo sea "free".
+#RN|Verificar siempre antes de invocar subagentes que el modelo sea "free".
+#QQ|
+RN|Verificar siempre antes de invocar subagentes que el modelo sea "free".
+
+## fork_agent - Orquestación Multi-Modelo
+
+Este proyecto usa fork_agent para orquestar múltiples sesiones de AI.
+
+### Comandos Disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `/fork-init` | Inicializar sesión con tmux, memoria y hooks |
+| `/fork-checkpoint` | Guardar handoff compacto |
+| `/fork-resume` | Continuar desde último handoff |
+| `memory save "texto"` | Guardar observación |
+| `memory workflow outline "tarea"` | Crear plan de trabajo |
+
+### Estrategia de Modelos
+
+| Modelo | Uso | Cuándo |
+|--------|-----|--------|
+| OpenCode (glm-5-free) | Orquestación | Planning, coordinación |
+| Claude Code | Plan y código | Writing, refactoring |
+| Codex (GPT-5.3-Codex) | Deep work | Análisis profundo, agentic coding |
+| Gemini Flash | Fast task | Tareas rápidas |
+
+Consulta `.claude/skills/fork_terminal/cookbook/modelos.md` para guía completa.
+
+### Session Checkpoint
+
+Al finalizar, SIEMPRE ejecutar en PARALELO:
+
+```bash
+# 1. Guardar handoff humano
+/fork-checkpoint
+
+# 2. Guardar contexto machine-readable
+cm-save <nombre>
+```
+
+# 1. Guardar handoff humano
+/fork-checkpoint
+
+# 2. Guardar contexto machine-readable
+cm-save <nombre>
+```

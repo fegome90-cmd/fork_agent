@@ -148,3 +148,30 @@ AGENT_NAME="babyclaude-1" .hooks/tmux-session-per-agent.sh
 | `--no-hooks` | Skip hooks de SessionStart |
 | `--clean` | Limpiar todo estado anterior |
 | `--tmux` | Crear sesión tmux inmediatamente |
+
+## INTEGRACIÓN CON CONTEXT MEMORY
+
+Al finalizar la sesión, SIEMPRE ejecutar en PARALELO:
+
+```bash
+# 1. Guardar handoff para continuidad humana
+/fork-checkpoint
+
+# 2. Guardar contexto machine-readable
+cm-save <nombre-sesion>
+```
+
+Esto permite:
+- `/fork-resume` - Continuar desde último handoff
+- `cm-load <nombre>` - Rehidratar contexto completo
+
+## GUÍA RÁPIDA DE MODELOS
+
+Consulta `.claude/skills/fork_terminal/cookbook/` para detalles:
+
+| Modelo | Uso | Cuándo |
+|--------|-----|--------|
+| OpenCode (glm-5-free) | Orquestación | Planning, coordinación |
+| Claude Code (sonnet) | Plan y código | Writing, refactoring |
+| Codex (GPT-5.3-Codex) | Deep work | Análisis profundo |
+| Gemini Flash 2.5 | Fast task | Tareas rápidas |

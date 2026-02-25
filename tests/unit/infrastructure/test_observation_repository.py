@@ -7,7 +7,6 @@ All tests should FAIL initially until the repository is implemented.
 from __future__ import annotations
 
 from pathlib import Path
-import sqlite3
 
 import pytest
 
@@ -402,15 +401,9 @@ class TestObservationRepositoryErrorHandling:
 
     @pytest.fixture
     def failing_db_path(self, tmp_path: Path) -> Path:
-        db_path = tmp_path / "corrupted.db"
-        config = DatabaseConfig(db_path=db_path)
-        migrations_dir = (
-            Path(__file__).parent.parent.parent.parent / "src/infrastructure/persistence/migrations"
-        )
-        run_migrations(config, migrations_dir)
-        with open(db_path, "w") as f:
-            f.write("CORRUPTED DATABASE CONTENT")
-        return db_path
+        # Use a path to a non-writable location to cause actual database errors
+        # Using a subdirectory that doesn't exist will cause sqlite3.OperationalError
+        return tmp_path / "nonexistent_dir" / "corrupted.db"
 
     def test_create_handles_database_error(self, failing_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (

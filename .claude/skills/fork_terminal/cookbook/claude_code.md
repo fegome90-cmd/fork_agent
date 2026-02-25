@@ -4,7 +4,7 @@ Ejecuta un agente de Claude Code nuevo para ejecutar el comando.
 
 ## Variables
 
-DEFOULT_MODEL: sonnet
+DEFAULT_MODEL: sonnet
 FAST_MODEL: haiku
 BASE_MODEL: sonnet
 HEAVY_MODEL: opus
