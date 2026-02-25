@@ -221,9 +221,9 @@ Este proyecto usa fork_agent para orquestar múltiples sesiones de AI.
 | Modelo | Uso | Cuándo |
 |--------|-----|--------|
 | OpenCode (glm-5-free) | Orquestación | Planning, coordinación |
-| Claude Code | Plan y código | Writing, refactoring |
+| Claude Code (sonnet) | Plan y código | Writing, refactoring |
 | Codex (GPT-5.3-Codex) | Deep work | Análisis profundo, agentic coding |
-| Gemini Flash | Fast task | Tareas rápidas |
+| Gemini Flash 2.5 | Fast task | Tareas rápidas |
 
 Consulta `.claude/skills/fork_terminal/cookbook/modelos.md` para guía completa.
 
