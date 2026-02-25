@@ -4,9 +4,9 @@ Ejecuta un agente de Codex CLI nuevo para ejecutar el comando.
 
 ## Variables
 
-DEFAULT_MODEL: gpt-5.3-codex
+DEFAULT_MODEL: gpt-5.2-codex
 FAST_MODEL: gpt-5.1-codex-max
-HEAVY_MODEL: gpt-5.3-codex
+HEAVY_MODEL: gpt-5.1-codex-max
 
 ## Instructions
 

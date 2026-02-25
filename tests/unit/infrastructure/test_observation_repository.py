@@ -401,8 +401,9 @@ class TestObservationRepositoryErrorHandling:
 
     @pytest.fixture
     def failing_db_path(self, tmp_path: Path) -> Path:
-        # Use a path to a non-writable location to cause actual database errors
-        # Using a subdirectory that doesn't exist will cause sqlite3.OperationalError
+        # Returns a path with a non-existent parent directory so SQLite fails to open
+        # the database (raising sqlite3.OperationalError) when the connection is
+        # actually established (DatabaseConnection opens the DB in __enter__, not __init__)
         return tmp_path / "nonexistent_dir" / "corrupted.db"
 
     def test_create_handles_database_error(self, failing_db_path: Path) -> None:
