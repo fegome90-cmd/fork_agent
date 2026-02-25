@@ -52,7 +52,9 @@ class Workspace:
             raise TypeError("repo_root debe ser un Path")
         if self.last_setup_hook is not None and not isinstance(self.last_setup_hook, HookResult):
             raise TypeError("last_setup_hook debe ser un HookResult o None")
-        if self.last_teardown_hook is not None and not isinstance(self.last_teardown_hook, HookResult):
+        if self.last_teardown_hook is not None and not isinstance(
+            self.last_teardown_hook, HookResult
+        ):
             raise TypeError("last_teardown_hook debe ser un HookResult o None")
 
 

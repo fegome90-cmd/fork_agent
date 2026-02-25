@@ -9,11 +9,10 @@ from typing import Final
 from src.domain.entities.terminal import TerminalConfig, TerminalResult
 from src.domain.exceptions.terminal import TerminalNotFoundError
 
-
 # Terminales soportados en Linux
 LINUX_TERMINALS: Final[list[str]] = [
     "gnome-terminal",
-    "x-terminal-emulator", 
+    "x-terminal-emulator",
     "xterm",
     "konsole",
     "xfce4-terminal",
@@ -38,7 +37,6 @@ class TerminalSpawner(ABC):
 
 
 class TerminalSpawnerImpl(TerminalSpawner):
-
     def spawn(self, command: str, config: TerminalConfig) -> TerminalResult:
         """Abre una terminal y ejecuta un comando.
 
@@ -71,7 +69,7 @@ class TerminalSpawnerImpl(TerminalSpawner):
         """
         # Escapar comillas en el comando para prevenir inyección
         escaped_command = command.replace('"', '\\"')
-        
+
         result = subprocess.run(
             ["osascript", "-e", f'tell application "Terminal" to do script "{escaped_command}"'],
             capture_output=True,
@@ -95,7 +93,7 @@ class TerminalSpawnerImpl(TerminalSpawner):
         # Sanitizar comando para Windows antes de ejecutar
         # La sanitización básica es necesaria porque 'start' de cmd requiere shell=True
         sanitized_command = self._sanitize_windows_command(command)
-        
+
         # Usar shell=True pero con comando sanitizado
         # En Windows, 'start' requiere shell=True para funcionar correctamente
         subprocess.Popen(
@@ -109,10 +107,10 @@ class TerminalSpawnerImpl(TerminalSpawner):
 
     def _sanitize_windows_command(self, command: str) -> str:
         """Sanitiza comando para Windows.
-        
+
         Args:
             command: Comando original.
-            
+
         Returns:
             Comando sanitizado.
         """
@@ -160,15 +158,11 @@ class TerminalSpawnerImpl(TerminalSpawner):
         """
         # Sanitizar comando para Linux
         sanitized_command = command.replace("'", "'\\''")
-        
+
         if terminal == "gnome-terminal":
-            subprocess.Popen(
-                [terminal, "--", "bash", "-c", f"{sanitized_command}; exec bash"]
-            )
+            subprocess.Popen([terminal, "--", "bash", "-c", f"{sanitized_command}; exec bash"])
         else:
-            subprocess.Popen(
-                [terminal, "-e", f"bash -c '{sanitized_command}; exec bash'"]
-            )
+            subprocess.Popen([terminal, "-e", f"bash -c '{sanitized_command}; exec bash'"])
 
         return TerminalResult(
             success=True,
@@ -188,9 +182,16 @@ class TerminalSpawnerImpl(TerminalSpawner):
         # Sanitizar comando para tmux
         sanitized_command = command.replace("'", "'\\''")
         session_name = f"fork_term_{str(uuid.uuid4())[:8]}"
-        
+
         subprocess.run(
-            ["tmux", "new-session", "-d", "-s", session_name, f"{sanitized_command}; read -p 'Press enter to close...'"]
+            [
+                "tmux",
+                "new-session",
+                "-d",
+                "-s",
+                session_name,
+                f"{sanitized_command}; read -p 'Press enter to close...'",
+            ]
         )
         return TerminalResult(
             success=True,

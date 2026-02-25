@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.application.services.orchestration.actions import ShellCommandAction
-from src.domain.ports.event_ports import Action
 
 
 class MockAction:
@@ -108,9 +107,7 @@ class TestShellActionRunner:
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(
-            command="exit 1",
-            critical=False,
-            on_failure=OnFailurePolicy.CONTINUE
+            command="exit 1", critical=False, on_failure=OnFailurePolicy.CONTINUE
         )
 
         with patch("subprocess.run") as mock_run:
@@ -185,10 +182,7 @@ class TestShellActionRunner:
 
         runner = ShellActionRunner(hooks_dir=tmp_path, default_timeout=1)
         action = ShellCommandAction(
-            command="sleep 10",
-            timeout=1,
-            critical=False,
-            on_failure=OnFailurePolicy.CONTINUE
+            command="sleep 10", timeout=1, critical=False, on_failure=OnFailurePolicy.CONTINUE
         )
 
         with patch("subprocess.run") as mock_run:

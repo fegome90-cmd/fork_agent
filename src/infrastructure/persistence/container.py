@@ -17,7 +17,6 @@ from src.infrastructure.persistence.repositories.scheduled_task_repository impor
     ScheduledTaskRepository,
 )
 
-
 DEFAULT_DB_PATH = Path("data/memory.db")
 DEFAULT_MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 

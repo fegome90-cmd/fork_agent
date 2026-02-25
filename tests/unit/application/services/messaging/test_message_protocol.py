@@ -159,14 +159,16 @@ class TestDecodeMessage:
     def test_decode_returns_none_for_invalid_message_type(self) -> None:
         """Should return None if message_type is invalid."""
         # Create JSON with invalid message_type
-        invalid_json = json.dumps({
-            "id": "test",
-            "from_agent": "s:0",
-            "to_agent": "s:1",
-            "message_type": "INVALID_TYPE",  # Invalid enum value
-            "payload": "test",
-            "created_at": 123,
-        })
+        invalid_json = json.dumps(
+            {
+                "id": "test",
+                "from_agent": "s:0",
+                "to_agent": "s:1",
+                "message_type": "INVALID_TYPE",  # Invalid enum value
+                "payload": "test",
+                "created_at": 123,
+            }
+        )
         result = decode_message(f"FORK_MSG:{invalid_json}")
         assert result is None
 
@@ -287,9 +289,7 @@ class TestRoundTrip:
             (MessageType.HANDOFF, '{"handoff_path": "/ctx.md"}'),
         ],
     )
-    def test_round_trip_preserves_message(
-        self, msg_type: MessageType, payload: str
-    ) -> None:
+    def test_round_trip_preserves_message(self, msg_type: MessageType, payload: str) -> None:
         """Encode/decode should preserve message data."""
         original = AgentMessage(
             id="test-id",

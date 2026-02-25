@@ -141,7 +141,7 @@ class GitCommandExecutor:
         Raises:
             GitError: If not in a git repository.
         """
-        repo_path = path if path is not None else getattr(self, '_repo_path', None)
+        repo_path = path if path is not None else getattr(self, "_repo_path", None)
 
         # Use --git-common-dir to find the main repo from any worktree
         # This returns the path to the .git directory of the main repository
@@ -186,7 +186,7 @@ class GitCommandExecutor:
             args.append(branch)
         args.append(str(path))
 
-        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
+        self._run_git_command(args, cwd=getattr(self, "_repo_path", None))
 
     def worktree_remove(self, path: Path, force: bool = False) -> None:
         """Remove a git worktree.
@@ -203,7 +203,7 @@ class GitCommandExecutor:
             args.append("--force")
         args.append(str(path))
 
-        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
+        self._run_git_command(args, cwd=getattr(self, "_repo_path", None))
 
     def worktree_list(self) -> list[dict[str, str]]:
         """List all git worktrees.
@@ -212,7 +212,9 @@ class GitCommandExecutor:
             List of dictionaries containing worktree information.
             Each dict contains 'path', 'branch', and optionally 'HEAD'.
         """
-        result = self._run_git_command(["worktree", "list", "--porcelain"], cwd=getattr(self, '_repo_path', None))
+        result = self._run_git_command(
+            ["worktree", "list", "--porcelain"], cwd=getattr(self, "_repo_path", None)
+        )
         worktrees: list[dict[str, str]] = []
 
         current_worktree: dict[str, str] = {}
@@ -291,7 +293,7 @@ class GitCommandExecutor:
         else:
             args.append(branch)
 
-        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
+        self._run_git_command(args, cwd=getattr(self, "_repo_path", None))
 
     def branch_delete(self, branch: str, force: bool = False) -> None:
         """Delete a git branch.
@@ -306,7 +308,7 @@ class GitCommandExecutor:
         args = ["branch", "-d" if not force else "-D"]
         args.append(branch)
 
-        self._run_git_command(args, cwd=getattr(self, '_repo_path', None))
+        self._run_git_command(args, cwd=getattr(self, "_repo_path", None))
 
     def is_clean(self, path: Path | None = None) -> bool:
         """Check if the working tree is clean (no uncommitted changes).
@@ -320,7 +322,7 @@ class GitCommandExecutor:
         Raises:
             GitError: If the check fails.
         """
-        repo_path = path if path is not None else getattr(self, '_repo_path', None)
+        repo_path = path if path is not None else getattr(self, "_repo_path", None)
         result = self._run_git_command(["status", "--porcelain"], cwd=repo_path)
         # If output is empty, the working tree is clean
         return result.stdout.strip() == ""

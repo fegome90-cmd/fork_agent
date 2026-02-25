@@ -9,9 +9,9 @@ from pathlib import Path
 from src.application.services.workspace.entities import (
     HookResult,
     LayoutType,
-    WorktreeState,
     Workspace,
     WorkspaceConfig,
+    WorktreeState,
 )
 from src.application.services.workspace.exceptions import (
     GitError,
@@ -232,9 +232,7 @@ class WorkspaceManager(WorkspaceManagerABC):
                         f"stderr={setup_hook_result.stderr}"
                     )
             except HookExecutionError as e:
-                logger.warning(
-                    f"Setup hook execution failed for workspace '{name}': {e}"
-                )
+                logger.warning(f"Setup hook execution failed for workspace '{name}': {e}")
 
         # Return the workspace entity
         return Workspace(
@@ -352,16 +350,13 @@ class WorkspaceManager(WorkspaceManagerABC):
                         f"stderr={teardown_result.stderr}"
                     )
             except HookExecutionError as e:
-                logger.warning(
-                    f"Teardown hook execution failed for workspace '{name}': {e}"
-                )
+                logger.warning(f"Teardown hook execution failed for workspace '{name}': {e}")
 
         # Check if clean (unless force)
-        if not force:
-            if not self._git.is_clean(workspace.path):
-                raise WorkspaceNotCleanError(
-                    f"Workspace '{name}' has uncommitted changes. Use force=True to remove anyway."
-                )
+        if not force and not self._git.is_clean(workspace.path):
+            raise WorkspaceNotCleanError(
+                f"Workspace '{name}' has uncommitted changes. Use force=True to remove anyway."
+            )
 
         # Remove the worktree
         self._git.worktree_remove(workspace.path, force=force)

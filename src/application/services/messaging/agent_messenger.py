@@ -6,7 +6,7 @@ via SQLite. It acts as the application layer interface for messaging.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from src.application.services.messaging.message_protocol import encode_message
 from src.domain.entities.message import AgentMessage, MessageType
@@ -29,8 +29,8 @@ class AgentMessenger:
 
     def __init__(
         self,
-        orchestrator: "TmuxOrchestrator",
-        store: "MessageStore",
+        orchestrator: TmuxOrchestrator,
+        store: MessageStore,
     ) -> None:
         """Initialize the messenger.
 
@@ -42,11 +42,11 @@ class AgentMessenger:
         self._store = store
 
     @property
-    def orchestrator(self) -> "TmuxOrchestrator":
+    def orchestrator(self) -> TmuxOrchestrator:
         return self._orchestrator
 
     @property
-    def store(self) -> "MessageStore":
+    def store(self) -> MessageStore:
         return self._store
 
     def send(self, msg: AgentMessage) -> bool:
@@ -111,9 +111,7 @@ class AgentMessenger:
                 self._store.save(msg)
                 encoded = encode_message(msg)
 
-                if self._orchestrator.send_message(
-                    session.name, window.window_index, encoded
-                ):
+                if self._orchestrator.send_message(session.name, window.window_index, encoded):
                     success_count += 1
 
         return success_count

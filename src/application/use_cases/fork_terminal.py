@@ -1,15 +1,14 @@
 """Use case para bifurcar una terminal."""
 
-from typing import Callable
+from collections.abc import Callable
 
-from src.domain.entities.terminal import (
-    TerminalConfig,
-    TerminalResult,
-    PlatformType,
-)
 from src.application.services.terminal.platform_detector import PlatformDetector
 from src.application.services.terminal.terminal_spawner import TerminalSpawner
-
+from src.domain.entities.terminal import (
+    PlatformType,
+    TerminalConfig,
+    TerminalResult,
+)
 
 # Tipo para la función de detección de plataforma
 DetectPlatformFn = Callable[[], PlatformType]
@@ -72,7 +71,7 @@ def create_fork_terminal_use_case(
 
     def execute(command: str) -> TerminalResult:
         platform = detect_platform()
-        config = TerminalConfig(terminal=None, platform=platform)
+        _config = TerminalConfig(terminal=None, platform=platform)
         return spawn_terminal(command)
 
     return execute

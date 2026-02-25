@@ -3,13 +3,12 @@
 TDD Red Phase: These tests define the expected behavior BEFORE implementation.
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
-from src.infrastructure.persistence.migrations import MigrationRunner, Migration
+from src.infrastructure.persistence.migrations import Migration, MigrationRunner
 
 
 class TestMigration:
@@ -29,13 +28,15 @@ class TestMigration:
 
     def test_migration_is_immutable(self) -> None:
         """Test that Migration is immutable (frozen dataclass)."""
+        from dataclasses import FrozenInstanceError
+
         migration = Migration(
             version=1,
             name="test",
             sql="SELECT 1;",
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             migration.version = 2
 
 
@@ -140,7 +141,9 @@ class TestMigrationRunner:
         runner.ensure_migrations_table()
         runner.apply_migration(migration)
 
-        with pytest.raises(Exception):
+        from src.infrastructure.persistence.migrations import MigrationAlreadyAppliedError
+
+        with pytest.raises(MigrationAlreadyAppliedError):
             runner.apply_migration(migration)
 
 
@@ -206,7 +209,7 @@ class TestMigrationLoader:
 
         (migrations_dir / "invalid_name.sql").write_text("SELECT 1;")
 
-        from src.infrastructure.persistence.migrations import load_migrations, MigrationLoadError
+        from src.infrastructure.persistence.migrations import MigrationLoadError, load_migrations
 
         with pytest.raises(MigrationLoadError):
             load_migrations(migrations_dir)
@@ -250,9 +253,8 @@ class TestRunPendingMigrations:
 
         config = DatabaseConfig(db_path=db_path)
         from src.infrastructure.persistence.migrations import (
-            run_migrations,
             MigrationRunner,
-            load_migrations,
+            run_migrations,
         )
 
         run_migrations(config, migrations_dir)

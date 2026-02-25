@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
-
 
 MIGRATION_PATTERN: Final[re.Pattern[str]] = re.compile(r"^(\d+)_(.+)\.sql$")
 
@@ -74,7 +73,7 @@ class MigrationRunner:
                 f"Migration version {migration.version} already applied"
             )
 
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         with DatabaseConnection(self._config) as conn:
             conn.executescript(migration.sql)
@@ -97,9 +96,7 @@ class MigrationRunner:
         """
         applied = self.get_applied_versions()
         if migration.version not in applied:
-            raise MigrationError(
-                f"Migration version {migration.version} is not currently applied"
-            )
+            raise MigrationError(f"Migration version {migration.version} is not currently applied")
 
         rollback_file = self._migrations_dir / f"{migration.version:03d}_rollback.sql"
 

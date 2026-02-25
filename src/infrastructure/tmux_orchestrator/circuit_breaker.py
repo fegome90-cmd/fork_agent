@@ -11,7 +11,6 @@ from src.infrastructure.tmux_orchestrator.resilience_policy import (
     get_default_policy,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,11 +30,21 @@ class TmuxCircuitBreaker:
     ) -> None:
         if policy is not None:
             p = policy
-        elif failure_threshold is not None or recovery_timeout is not None or half_open_max_calls is not None:
+        elif (
+            failure_threshold is not None
+            or recovery_timeout is not None
+            or half_open_max_calls is not None
+        ):
             p = ResiliencePolicy(
-                failure_threshold=failure_threshold if failure_threshold is not None else DEFAULT_POLICY.failure_threshold,
-                recovery_timeout_seconds=recovery_timeout if recovery_timeout is not None else DEFAULT_POLICY.recovery_timeout_seconds,
-                half_open_max_calls=half_open_max_calls if half_open_max_calls is not None else DEFAULT_POLICY.half_open_max_calls,
+                failure_threshold=failure_threshold
+                if failure_threshold is not None
+                else DEFAULT_POLICY.failure_threshold,
+                recovery_timeout_seconds=recovery_timeout
+                if recovery_timeout is not None
+                else DEFAULT_POLICY.recovery_timeout_seconds,
+                half_open_max_calls=half_open_max_calls
+                if half_open_max_calls is not None
+                else DEFAULT_POLICY.half_open_max_calls,
             )
         else:
             p = get_default_policy()
@@ -59,10 +68,9 @@ class TmuxCircuitBreaker:
     @property
     def state(self) -> CircuitState:
         with self._lock:
-            if self._state == CircuitState.OPEN:
-                if time.time() - self._last_failure_time >= self._recovery_timeout:
-                    self._state = CircuitState.HALF_OPEN
-                    self._half_open_calls = 0
+            if self._state == CircuitState.OPEN and time.time() - self._last_failure_time >= self._recovery_timeout:
+                self._state = CircuitState.HALF_OPEN
+                self._half_open_calls = 0
             return self._state
 
     def record_success(self) -> None:

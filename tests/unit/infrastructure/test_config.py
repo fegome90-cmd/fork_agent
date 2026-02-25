@@ -24,7 +24,7 @@ class TestConfigLoader:
         with tempfile.TemporaryDirectory() as tmpdir:
             loader = ConfigLoader(env_path=Path(tmpdir) / ".env")
             config = loader.load()
-            
+
             assert config["fork_agent_debug"] is False
             assert config["fork_agent_shell"] == "bash"
             assert config["fork_agent_default_terminal"] == ""
@@ -39,10 +39,10 @@ FORK_AGENT_DEFAULT_TERMINAL=iterm2
         with tempfile.TemporaryDirectory() as tmpdir:
             env_path = Path(tmpdir) / ".env"
             env_path.write_text(env_content)
-            
+
             loader = ConfigLoader(env_path=env_path)
             config = loader.load()
-            
+
             assert config["fork_agent_debug"] is True
             assert config["fork_agent_shell"] == "zsh"
             assert config["fork_agent_default_terminal"] == "iterm2"
@@ -52,14 +52,16 @@ FORK_AGENT_DEFAULT_TERMINAL=iterm2
         with tempfile.TemporaryDirectory() as tmpdir:
             env_path = Path(tmpdir) / ".env"
             env_path.write_text("FORK_AGENT_DEBUG=true")
-            
+
             loader = ConfigLoader(env_path=env_path)
             loader.load()
-            
+
             assert loader.get("fork_agent_debug") is True
             assert loader.get("nonexistent", "default") == "default"
 
-    @pytest.mark.skip(reason="Test fails due to environment variable leakage - implementation uses os.environ.get which reads real env vars instead of isolated .env")
+    @pytest.mark.skip(
+        reason="Test fails due to environment variable leakage - implementation uses os.environ.get which reads real env vars instead of isolated .env"
+    )
     def test_get_required_success(self) -> None:
         """Test getting a required value that exists."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -76,10 +78,10 @@ FORK_AGENT_DEFAULT_TERMINAL=iterm2
         with tempfile.TemporaryDirectory() as tmpdir:
             loader = ConfigLoader(env_path=Path(tmpdir) / ".env")
             loader.load()
-            
+
             with pytest.raises(ConfigError) as exc_info:
                 loader.get_required("missing_key")
-            
+
             assert "missing_key" in str(exc_info.value)
 
 
@@ -89,13 +91,13 @@ class TestConfigLoaderEnvOverrides:
     def test_env_vars_override_dotenv(self) -> None:
         """Test that environment variables override .env file."""
         env_content = "FORK_AGENT_DEBUG=false"
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             env_path = Path(tmpdir) / ".env"
             env_path.write_text(env_content)
-            
+
             loader = ConfigLoader(env_path=env_path)
-            
+
             with patch.dict(os.environ, {"FORK_AGENT_DEBUG": "true"}):
                 config = loader.load()
                 assert config["fork_agent_debug"] is True
@@ -113,7 +115,7 @@ class TestGlobalConfig:
         """Test that reload_config creates a new loader."""
         loader1 = get_config()
         loader2 = reload_config()
-        
+
         # Both should be instances but not necessarily the same object
         assert isinstance(loader1, ConfigLoader)
         assert isinstance(loader2, ConfigLoader)

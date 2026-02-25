@@ -8,10 +8,6 @@ Tests:
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 
 
@@ -61,7 +57,7 @@ class TestListWorkspacesE2E:
         workspace_manager: WorkspaceManager,
     ) -> None:
         """Test that list includes workspace path."""
-        workspace = workspace_manager.create_workspace("path-test")
+        workspace_manager.create_workspace("path-test")
 
         workspaces = workspace_manager.list_workspaces()
         found = next(ws for ws in workspaces if ws.name == "path-test")

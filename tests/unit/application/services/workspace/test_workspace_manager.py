@@ -1,16 +1,15 @@
 """Unit tests for WorkspaceManager."""
 
-from unittest.mock import MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.application.services.workspace.entities import (
     HookResult,
     LayoutType,
-    WorktreeState,
-    Workspace,
     WorkspaceConfig,
+    WorktreeState,
 )
 from src.application.services.workspace.exceptions import (
     GitError,
@@ -403,10 +402,10 @@ class TestWorkspaceManagerDetect:
             {"path": "/test/repo/.worktrees/feature", "branch": "refs/heads/feature"},
         ]
 
-        def mock_exists(self: Path) -> bool:
+        def mock_exists(self: Path) -> bool:  # noqa: ARG001
             return True
 
-        def mock_resolve(self: Path, strict: bool = False) -> Path:
+        def mock_resolve(self: Path, strict: bool = False) -> Path:  # noqa: ARG001
             return self
 
         with (
@@ -451,10 +450,10 @@ class TestWorkspaceManagerDetect:
             {"path": "/test/repo/.worktrees/feature", "branch": "refs/heads/feature"},
         ]
 
-        def mock_exists(self: Path) -> bool:
+        def mock_exists(self: Path) -> bool:  # noqa: ARG001
             return True
 
-        def mock_resolve(self: Path, strict: bool = False) -> Path:
+        def mock_resolve(self: Path, strict: bool = False) -> Path:  # noqa: ARG001
             return self
 
         with (
@@ -481,7 +480,7 @@ class TestWorkspaceManagerDetect:
     ) -> None:
         mock_git_executor.get_repo_root.return_value = Path("/test/repo")
 
-        def mock_resolve_error(self: Path, strict: bool = False) -> Path:
+        def mock_resolve_error(self: Path, strict: bool = False) -> Path:  # noqa: ARG001
             raise OSError("Cannot resolve")
 
         with patch.object(Path, "resolve", mock_resolve_error):
@@ -536,7 +535,7 @@ class TestWorkspaceManagerDetectLayout:
     ) -> None:
         mock_git_executor.get_repo_root.return_value = Path("/test/repo")
 
-        def mock_resolve_error(self: Path, strict: bool = False) -> Path:
+        def mock_resolve_error(self: Path, strict: bool = False) -> Path:  # noqa: ARG001
             raise OSError("Cannot resolve")
 
         with patch.object(Path, "resolve", mock_resolve_error):

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -51,9 +50,9 @@ class TestDatabaseThreadSafety:
         db_path = tmp_path / "thread_reuse.db"
         config = DatabaseConfig(db_path=db_path)
 
-        with DatabaseConnection(config) as conn1:
+        with DatabaseConnection(config):
             pass
-        with DatabaseConnection(config) as conn2:
+        with DatabaseConnection(config):
             pass
 
 
@@ -79,7 +78,7 @@ class TestDatabaseConfigValidation:
     """Test database config validation."""
 
     def test_negative_busy_timeout_raises(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, TypeError)):
             DatabaseConfig(db_path=Path("/tmp/test.db"), busy_timeout_ms=-1)
 
     def test_wal_mode_default(self) -> None:

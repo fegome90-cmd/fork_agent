@@ -1,13 +1,12 @@
 """Unit tests for HookRunner."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from src.application.services.workspace.entities import HookResult
-from src.application.services.workspace.hook_runner import HookRunner
 from src.application.services.workspace.exceptions import HookExecutionError, SecurityError
+from src.application.services.workspace.hook_runner import HookRunner
 
 
 @pytest.fixture
@@ -40,9 +39,11 @@ class TestHookRunnerSanitizePath:
     def test_sanitize_path_resolve_error(
         self, hook_runner: HookRunner, temp_hooks_dir: Path
     ) -> None:
-        with patch.object(Path, "resolve", side_effect=OSError("Cannot resolve")):
-            with pytest.raises(SecurityError, match="Failed to resolve path"):
-                hook_runner._sanitize_path(temp_hooks_dir / "test.sh")
+        with (
+            patch.object(Path, "resolve", side_effect=OSError("Cannot resolve")),
+            pytest.raises(SecurityError, match="Failed to resolve path"),
+        ):
+            hook_runner._sanitize_path(temp_hooks_dir / "test.sh")
 
 
 class TestHookRunnerGetSafeEnv:
@@ -70,9 +71,11 @@ class TestHookRunnerRunHook:
         hook_script.write_text("#!/bin/bash\nexit 1")
         hook_script.chmod(0o755)
 
-        with patch("subprocess.run", side_effect=OSError("Exec failed")):
-            with pytest.raises(HookExecutionError, match="Failed to execute hook"):
-                hook_runner.run_hook("bad", temp_hooks_dir)
+        with (
+            patch("subprocess.run", side_effect=OSError("Exec failed")),
+            pytest.raises(HookExecutionError, match="Failed to execute hook"),
+        ):
+            hook_runner.run_hook("bad", temp_hooks_dir)
 
 
 class TestHookRunnerRunSetup:

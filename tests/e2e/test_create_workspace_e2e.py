@@ -15,8 +15,8 @@ import pytest
 
 from src.application.services.workspace.entities import (
     LayoutType,
-    WorktreeState,
     WorkspaceConfig,
+    WorktreeState,
 )
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
@@ -83,7 +83,7 @@ class TestCreateWorkspaceE2E:
     def test_create_workspace_with_nested_layout(
         self,
         git_executor: GitCommandExecutor,
-        workspace_config: WorkspaceConfig,
+        workspace_config: WorkspaceConfig,  # noqa: ARG002
     ) -> None:
         """Test workspace creation with NESTED layout."""
         config = WorkspaceConfig(

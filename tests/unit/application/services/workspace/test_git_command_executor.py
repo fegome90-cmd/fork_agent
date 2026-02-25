@@ -1,19 +1,18 @@
 """Unit tests for GitCommandExecutor."""
 
-from unittest.mock import MagicMock, patch
+import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
-import subprocess
 
-from src.infrastructure.platform.git.git_command_executor import (
-    GitCommandExecutor,
-    MIN_GIT_VERSION,
-)
 from src.application.services.workspace.exceptions import (
     GitError,
     GitNotFoundError,
     GitVersionError,
+)
+from src.infrastructure.platform.git.git_command_executor import (
+    GitCommandExecutor,
 )
 
 
@@ -333,7 +332,7 @@ class TestWorktreeIsValid:
     def test_worktree_is_valid_true(self, mock_get_root: MagicMock, mock_list: MagicMock) -> None:
         """Test worktree_is_valid returns True for valid worktree."""
         worktree_path = Path("/test/repo/.worktrees/feature")
-        
+
         mock_get_root.return_value = Path("/test/repo")
         mock_list.return_value = [
             {"path": "/test/repo", "branch": "refs/heads/main"},
@@ -351,10 +350,12 @@ class TestWorktreeIsValid:
 
     @patch.object(GitCommandExecutor, "worktree_list")
     @patch.object(GitCommandExecutor, "get_repo_root")
-    def test_worktree_is_valid_false_not_in_list(self, mock_get_root: MagicMock, mock_list: MagicMock) -> None:
+    def test_worktree_is_valid_false_not_in_list(
+        self, mock_get_root: MagicMock, mock_list: MagicMock
+    ) -> None:
         """Test worktree_is_valid returns False when not in worktree list."""
         worktree_path = Path("/test/repo/.worktrees/nonexistent")
-        
+
         mock_get_root.return_value = Path("/test/repo")
         mock_list.return_value = [
             {"path": "/test/repo", "branch": "refs/heads/main"},
@@ -370,10 +371,12 @@ class TestWorktreeIsValid:
 
     @patch.object(GitCommandExecutor, "worktree_list")
     @patch.object(GitCommandExecutor, "get_repo_root")
-    def test_worktree_is_valid_false_main_repo(self, mock_get_root: MagicMock, mock_list: MagicMock) -> None:
+    def test_worktree_is_valid_false_main_repo(
+        self, mock_get_root: MagicMock, mock_list: MagicMock
+    ) -> None:
         """Test worktree_is_valid returns False for main repo."""
         worktree_path = Path("/test/repo")
-        
+
         mock_get_root.return_value = Path("/test/repo")
         mock_list.return_value = [
             {"path": "/test/repo", "branch": "refs/heads/main"},

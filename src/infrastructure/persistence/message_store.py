@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.tmux_orchestrator import ORCHESTRATOR_DIR
@@ -34,7 +33,7 @@ class MessageStore:
         """
         self._db_path = db_path or (ORCHESTRATOR_DIR / "messages.db")
         self._ensure_db()
-        self._conn: Optional[sqlite3.Connection] = None
+        self._conn: sqlite3.Connection | None = None
 
     def _ensure_db(self) -> None:
         """Ensure database directory and tables exist."""
