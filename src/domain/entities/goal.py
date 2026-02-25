@@ -26,6 +26,12 @@ class Goal:
     def __post_init__(self) -> None:
         if not isinstance(self.objective, str):
             raise TypeError("objective must be a string")
+        if not self.objective:
+            raise ValueError("objective cannot be empty")
+        if len(self.objective) > 10000:
+            raise ValueError("objective must not exceed 10000 characters")
+        if not isinstance(self.objective, str):
+            raise TypeError("objective must be a string")
         if len(self.objective) > 10000:
             raise ValueError("objective must not exceed 10000 characters")
         # Validate scope disjointness

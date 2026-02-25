@@ -106,12 +106,3 @@ class TestGoalAnalyzer:
         error_reqs = [r for r in result if r.id == "error-handling"]
         assert len(error_reqs) == 1
         assert error_reqs[0].source == RequirementSource.EXPLICIT
-
-    def test_analyze_empty_objective(self) -> None:
-        """Test that empty objective with must-haves works."""
-        goal = Goal(objective="", must_haves=("Test",))
-        analyzer = GoalAnalyzer()
-        result = analyzer.analyze(goal)
-
-        assert len(result) == 1
-        assert result[0].id == "test"
