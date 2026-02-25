@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import sqlite3
 import threading
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, field_validator
@@ -14,7 +14,7 @@ from pydantic import BaseModel, field_validator
 _thread_local = threading.local()
 
 
-class JournalMode(str, Enum):
+class JournalMode(StrEnum):
     """Valid SQLite journal modes."""
 
     DELETE = "DELETE"
@@ -163,7 +163,7 @@ class DatabaseConnection:
                 delattr(_thread_local, attr)
 
     @classmethod
-    def create_in_memory(cls) -> "DatabaseConnection":
+    def create_in_memory(cls) -> DatabaseConnection:
         return cls(
             DatabaseConfig(
                 db_path=Path(":memory:"),
@@ -172,5 +172,5 @@ class DatabaseConnection:
         )
 
     @classmethod
-    def from_path(cls, db_path: Path) -> "DatabaseConnection":
+    def from_path(cls, db_path: Path) -> DatabaseConnection:
         return cls(DatabaseConfig(db_path=db_path))

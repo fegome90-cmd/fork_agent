@@ -7,7 +7,6 @@ Each test is traceable to an INV-* ID in docs/informes/INVARIANTS.md.
 from __future__ import annotations
 
 import os
-import subprocess
 import threading
 import time
 from pathlib import Path
