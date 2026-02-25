@@ -201,7 +201,7 @@ class MetricBucket:
     updated_at: int
 
 
-@dataclass
+`@dataclass`(frozen=True)
 class SessionSummary:
     """Summary of a telemetry session."""
 
