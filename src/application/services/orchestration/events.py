@@ -207,3 +207,45 @@ class WorkflowShipCompleteEvent:
 
     plan_id: str
     target_branch: str = "main"
+
+
+# =============================================================================
+# Worktree Events (Wave 3 - Memory + Worktree Integration)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class WorktreeCreatedEvent:
+    """Event fired when a worktree is created for a task.
+
+    Attributes:
+        workspace_name: The name of the workspace/worktree.
+        worktree_path: The path to the worktree.
+    """
+
+    workspace_name: str
+    worktree_path: str
+
+
+@dataclass(frozen=True)
+class WorktreeMergedEvent:
+    """Event fired when a worktree branch is merged.
+
+    Attributes:
+        workspace_name: The name of the workspace/worktree.
+        target_branch: The branch merged into.
+    """
+
+    workspace_name: str
+    target_branch: str = "main"
+
+
+@dataclass(frozen=True)
+class WorktreeRemovedEvent:
+    """Event fired when a worktree is removed.
+
+    Attributes:
+        workspace_name: The name of the workspace/worktree.
+    """
+
+    workspace_name: str

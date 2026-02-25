@@ -113,6 +113,48 @@
           }
         ]
       }
+    ],
+    "WorktreeCreatedEvent": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
+    ],
+    "WorktreeMergedEvent": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemovedEvent": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
     ]
   }
 }

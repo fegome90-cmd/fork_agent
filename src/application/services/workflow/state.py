@@ -47,7 +47,8 @@ class Task:
     status: str = "pending"
     branch: str | None = None
     worktree_path: str | None = None
-
+    session_name: str | None = None
+    agent_pid: int | None = None
 
 @dataclass
 class PlanState:
@@ -77,11 +78,12 @@ class PlanState:
                     "status": t.status,
                     "branch": t.branch,
                     "worktree_path": t.worktree_path,
+                    "session_name": t.session_name,
+                    "agent_pid": t.agent_pid,
                 }
                 for t in self.tasks
             ],
         }
-
     @classmethod
     def from_json(cls, data: dict) -> PlanState:
         # Detect legacy state (v0) - no schema_version field
@@ -110,6 +112,8 @@ class PlanState:
                 status=t.get("status", "pending"),
                 branch=t.get("branch"),
                 worktree_path=t.get("worktree_path"),
+                session_name=t.get("session_name"),
+                agent_pid=t.get("agent_pid"),
             )
             for t in data.get("tasks", [])
         ]
@@ -172,12 +176,13 @@ class ExecuteState:
                     "status": t.status,
                     "branch": t.branch,
                     "worktree_path": t.worktree_path,
+                    "session_name": t.session_name,
+                    "agent_pid": t.agent_pid,
                 }
                 for t in self.tasks
             ],
             "current_task_index": self.current_task_index,
         }
-
     @classmethod
     def from_json(cls, data: dict) -> ExecuteState:
         # Detect legacy state (v0) - no schema_version field
@@ -206,6 +211,8 @@ class ExecuteState:
                 status=t.get("status", "pending"),
                 branch=t.get("branch"),
                 worktree_path=t.get("worktree_path"),
+                session_name=t.get("session_name"),
+                agent_pid=t.get("agent_pid"),
             )
             for t in data.get("tasks", [])
         ]
