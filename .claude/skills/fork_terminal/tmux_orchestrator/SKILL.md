@@ -200,7 +200,7 @@ Al finalizar sesión, ejecutar en PARALELO:
 # 1. Guardar handoff
 /fork-checkpoint
 
-# 2. Guardar contexto machine-readable  
+# 2. Guardar contexto machine-readable
 cm-save <nombre-sesion>
 ```
 
