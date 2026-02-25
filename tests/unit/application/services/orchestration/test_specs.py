@@ -191,3 +191,63 @@ class TestRegexMatcherSpec:
         event = SubagentStopEvent(agent_name="agent-test")
 
         assert spec.is_satisfied_by(event) is True
+
+
+
+    def test_matches_workflow_outline_start_by_plan_id(self) -> None:
+        """Should match WorkflowOutlineStartEvent by plan_id."""
+        from src.application.services.orchestration.events import (
+            WorkflowOutlineStartEvent,
+        )
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+
+        spec = RegexMatcherSpec(event_type="WorkflowOutlineStart", matcher="plan-.*")
+        event = WorkflowOutlineStartEvent(plan_id="plan-123")
+
+        assert spec.is_satisfied_by(event) is True
+
+    def test_matches_workflow_execute_start_by_plan_id(self) -> None:
+        """Should match WorkflowExecuteStartEvent by plan_id."""
+        from src.application.services.orchestration.events import (
+            WorkflowExecuteStartEvent,
+        )
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+
+        spec = RegexMatcherSpec(event_type="WorkflowExecuteStart", matcher="plan-.*")
+        event = WorkflowExecuteStartEvent(plan_id="plan-456")
+
+        assert spec.is_satisfied_by(event) is True
+
+    def test_matches_workflow_phase_change_by_plan_id(self) -> None:
+        """Should match WorkflowPhaseChangeEvent by plan_id."""
+        from src.application.services.orchestration.events import (
+            WorkflowPhaseChangeEvent,
+        )
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+
+        spec = RegexMatcherSpec(event_type="WorkflowPhaseChange", matcher=".*")
+        event = WorkflowPhaseChangeEvent(plan_id="plan-789", phase="execute")
+
+        assert spec.is_satisfied_by(event) is True
+
+    def test_rejects_non_matching_plan_id(self) -> None:
+        """Should reject events with non-matching plan_id."""
+        from src.application.services.orchestration.events import (
+            WorkflowOutlineStartEvent,
+        )
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+
+        spec = RegexMatcherSpec(event_type="WorkflowOutlineStart", matcher="^prod-.*")
+        event = WorkflowOutlineStartEvent(plan_id="dev-123")
+
+        assert spec.is_satisfied_by(event) is False
+
+    def test_invalid_regex_never_matches(self) -> None:
+        """Should not match any event when regex is invalid (no accidental match-all)."""
+        from src.application.services.orchestration.events import UserCommandEvent
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+
+        spec = RegexMatcherSpec(event_type="UserCommand", matcher="[invalid")
+        event = UserCommandEvent(command_name="anything")
+
+        assert spec.is_satisfied_by(event) is False

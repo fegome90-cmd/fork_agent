@@ -146,6 +146,46 @@ class TestWorkflowVerify:
         assert result.exit_code == 0
         assert "Verification complete" in result.stdout
 
+    def test_verify_dispatches_start_and_complete_events(self, tmp_path: Path) -> None:
+        from src.application.services.orchestration.events import (
+            WorkflowVerifyCompleteEvent,
+            WorkflowVerifyStartEvent,
+        )
+
+        plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
+        exec_state = ExecuteState(session_id="test-exec", phase=WorkflowPhase.EXECUTING)
+        plan_path = tmp_path / "plan-state.json"
+        exec_path = tmp_path / "execute-state.json"
+        plan_state.save(plan_path)
+        exec_state.save(exec_path)
+
+        dispatched: list[object] = []
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=exec_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_verify_state_path",
+                return_value=tmp_path / "verify-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow._dispatch_event",
+                side_effect=lambda event, context="": dispatched.append(event),
+            ),
+        ):
+            result = runner.invoke(get_app(), ["verify"])
+
+        assert result.exit_code == 0
+        event_types = [type(e) for e in dispatched]
+        assert WorkflowVerifyStartEvent in event_types
+        assert WorkflowVerifyCompleteEvent in event_types
+
 
 class TestWorkflowShip:
     """Tests for workflow ship command."""
@@ -193,6 +233,35 @@ class TestWorkflowShip:
 
         assert result.exit_code == 0
         assert "Shipping to" in result.stdout
+
+    def test_ship_dispatches_start_and_complete_events(self, tmp_path: Path) -> None:
+        from src.application.services.orchestration.events import (
+            WorkflowShipCompleteEvent,
+            WorkflowShipStartEvent,
+        )
+
+        verify_state = VerifyState(session_id="test-verify", unlock_ship=True)
+        verify_path = tmp_path / "verify-state.json"
+        verify_state.save(verify_path)
+
+        dispatched: list[object] = []
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_verify_state_path",
+                return_value=verify_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow._dispatch_event",
+                side_effect=lambda event, context="": dispatched.append(event),
+            ),
+        ):
+            result = runner.invoke(get_app(), ["ship"])
+
+        assert result.exit_code == 0
+        event_types = [type(e) for e in dispatched]
+        assert WorkflowShipStartEvent in event_types
+        assert WorkflowShipCompleteEvent in event_types
 
 
 class TestWorkflowStatus:

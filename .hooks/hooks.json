@@ -57,6 +57,62 @@
           }
         ]
       }
+    ],
+    "WorkflowOutlineStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
+    ],
+    "WorkflowExecuteStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
+    ],
+    "WorkflowVerifyStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
+    ],
+    "WorkflowShipStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".hooks/workflow-event-handler.sh",
+            "timeout": 5,
+            "critical": false,
+            "on_failure": "continue"
+          }
+        ]
+      }
     ]
   }
 }
