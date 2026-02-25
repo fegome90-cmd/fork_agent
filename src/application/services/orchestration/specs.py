@@ -12,6 +12,26 @@ from src.domain.ports.event_ports import Event
 
 logger = logging.getLogger(__name__)
 
+# Explicit mapping from event type name (without "Event" suffix) to its primary match field.
+# Used by RegexMatcherSpec to avoid non-deterministic isinstance chain ordering.
+_EVENT_FIELD_EXTRACTORS: dict[str, str] = {
+    "UserCommand": "command_name",
+    "FileWritten": "path",
+    "ToolPreExecution": "tool_name",
+    "SessionStart": "session_id",
+    "SubagentStart": "agent_name",
+    "SubagentStop": "agent_name",
+    "WorkflowPhaseChange": "plan_id",
+    "WorkflowOutlineStart": "plan_id",
+    "WorkflowOutlineComplete": "plan_id",
+    "WorkflowExecuteStart": "plan_id",
+    "WorkflowExecuteComplete": "plan_id",
+    "WorkflowVerifyStart": "plan_id",
+    "WorkflowVerifyComplete": "plan_id",
+    "WorkflowShipStart": "plan_id",
+    "WorkflowShipComplete": "plan_id",
+}
+
 
 @runtime_checkable
 class _HasPlanId(Protocol):
@@ -151,9 +171,14 @@ class RegexMatcherSpec:
         """Compiled regex pattern with error handling."""
         try:
             return re.compile(self.matcher)
-        except re.error:
-            logger.warning("Invalid regex pattern '%s', using match-all", self.matcher)
-            return re.compile(".*")
+        except re.error as exc:
+            logger.warning(
+                "Invalid regex pattern '%s' for event_type '%s': %s. Disabling this matcher.",
+                self.matcher,
+                self.event_type,
+                exc,
+            )
+            return re.compile(r"(?!x)x")
 
     def is_satisfied_by(self, event: Event) -> bool:
         """Check if event matches the type and pattern.
@@ -168,7 +193,15 @@ class RegexMatcherSpec:
         if event_type_name != self.event_type:
             return False
 
-        # Use protocol-based matching to extract the relevant field
+        # Use explicit field mapping to avoid non-deterministic isinstance chain ordering
+        field_name = _EVENT_FIELD_EXTRACTORS.get(event_type_name)
+        if field_name is not None:
+            value = getattr(event, field_name, None)
+            if value is not None:
+                return bool(self._pattern.search(str(value)))
+            return False
+
+        # Fallback to Protocol-based matching for unknown event types
         if isinstance(event, _HasPlanId):
             return bool(self._pattern.search(event.plan_id))
         if isinstance(event, _HasSessionId):

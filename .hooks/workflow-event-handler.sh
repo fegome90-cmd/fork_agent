@@ -9,9 +9,9 @@ LOG_DIR=".claude/traces"
 LOG_FILE="${LOG_DIR}/workflow-events.log"
 TIMEOUT_SECONDS=5
 
-# Validate arguments
-EVENT_TYPE="${1:-unknown}"
-PLAN_ID="${2:-no-plan-id}"
+# Read event data from environment variables (set by hook system)
+EVENT_TYPE="${EVENT_TYPE:-unknown}"
+PLAN_ID="${PLAN_ID:-no-plan-id}"
 
 # Ensure log directory exists
 if ! mkdir -p "${LOG_DIR}" 2>/dev/null; then
