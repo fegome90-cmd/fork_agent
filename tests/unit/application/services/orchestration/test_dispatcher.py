@@ -8,12 +8,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
-import pytest
-
-from src.domain.ports.event_ports import Action, Event
+from src.domain.ports.event_ports import Event
 
 if TYPE_CHECKING:
-    from src.domain.entities.rule import Rule
+    pass
 
 
 class MockEvent:

@@ -1,7 +1,8 @@
 """Pytest configuration and fixtures."""
 
 import pytest
-from src.domain.entities.terminal import TerminalConfig, TerminalResult, PlatformType
+
+from src.domain.entities.terminal import PlatformType, TerminalConfig, TerminalResult
 
 
 @pytest.fixture

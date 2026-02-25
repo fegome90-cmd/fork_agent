@@ -49,7 +49,7 @@ class TestISpecification:
         """is_satisfied_by should accept Event parameter."""
 
         class ConcreteSpec:
-            def is_satisfied_by(self, event: Event) -> bool:
+            def is_satisfied_by(self, event: Event) -> bool:  # noqa: ARG002
                 return True
 
         spec = ConcreteSpec()
@@ -82,7 +82,7 @@ class TestRuleEntity:
         """Should create Rule with spec and action."""
 
         class DummySpec:
-            def is_satisfied_by(self, event: Event) -> bool:
+            def is_satisfied_by(self, event: Event) -> bool:  # noqa: ARG002
                 return True
 
         class DummyAction:
@@ -102,7 +102,7 @@ class TestRuleEntity:
         from src.domain.entities.rule import Rule
 
         class DummySpec:
-            def is_satisfied_by(self, event: Event) -> bool:
+            def is_satisfied_by(self, event: Event) -> bool:  # noqa: ARG002
                 return True
 
         class DummyAction:
@@ -128,7 +128,7 @@ class TestRuleEntity:
         from src.domain.entities.rule import Rule
 
         class DummySpec:
-            def is_satisfied_by(self, event: Event) -> bool:
+            def is_satisfied_by(self, event: Event) -> bool:  # noqa: ARG002
                 return True
 
         with pytest.raises(ValueError, match="action cannot be None"):
@@ -139,7 +139,7 @@ class TestRuleEntity:
         from src.domain.entities.rule import Rule
 
         class DummySpec:
-            def is_satisfied_by(self, event: Event) -> bool:
+            def is_satisfied_by(self, event: Event) -> bool:  # noqa: ARG002
                 return True
 
         class DummyAction:

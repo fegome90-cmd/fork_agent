@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 
 from src.interfaces.cli.messaging_commands import message, run_messaging_cli
@@ -26,13 +25,11 @@ class TestMessageGroup:
 class TestMessageSend:
     """Tests for message send command."""
 
-    def test_send_message_basic(self, tmp_path: Path) -> None:
+    def test_send_message_basic(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should send a message to a specific agent."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.send.return_value = True
             mock_create.return_value = mock_messenger
@@ -45,13 +42,11 @@ class TestMessageSend:
         assert result.exit_code == 0
         assert "sent" in result.output.lower() or "success" in result.output.lower()
 
-    def test_send_message_shows_error_on_failure(self, tmp_path: Path) -> None:
+    def test_send_message_shows_error_on_failure(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should show error message if send fails."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.send.return_value = False
             mock_create.return_value = mock_messenger
@@ -67,13 +62,11 @@ class TestMessageSend:
 class TestMessageBroadcast:
     """Tests for message broadcast command."""
 
-    def test_broadcast_message(self, tmp_path: Path) -> None:
+    def test_broadcast_message(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should broadcast message to all sessions."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.broadcast.return_value = 3
             mock_create.return_value = mock_messenger
@@ -86,13 +79,11 @@ class TestMessageBroadcast:
         assert result.exit_code == 0
         assert "3" in result.output  # Shows count of messages sent
 
-    def test_broadcast_shows_zero_when_no_sessions(self, tmp_path: Path) -> None:
+    def test_broadcast_shows_zero_when_no_sessions(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should show 0 when no sessions available."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.broadcast.return_value = 0
             mock_create.return_value = mock_messenger
@@ -109,13 +100,11 @@ class TestMessageBroadcast:
 class TestMessageList:
     """Tests for message list command."""
 
-    def test_list_messages_empty(self, tmp_path: Path) -> None:
+    def test_list_messages_empty(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should show message when no messages exist."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.store.get_for_agent.return_value = []
             mock_create.return_value = mock_messenger
@@ -129,13 +118,11 @@ class TestMessageList:
         # Shows "(0)" when no messages
         assert "(0)" in result.output or "no messages" in result.output.lower()
 
-    def test_list_messages_with_limit(self, tmp_path: Path) -> None:
+    def test_list_messages_with_limit(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should pass limit option to store."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.store.get_for_agent.return_value = []
             mock_create.return_value = mock_messenger
@@ -151,7 +138,7 @@ class TestMessageList:
 class TestMessageHistory:
     """Tests for message history command."""
 
-    def test_history_shows_sent_and_received(self, tmp_path: Path) -> None:
+    def test_history_shows_sent_and_received(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should show both sent and received messages."""
         from src.domain.entities.message import AgentMessage, MessageType
 
@@ -170,9 +157,7 @@ class TestMessageHistory:
             payload="reply msg",
         )
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.get_history.return_value = [sent, received]
             mock_create.return_value = mock_messenger
@@ -185,7 +170,7 @@ class TestMessageHistory:
         assert result.exit_code == 0
         mock_messenger.get_history.assert_called_once()
 
-    def test_history_with_limit(self, tmp_path: Path) -> None:
+    def test_history_with_limit(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should respect limit option."""
         from src.domain.entities.message import AgentMessage, MessageType
 
@@ -198,9 +183,7 @@ class TestMessageHistory:
             payload="test",
         )
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.get_history.return_value = [msg]
             mock_create.return_value = mock_messenger
@@ -216,13 +199,11 @@ class TestMessageHistory:
         assert call_args[0][0] == "agent1:0"
         assert call_args[1]["limit"] == 20
 
-    def test_history_shows_empty_message(self, tmp_path: Path) -> None:
+    def test_history_shows_empty_message(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Should show message when no history found."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.get_history.return_value = []
             mock_create.return_value = mock_messenger
@@ -253,9 +234,7 @@ class TestSendErrorHandler:
         """Should exit 1 and show error when exception raised."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_create.side_effect = RuntimeError("connection failed")
 
             result = runner.invoke(
@@ -274,9 +253,7 @@ class TestBroadcastErrorHandler:
         """Should exit 1 and show error when exception raised."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_create.side_effect = RuntimeError("tmux unavailable")
 
             result = runner.invoke(
@@ -304,9 +281,7 @@ class TestListWithoutAgent:
             payload="test payload content",
         )
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.store.get_for_agent.return_value = [msg]
             mock_create.return_value = mock_messenger
@@ -325,9 +300,7 @@ class TestListWithoutAgent:
         """Should show 'No recent messages' when no messages and no agent."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.store.get_for_agent.return_value = []
             mock_create.return_value = mock_messenger
@@ -357,9 +330,7 @@ class TestListWithAgentMessages:
             payload="do the thing",
         )
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.get_messages.return_value = [msg]
             mock_create.return_value = mock_messenger
@@ -388,9 +359,7 @@ class TestListWithAgentMessages:
             payload=long_payload,
         )
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_messenger = MagicMock()
             mock_messenger.get_messages.return_value = [msg]
             mock_create.return_value = mock_messenger
@@ -411,9 +380,7 @@ class TestListErrorHandler:
         """Should exit 1 and show error when exception raised."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_create.side_effect = RuntimeError("db error")
 
             result = runner.invoke(
@@ -432,9 +399,7 @@ class TestHistoryErrorHandler:
         """Should exit 1 and show error when exception raised."""
         runner = CliRunner()
 
-        with patch(
-            "src.interfaces.cli.messaging_commands._create_messenger"
-        ) as mock_create:
+        with patch("src.interfaces.cli.messaging_commands._create_messenger") as mock_create:
             mock_create.side_effect = RuntimeError("store unavailable")
 
             result = runner.invoke(

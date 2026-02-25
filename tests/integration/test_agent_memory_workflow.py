@@ -9,7 +9,6 @@ import pytest
 from src.application.services.memory_service import MemoryService
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import create_command
-from src.domain.entities.message import MessageType
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.persistence.migrations import run_migrations
@@ -129,7 +128,7 @@ class TestAgentMemoryWorkflow:
             metadata={"agent": "agent-1", "phase": "analysis"},
         )
 
-        obs2 = memory_service.save(
+        memory_service.save(
             content="Confirmo las vulnerabilidades - prioridad alta",
             metadata={"agent": "agent-2", "phase": "review"},
         )

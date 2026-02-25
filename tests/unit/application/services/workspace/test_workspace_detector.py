@@ -101,11 +101,11 @@ class TestWorkspaceDetectorDetect:
         assert workspace is None
 
     def test_detect_returns_none_on_path_resolve_error(
-        self, workspace_detector: WorkspaceDetector, mock_git_executor: MagicMock
+        self, workspace_detector: WorkspaceDetector, mock_git_executor: MagicMock  # noqa: ARG002
     ) -> None:
         test_path = Path("/invalid/path")
 
-        def mock_resolve_err(self: Path) -> Path:
+        def mock_resolve_err(self: Path) -> Path:  # noqa: ARG001
             raise OSError("Cannot resolve path")
 
         with patch.object(Path, "resolve", mock_resolve_err):
@@ -169,9 +169,11 @@ class TestWorkspaceDetectorDetect:
                 raise OSError("Path error")
             return str(self).startswith(str(other) + "/")
 
-        with patch.object(Path, "resolve", mock_resolve):
-            with patch.object(Path, "is_relative_to", mock_is_relative_to_err):
-                workspace = workspace_detector.detect(test_path)
+        with (
+            patch.object(Path, "resolve", mock_resolve),
+            patch.object(Path, "is_relative_to", mock_is_relative_to_err),
+        ):
+            workspace = workspace_detector.detect(test_path)
 
         assert workspace is not None
         assert workspace.name == "feature"
@@ -277,9 +279,11 @@ class TestWorkspaceDetectorDetectLayout:
                 return False
             return str(self).startswith(str(other) + "/")
 
-        with patch.object(Path, "resolve", lambda self: self):
-            with patch.object(Path, "is_relative_to", mock_is_relative_to_outer):
-                layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        with (
+            patch.object(Path, "resolve", lambda self: self),
+            patch.object(Path, "is_relative_to", mock_is_relative_to_outer),
+        ):
+            layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.OUTER_NESTED
 
@@ -296,9 +300,11 @@ class TestWorkspaceDetectorDetectLayout:
                 return False
             return str(self).startswith(str(other) + "/")
 
-        with patch.object(Path, "resolve", lambda self: self):
-            with patch.object(Path, "is_relative_to", mock_is_relative_to):
-                layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        with (
+            patch.object(Path, "resolve", lambda self: self),
+            patch.object(Path, "is_relative_to", mock_is_relative_to),
+        ):
+            layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.SIBLING
 
@@ -308,9 +314,11 @@ class TestWorkspaceDetectorDetectLayout:
         worktree_path = Path("/some/other/location/feature")
         repo_root = Path("/test/repo")
 
-        with patch.object(Path, "resolve", lambda self: self):
-            with patch.object(Path, "is_relative_to", lambda self, other: False):
-                layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        with (
+            patch.object(Path, "resolve", lambda self: self),
+            patch.object(Path, "is_relative_to", lambda _self, _other: False),
+        ):
+            layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.NESTED
 
@@ -322,19 +330,21 @@ class TestWorkspaceDetectorDetectLayout:
 
         call_count = 0
 
-        def mock_resolve_err(self: Path) -> Path:
+        def mock_resolve_err(self: Path) -> Path:  # noqa: ARG001
             raise OSError("Cannot resolve")
 
-        def mock_is_relative_to(self: Path, other: Path) -> bool:
+        def mock_is_relative_to(self: Path, other: Path) -> bool:  # noqa: ARG001
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise OSError("Path error")
             return True
 
-        with patch.object(Path, "resolve", mock_resolve_err):
-            with patch.object(Path, "is_relative_to", mock_is_relative_to):
-                layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        with (
+            patch.object(Path, "resolve", mock_resolve_err),
+            patch.object(Path, "is_relative_to", mock_is_relative_to),
+        ):
+            layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.NESTED
 

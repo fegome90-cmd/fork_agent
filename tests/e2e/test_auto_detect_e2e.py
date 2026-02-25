@@ -8,10 +8,7 @@ Tests:
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
-
-import pytest
 
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 
@@ -123,7 +120,7 @@ class TestAutoDetectE2E:
     def test_detect_workspace_after_changing_to_directory(
         self,
         workspace_manager: WorkspaceManager,
-        git_repo: Path,
+        git_repo: Path,  # noqa: ARG002
     ) -> None:
         """Test detection after changing to workspace directory (simulating cd)."""
         # Create workspace

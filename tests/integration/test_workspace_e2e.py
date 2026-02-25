@@ -9,16 +9,13 @@ These tests verify:
 from __future__ import annotations
 
 import subprocess
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from src.application.services.workspace.entities import (
-    HookResult,
     LayoutType,
     WorkspaceConfig,
-    Workspace,
 )
 from src.application.services.workspace.hook_runner import HookRunner
 from src.application.services.workspace.workspace_manager import WorkspaceManager
@@ -81,27 +78,27 @@ class TestWorkspaceE2E:
         return hooks_dir
 
     @pytest.fixture
-    def setup_hook(self, hooks_dir: Path, git_repo: Path) -> Path:
+    def setup_hook(self, hooks_dir: Path, git_repo: Path) -> Path:  # noqa: ARG002
         """Create a setup hook script."""
         hook_path = hooks_dir / "setup.sh"
         hook_path.write_text(
             "#!/bin/bash\n"
             "WORKSPACE_PATH=$1\n"
-            "echo \"Setup hook running for: $WORKSPACE_PATH\" > \"$WORKSPACE_PATH/.setup_log\"\n"
-            "echo \"Workspace: $WORKSPACE_PATH\" >> \"$WORKSPACE_PATH/.setup_log\"\n"
+            'echo "Setup hook running for: $WORKSPACE_PATH" > "$WORKSPACE_PATH/.setup_log"\n'
+            'echo "Workspace: $WORKSPACE_PATH" >> "$WORKSPACE_PATH/.setup_log"\n'
             "exit 0\n"
         )
         hook_path.chmod(0o755)
         return hook_path
 
     @pytest.fixture
-    def teardown_hook(self, hooks_dir: Path, git_repo: Path) -> Path:
+    def teardown_hook(self, hooks_dir: Path, git_repo: Path) -> Path:  # noqa: ARG002
         """Create a teardown hook script."""
         hook_path = hooks_dir / "teardown.sh"
         hook_path.write_text(
             "#!/bin/bash\n"
             "WORKSPACE_PATH=$1\n"
-            "echo \"Teardown hook running for: $WORKSPACE_PATH\" > \"$WORKSPACE_PATH/.teardown_log\"\n"
+            'echo "Teardown hook running for: $WORKSPACE_PATH" > "$WORKSPACE_PATH/.teardown_log"\n'
             "exit 0\n"
         )
         hook_path.chmod(0o755)
@@ -147,8 +144,8 @@ class TestWorkspaceCreationWithHooks(TestWorkspaceE2E):
     def test_create_workspace_with_setup_hook(
         self,
         workspace_manager: WorkspaceManager,
-        git_repo: Path,
-        setup_hook: Path,
+        git_repo: Path,  # noqa: ARG002
+        setup_hook: Path,  # noqa: ARG002
     ) -> None:
         """Test complete workspace creation with setup hook."""
         # Create workspace
@@ -186,7 +183,7 @@ class TestWorkspaceCreationWithHooks(TestWorkspaceE2E):
     def test_create_workspace_with_custom_layout(
         self,
         workspace_manager: WorkspaceManager,
-        git_repo: Path,
+        git_repo: Path,  # noqa: ARG002
     ) -> None:
         """Test workspace creation with custom layout."""
         workspace = workspace_manager.create_workspace(
@@ -204,8 +201,8 @@ class TestWorkspaceRemovalWithHooks(TestWorkspaceE2E):
     def test_remove_workspace_with_teardown_hook(
         self,
         workspace_manager: WorkspaceManager,
-        git_repo: Path,
-        teardown_hook: Path,
+        git_repo: Path,  # noqa: ARG002
+        teardown_hook: Path,  # noqa: ARG002
     ) -> None:
         """Test workspace removal with teardown hook."""
         # First create a workspace
@@ -235,7 +232,7 @@ class TestWorkspaceRemovalWithHooks(TestWorkspaceE2E):
     def test_remove_workspace_with_uncommitted_changes(
         self,
         workspace_manager: WorkspaceManager,
-        git_repo: Path,
+        git_repo: Path,  # noqa: ARG002
     ) -> None:
         """Test removing workspace with uncommitted changes requires force."""
         from src.application.services.workspace.exceptions import (
@@ -264,7 +261,7 @@ class TestListWorkspaces(TestWorkspaceE2E):
     """Tests for listing workspaces."""
 
     def test_list_workspaces_after_creation(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test list workspaces after creation."""
         # Initially empty (only main repo)
@@ -280,7 +277,7 @@ class TestListWorkspaces(TestWorkspaceE2E):
         assert any(wt.name == "list-test-1" for wt in worktrees)
 
     def test_list_multiple_workspaces(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test listing multiple workspaces."""
         # Create multiple workspaces
@@ -298,10 +295,10 @@ class TestListWorkspaces(TestWorkspaceE2E):
         assert "multi-3" in names
 
     def test_list_workspaces_includes_details(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test that list includes correct workspace details."""
-        workspace = workspace_manager.create_workspace("detail-test")
+        workspace_manager.create_workspace("detail-test")
 
         worktrees = workspace_manager.list_workspaces()
         found = next(wt for wt in worktrees if wt.name == "detail-test")
@@ -317,9 +314,9 @@ class TestFullWorkflowE2E(TestWorkspaceE2E):
     def test_full_create_list_remove_workflow(
         self,
         workspace_manager: WorkspaceManager,
-        git_repo: Path,
-        setup_hook: Path,
-        teardown_hook: Path,
+        git_repo: Path,  # noqa: ARG002
+        setup_hook: Path,  # noqa: ARG002
+        teardown_hook: Path,  # noqa: ARG002
     ) -> None:
         """Test complete workflow: create, list, remove."""
         # Step 1: Create workspace

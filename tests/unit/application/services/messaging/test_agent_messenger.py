@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import FORK_MSG_PREFIX
@@ -145,17 +143,29 @@ class TestAgentMessengerBroadcast:
         mock_orchestrator.get_sessions.return_value = [
             TmuxSession(
                 name="agent1",
-                windows=(TmuxWindow(session_name="agent1", window_index=0, window_name="main", active=True),),
+                windows=(
+                    TmuxWindow(
+                        session_name="agent1", window_index=0, window_name="main", active=True
+                    ),
+                ),
                 attached=False,
             ),
             TmuxSession(
                 name="agent2",
-                windows=(TmuxWindow(session_name="agent2", window_index=0, window_name="main", active=True),),
+                windows=(
+                    TmuxWindow(
+                        session_name="agent2", window_index=0, window_name="main", active=True
+                    ),
+                ),
                 attached=False,
             ),
             TmuxSession(
                 name="agent3",
-                windows=(TmuxWindow(session_name="agent3", window_index=0, window_name="main", active=True),),
+                windows=(
+                    TmuxWindow(
+                        session_name="agent3", window_index=0, window_name="main", active=True
+                    ),
+                ),
                 attached=False,
             ),
         ]
@@ -169,7 +179,7 @@ class TestAgentMessengerBroadcast:
 
     def test_broadcast_uses_star_target(self, tmp_path: Path) -> None:
         """Broadcast should store messages for each target."""
-        from src.infrastructure.tmux_orchestrator import TmuxWindow, TmuxSession
+        from src.infrastructure.tmux_orchestrator import TmuxSession, TmuxWindow
 
         mock_orchestrator = MagicMock()
         mock_orchestrator.send_message.return_value = True

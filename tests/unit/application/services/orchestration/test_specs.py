@@ -5,8 +5,6 @@ TDD Red Phase - Tests written before implementation.
 
 from __future__ import annotations
 
-import pytest
-
 from src.application.services.orchestration.events import (
     FileWrittenEvent,
     ToolPreExecutionEvent,
@@ -166,8 +164,8 @@ class TestRegexMatcherSpec:
 
     def test_matches_session_start_by_id(self) -> None:
         """Should match SessionStartEvent by session_id."""
-        from src.application.services.orchestration.specs import RegexMatcherSpec
         from src.application.services.orchestration.events import SessionStartEvent
+        from src.application.services.orchestration.specs import RegexMatcherSpec
 
         spec = RegexMatcherSpec(event_type="SessionStart", matcher="session-.*")
         event = SessionStartEvent(session_id="session-123")
@@ -176,8 +174,8 @@ class TestRegexMatcherSpec:
 
     def test_matches_subagent_start_by_name(self) -> None:
         """Should match SubagentStartEvent by agent_name."""
-        from src.application.services.orchestration.specs import RegexMatcherSpec
         from src.application.services.orchestration.events import SubagentStartEvent
+        from src.application.services.orchestration.specs import RegexMatcherSpec
 
         spec = RegexMatcherSpec(event_type="SubagentStart", matcher="agent-.*")
         event = SubagentStartEvent(agent_name="agent-test")
@@ -186,8 +184,8 @@ class TestRegexMatcherSpec:
 
     def test_matches_subagent_stop_by_name(self) -> None:
         """Should match SubagentStopEvent by agent_name."""
-        from src.application.services.orchestration.specs import RegexMatcherSpec
         from src.application.services.orchestration.events import SubagentStopEvent
+        from src.application.services.orchestration.specs import RegexMatcherSpec
 
         spec = RegexMatcherSpec(event_type="SubagentStop", matcher="agent-.*")
         event = SubagentStopEvent(agent_name="agent-test")

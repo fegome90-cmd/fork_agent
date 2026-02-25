@@ -1,6 +1,6 @@
 """Unit tests for terminal spawner service."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,9 +10,9 @@ from src.application.services.terminal.terminal_spawner import (
     TerminalSpawnerImpl,
 )
 from src.domain.entities.terminal import (
+    PlatformType,
     TerminalConfig,
     TerminalResult,
-    PlatformType,
 )
 from src.domain.exceptions.terminal import TerminalNotFoundError
 
@@ -99,7 +99,7 @@ class TestTerminalSpawnerImpl:
             return None
 
         mock_which.side_effect = which_side_effect
-        mock_uuid.return_value = MagicMock(__str__=lambda self: "test-uuid-1234")
+        mock_uuid.return_value = MagicMock(__str__=lambda _: "test-uuid-1234")
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
@@ -129,7 +129,7 @@ class TestTerminalSpawnerImpl:
         self, mock_uuid: MagicMock, mock_which: MagicMock
     ) -> None:
         mock_which.return_value = "/usr/bin/tmux"
-        mock_uuid.return_value = MagicMock(__str__=lambda self: "abc12345")
+        mock_uuid.return_value = MagicMock(__str__=lambda _: "abc12345")
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)

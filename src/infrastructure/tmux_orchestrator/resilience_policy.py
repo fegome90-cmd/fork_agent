@@ -40,7 +40,13 @@ def create_policy(
     half_open_max_calls: int | None = None,
 ) -> ResiliencePolicy:
     return ResiliencePolicy(
-        failure_threshold=failure_threshold if failure_threshold is not None else DEFAULT_POLICY.failure_threshold,
-        recovery_timeout_seconds=recovery_timeout_seconds if recovery_timeout_seconds is not None else DEFAULT_POLICY.recovery_timeout_seconds,
-        half_open_max_calls=half_open_max_calls if half_open_max_calls is not None else DEFAULT_POLICY.half_open_max_calls,
+        failure_threshold=failure_threshold
+        if failure_threshold is not None
+        else DEFAULT_POLICY.failure_threshold,
+        recovery_timeout_seconds=recovery_timeout_seconds
+        if recovery_timeout_seconds is not None
+        else DEFAULT_POLICY.recovery_timeout_seconds,
+        half_open_max_calls=half_open_max_calls
+        if half_open_max_calls is not None
+        else DEFAULT_POLICY.half_open_max_calls,
     )

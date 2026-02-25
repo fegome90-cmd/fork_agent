@@ -198,10 +198,6 @@ task(category="explore", model="free", ...)
 task(category="explore", model="sonnet", ...)
 ```
 
-#RN|Verificar siempre antes de invocar subagentes que el modelo sea "free".
-#QQ|
-RN|Verificar siempre antes de invocar subagentes que el modelo sea "free".
-
 ## fork_agent - Orquestación Multi-Modelo
 
 Este proyecto usa fork_agent para orquestar múltiples sesiones de AI.
@@ -232,13 +228,6 @@ Consulta `.claude/skills/fork_terminal/cookbook/modelos.md` para guía completa.
 Al finalizar, SIEMPRE ejecutar en PARALELO:
 
 ```bash
-# 1. Guardar handoff humano
-/fork-checkpoint
-
-# 2. Guardar contexto machine-readable
-cm-save <nombre>
-```
-
 # 1. Guardar handoff humano
 /fork-checkpoint
 

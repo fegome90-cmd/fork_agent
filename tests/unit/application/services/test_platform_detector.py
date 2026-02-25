@@ -62,9 +62,7 @@ class TestPlatformDetectorInterface:
         assert isinstance(result, PlatformType)
 
     @patch("platform.system")
-    def test_detect_returns_valid_platform_name(
-        self, mock_system: MagicMock
-    ) -> None:
+    def test_detect_returns_valid_platform_name(self, mock_system: MagicMock) -> None:
         """Test that detect returns valid platform type."""
         valid_platforms = [PlatformType.DARWIN, PlatformType.LINUX, PlatformType.WINDOWS]
         mock_system.return_value = "Linux"

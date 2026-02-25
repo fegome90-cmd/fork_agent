@@ -4,9 +4,7 @@ TDD Red Phase: These tests define the expected behavior BEFORE implementation.
 """
 
 import sqlite3
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -95,7 +93,7 @@ class TestDatabaseConnection:
 
         config = DatabaseConfig(db_path=db_path)
 
-        with DatabaseConnection(config) as conn:
+        with DatabaseConnection(config):
             # Just connecting should create the file
             pass
 
@@ -176,10 +174,9 @@ class TestDatabaseConnection:
             conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY)")
 
         # Try to insert and raise exception
-        with pytest.raises(ValueError):
-            with DatabaseConnection(config) as conn:
-                conn.execute("INSERT INTO test VALUES (1)")
-                raise ValueError("Simulated error")
+        with pytest.raises(ValueError), DatabaseConnection(config) as conn:
+            conn.execute("INSERT INTO test VALUES (1)")
+            raise ValueError("Simulated error")
 
         # Data should not have been committed
         with DatabaseConnection(config) as conn:
@@ -222,12 +219,11 @@ class TestDatabaseConnectionFactories:
         conn1 = DatabaseConnection.create_in_memory()
         conn2 = DatabaseConnection.create_in_memory()
 
-        with conn1 as c1:
+        with conn1 as c1, conn2 as c2:
             c1.execute("CREATE TABLE test (id INTEGER)")
             c1.execute("INSERT INTO test VALUES (1)")
 
-        # conn2 should not see conn1's data (separate in-memory DB)
-        with conn2 as c2:
+            # conn2 should not see conn1's data (separate in-memory DB)
             # Table shouldn't exist in conn2's database
             with pytest.raises(sqlite3.OperationalError):
                 c2.execute("SELECT * FROM test")

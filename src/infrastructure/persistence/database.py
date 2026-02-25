@@ -10,7 +10,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, field_validator
 
-
 _thread_local = threading.local()
 
 

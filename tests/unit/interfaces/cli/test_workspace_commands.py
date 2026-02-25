@@ -9,7 +9,6 @@ from click.testing import CliRunner
 
 from src.interfaces.cli import workspace_commands
 
-
 runner = CliRunner()
 
 
@@ -166,7 +165,9 @@ class TestRemoveWorkspace:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
 
-            result = runner.invoke(workspace_commands.workspace, ["remove", "test-workspace", "--yes"])
+            result = runner.invoke(
+                workspace_commands.workspace, ["remove", "test-workspace", "--yes"]
+            )
 
             assert result.exit_code == 0
             assert "removed successfully" in result.output
@@ -191,7 +192,9 @@ class TestRemoveWorkspace:
             mock_manager.remove_workspace.side_effect = WorkspaceNotCleanError("not clean")
             mock_manager_class.return_value = mock_manager
 
-            result = runner.invoke(workspace_commands.workspace, ["remove", "test-workspace", "--yes"])
+            result = runner.invoke(
+                workspace_commands.workspace, ["remove", "test-workspace", "--yes"]
+            )
 
             assert result.exit_code == 1
             assert "--force" in result.output
@@ -204,7 +207,9 @@ class TestRemoveWorkspace:
             mock_manager.remove_workspace.side_effect = GitError("git failed")
             mock_manager_class.return_value = mock_manager
 
-            result = runner.invoke(workspace_commands.workspace, ["remove", "test-workspace", "--yes"])
+            result = runner.invoke(
+                workspace_commands.workspace, ["remove", "test-workspace", "--yes"]
+            )
 
             assert result.exit_code == 1
 
@@ -238,94 +243,105 @@ class TestEnterWorkspace:
             assert "/path/to/workspace" in result.output
 
     def test_enter_workspace_with_spawn_tmux(self) -> None:
-        with patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class:
-            with patch("shutil.which") as mock_which:
-                with patch("subprocess.Popen") as mock_popen:
-                    mock_manager = MagicMock()
-                    mock_ws = MagicMock()
-                    mock_ws.path = "/path/to/workspace"
-                    mock_manager.start_workspace.return_value = mock_ws
-                    mock_manager_class.return_value = mock_manager
-                    mock_which.return_value = "/usr/bin/tmux"
+        with (
+            patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class,
+            patch("shutil.which") as mock_which,
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            mock_manager = MagicMock()
+            mock_ws = MagicMock()
+            mock_ws.path = "/path/to/workspace"
+            mock_manager.start_workspace.return_value = mock_ws
+            mock_manager_class.return_value = mock_manager
+            mock_which.return_value = "/usr/bin/tmux"
 
-                    result = runner.invoke(
-                        workspace_commands.workspace, ["enter", "test-workspace", "--spawn-terminal"]
-                    )
+            result = runner.invoke(
+                workspace_commands.workspace,
+                ["enter", "test-workspace", "--spawn-terminal"],
+            )
 
-                    assert result.exit_code == 0
-                    mock_popen.assert_called_once()
+            assert result.exit_code == 0
+            mock_popen.assert_called_once()
 
     def test_enter_workspace_spawn_no_terminal(self) -> None:
-        with patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class:
-            with patch("shutil.which") as mock_which:
-                mock_manager = MagicMock()
-                mock_ws = MagicMock()
-                mock_ws.path = "/path/to/workspace"
-                mock_manager.start_workspace.return_value = mock_ws
-                mock_manager_class.return_value = mock_manager
-                mock_which.return_value = None
+        with (
+            patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class,
+            patch("shutil.which") as mock_which,
+        ):
+            mock_manager = MagicMock()
+            mock_ws = MagicMock()
+            mock_ws.path = "/path/to/workspace"
+            mock_manager.start_workspace.return_value = mock_ws
+            mock_manager_class.return_value = mock_manager
+            mock_which.return_value = None
 
-                result = runner.invoke(
-                    workspace_commands.workspace, ["enter", "test-workspace", "--spawn-terminal"]
-                )
+            result = runner.invoke(
+                workspace_commands.workspace, ["enter", "test-workspace", "--spawn-terminal"]
+            )
 
-                assert result.exit_code == 0
-                assert "No terminal emulator found" in result.output
+            assert result.exit_code == 0
+            assert "No terminal emulator found" in result.output
 
     def test_enter_workspace_spawn_darwin_open(self) -> None:
-        with patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class:
-            with patch("shutil.which") as mock_which:
-                with patch("subprocess.Popen") as mock_popen:
-                    with patch("sys.platform", "darwin"):
-                        mock_manager = MagicMock()
-                        mock_ws = MagicMock()
-                        mock_ws.path = "/path/to/workspace"
-                        mock_manager.start_workspace.return_value = mock_ws
-                        mock_manager_class.return_value = mock_manager
+        with (
+            patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class,
+            patch("shutil.which") as mock_which,
+            patch("subprocess.Popen") as mock_popen,
+            patch("sys.platform", "darwin"),
+        ):
+            mock_manager = MagicMock()
+            mock_ws = MagicMock()
+            mock_ws.path = "/path/to/workspace"
+            mock_manager.start_workspace.return_value = mock_ws
+            mock_manager_class.return_value = mock_manager
 
-                        def which_side_effect(cmd):
-                            if cmd == "tmux":
-                                return None
-                            if cmd == "open":
-                                return "/usr/bin/open"
-                            return None
+            def which_side_effect(cmd):
+                if cmd == "tmux":
+                    return None
+                if cmd == "open":
+                    return "/usr/bin/open"
+                return None
 
-                        mock_which.side_effect = which_side_effect
+            mock_which.side_effect = which_side_effect
 
-                        result = runner.invoke(
-                            workspace_commands.workspace, ["enter", "test-workspace", "--spawn-terminal"]
-                        )
+            result = runner.invoke(
+                workspace_commands.workspace,
+                ["enter", "test-workspace", "--spawn-terminal"],
+            )
 
-                        assert result.exit_code == 0
-                        mock_popen.assert_called_once()
+            assert result.exit_code == 0
+            mock_popen.assert_called_once()
 
     def test_enter_workspace_spawn_gnome(self) -> None:
-        with patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class:
-            with patch("shutil.which") as mock_which:
-                with patch("subprocess.Popen") as mock_popen:
-                    mock_manager = MagicMock()
-                    mock_ws = MagicMock()
-                    mock_ws.path = "/path/to/workspace"
-                    mock_manager.start_workspace.return_value = mock_ws
-                    mock_manager_class.return_value = mock_manager
+        with (
+            patch.object(workspace_commands, "_create_workspace_manager") as mock_manager_class,
+            patch("shutil.which") as mock_which,
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            mock_manager = MagicMock()
+            mock_ws = MagicMock()
+            mock_ws.path = "/path/to/workspace"
+            mock_manager.start_workspace.return_value = mock_ws
+            mock_manager_class.return_value = mock_manager
 
-                    def which_side_effect(cmd):
-                        if cmd == "tmux":
-                            return None
-                        if cmd == "open":
-                            return None
-                        if cmd == "gnome-terminal":
-                            return "/usr/bin/gnome-terminal"
-                        return None
+            def which_side_effect(cmd):
+                if cmd == "tmux":
+                    return None
+                if cmd == "open":
+                    return None
+                if cmd == "gnome-terminal":
+                    return "/usr/bin/gnome-terminal"
+                return None
 
-                    mock_which.side_effect = which_side_effect
+            mock_which.side_effect = which_side_effect
 
-                    result = runner.invoke(
-                        workspace_commands.workspace, ["enter", "test-workspace", "--spawn-terminal"]
-                    )
+            result = runner.invoke(
+                workspace_commands.workspace,
+                ["enter", "test-workspace", "--spawn-terminal"],
+            )
 
-                    assert result.exit_code == 0
-                    mock_popen.assert_called_once()
+            assert result.exit_code == 0
+            mock_popen.assert_called_once()
 
 
 class TestEnterWorkspaceErrorHandling:
@@ -441,11 +457,13 @@ class TestConfigWorkspace:
             assert "No configuration file found" in result.output
 
     def test_config_edit_with_file(self) -> None:
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("click.edit") as mock_edit:
-                mock_edit.return_value = None
-                result = runner.invoke(workspace_commands.workspace, ["config", "--edit"])
-                assert result.exit_code == 0
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("click.edit") as mock_edit,
+        ):
+            mock_edit.return_value = None
+            result = runner.invoke(workspace_commands.workspace, ["config", "--edit"])
+            assert result.exit_code == 0
 
 
 class TestGetDefaultConfig:
@@ -512,9 +530,7 @@ class TestRemoveWorkspaceErrorHandling:
             assert result.exit_code == 1
 
     def test_remove_workspace_invalid_name(self) -> None:
-        result = runner.invoke(
-            workspace_commands.workspace, ["remove", "invalid name!", "--yes"]
-        )
+        result = runner.invoke(workspace_commands.workspace, ["remove", "invalid name!", "--yes"])
 
         assert result.exit_code == 1
         assert "Invalid workspace name" in result.output
@@ -530,9 +546,11 @@ class TestRemoveWorkspaceErrorHandling:
 
 class TestConfigEditWithContent:
     def test_config_edit_with_content_returned(self) -> None:
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("click.edit") as mock_edit:
-                mock_edit.return_value = "new content"
-                result = runner.invoke(workspace_commands.workspace, ["config", "--edit"])
-                assert result.exit_code == 0
-                assert "Configuration updated" in result.output
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("click.edit") as mock_edit,
+        ):
+            mock_edit.return_value = "new content"
+            result = runner.invoke(workspace_commands.workspace, ["config", "--edit"])
+            assert result.exit_code == 0
+            assert "Configuration updated" in result.output

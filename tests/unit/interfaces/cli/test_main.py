@@ -9,7 +9,6 @@ from typer.testing import CliRunner
 
 from src.interfaces.cli import main
 
-
 runner = CliRunner()
 
 
@@ -44,7 +43,7 @@ class TestMainCallback:
             def test_cmd(ctx: main.typer.Context) -> None:
                 assert ctx.obj is mock_service
 
-            result = runner.invoke(main.app, ["test-cmd"])
+            runner.invoke(main.app, ["test-cmd"])
 
     def test_callback_with_custom_db_path(self) -> None:
         with patch("src.interfaces.cli.main.get_memory_service") as mock_get_service:
@@ -55,7 +54,7 @@ class TestMainCallback:
             def test_cmd(ctx: main.typer.Context) -> None:
                 pass
 
-            result = runner.invoke(main.app, ["--db", "custom/path.db", "test-cmd"])
+            runner.invoke(main.app, ["--db", "custom/path.db", "test-cmd"])
 
             mock_get_service.assert_called_once_with(Path("custom/path.db"))
 
@@ -68,7 +67,7 @@ class TestMainCallback:
             def test_cmd(ctx: main.typer.Context) -> None:
                 pass
 
-            result = runner.invoke(main.app, ["-d", "another/path.db", "test-cmd"])
+            runner.invoke(main.app, ["-d", "another/path.db", "test-cmd"])
 
             mock_get_service.assert_called_once_with(Path("another/path.db"))
 
@@ -81,7 +80,7 @@ class TestMainCallback:
             def test_cmd(ctx: main.typer.Context) -> None:
                 pass
 
-            result = runner.invoke(main.app, ["test-cmd"])
+            runner.invoke(main.app, ["test-cmd"])
 
             mock_get_service.assert_called_once_with(Path("data/memory.db"))
 

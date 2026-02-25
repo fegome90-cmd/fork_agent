@@ -58,7 +58,12 @@ class InMemoryRateLimiter:
             now = time.time()
             to_remove = []
             for client_id, entry in self._clients.items():
-                if entry.requests and now - max(entry.requests) > max_age or not entry.requests and now - entry.blocked_until > max_age:
+                if (
+                    entry.requests
+                    and now - max(entry.requests) > max_age
+                    or not entry.requests
+                    and now - entry.blocked_until > max_age
+                ):
                     to_remove.append(client_id)
             for client_id in to_remove:
                 del self._clients[client_id]

@@ -22,7 +22,7 @@ def save(
             meta_dict = json.loads(metadata)
         except json.JSONDecodeError:
             typer.echo("Error: Invalid JSON metadata", err=True)
-            raise typer.Exit(1)
+            raise
 
     if not content or not content.strip():
         typer.echo("Error: Content cannot be empty", err=True)

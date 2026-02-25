@@ -1,4 +1,3 @@
-import pytest
 from src.infrastructure.tmux_orchestrator.retry import (
     ExponentialBackoff,
     RetryConfig,

@@ -1,5 +1,12 @@
 """Servicios relacionados con gestión de workspaces."""
-from src.application.services.workspace.entities import HookResult, LayoutType, WorktreeState, Workspace, WorkspaceConfig
+
+from src.application.services.workspace.entities import (
+    HookResult,
+    LayoutType,
+    Workspace,
+    WorkspaceConfig,
+    WorktreeState,
+)
 from src.application.services.workspace.exceptions import (
     GitError,
     GitNotFoundError,
@@ -14,7 +21,11 @@ from src.application.services.workspace.exceptions import (
 )
 from src.application.services.workspace.hook_runner import HookRunner
 from src.application.services.workspace.workspace_detector import WorkspaceDetector
-from src.application.services.workspace.workspace_manager import LayoutResolver, WorkspaceManager, WorkspaceManagerABC
+from src.application.services.workspace.workspace_manager import (
+    LayoutResolver,
+    WorkspaceManager,
+    WorkspaceManagerABC,
+)
 
 __all__ = [
     "GitError",

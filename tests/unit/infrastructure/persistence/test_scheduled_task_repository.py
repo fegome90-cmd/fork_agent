@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
 import tempfile
 import time
 from pathlib import Path
@@ -11,8 +10,7 @@ import pytest
 
 from src.application.exceptions import RepositoryError
 from src.domain.entities.scheduled_task import ScheduledTask, TaskStatus
-from src.infrastructure.persistence.database import DatabaseConnection
-from src.infrastructure.persistence.database import DatabaseConfig
+from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.repositories.scheduled_task_repository import (
     ScheduledTaskRepository,
 )
@@ -273,7 +271,6 @@ class TestScheduledTaskRepositoryGetAll:
         all_tasks = repository.get_all()
 
         assert len(all_tasks) == 2
-
 
 
 class TestScheduledTaskRepositoryErrorHandling:
