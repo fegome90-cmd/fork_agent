@@ -1,12 +1,10 @@
 """Unit tests for domain exceptions."""
 
-import pytest
-
 from src.domain.exceptions.terminal import (
-    TerminalError,
-    PlatformNotSupportedError,
-    TerminalNotFoundError,
     CommandExecutionError,
+    PlatformNotSupportedError,
+    TerminalError,
+    TerminalNotFoundError,
 )
 
 

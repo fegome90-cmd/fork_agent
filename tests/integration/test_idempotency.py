@@ -8,7 +8,6 @@ These tests verify:
 from __future__ import annotations
 
 import subprocess
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -100,7 +99,7 @@ class TestCreateWorkspaceIdempotency(TestIdempotency):
     """Tests for M-02: create_workspace idempotency."""
 
     def test_create_workspace_idempotent(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test that create_workspace is idempotent (M-02).
 
@@ -124,7 +123,7 @@ class TestCreateWorkspaceIdempotency(TestIdempotency):
         assert len(feature_worktrees) == 1
 
     def test_create_different_workspaces_allowed(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test that creating different workspaces is allowed."""
         # Create first workspace
@@ -139,9 +138,11 @@ class TestCreateWorkspaceIdempotency(TestIdempotency):
         worktrees = workspace_manager.list_workspaces()
         assert len(worktrees) == 2
 
-    @pytest.mark.skip(reason="Bug: create_workspace does not check if branch exists before creating worktree")
+    @pytest.mark.skip(
+        reason="Bug: create_workspace does not check if branch exists before creating worktree"
+    )
     def test_idempotency_with_different_layouts(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test idempotency with different layouts."""
         # Create with NESTED layout (default)
@@ -157,7 +158,7 @@ class TestWorktreeIsValid(TestIdempotency):
     """Tests for worktree_is_valid functionality."""
 
     def test_worktree_is_valid_returns_existing_workspace(
-        self, workspace_manager: WorkspaceManager, git_repo: Path
+        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
     ) -> None:
         """Test that worktree_is_valid returns existing workspace (M-02)."""
         # Create a workspace
@@ -197,9 +198,7 @@ class TestWorktreeIsValid(TestIdempotency):
 class TestWorkspaceStateAfterOperations(TestIdempotency):
     """Tests for workspace state consistency."""
 
-    def test_workspace_state_after_creation(
-        self, workspace_manager: WorkspaceManager
-    ) -> None:
+    def test_workspace_state_after_creation(self, workspace_manager: WorkspaceManager) -> None:
         """Test workspace has correct state after creation."""
         workspace = workspace_manager.create_workspace("state-test")
 
@@ -207,9 +206,7 @@ class TestWorkspaceStateAfterOperations(TestIdempotency):
 
         assert workspace.state == WorktreeState.ACTIVE
 
-    def test_workspace_found_after_creation(
-        self, workspace_manager: WorkspaceManager
-    ) -> None:
+    def test_workspace_found_after_creation(self, workspace_manager: WorkspaceManager) -> None:
         """Test workspace can be found after creation."""
         created = workspace_manager.create_workspace("find-test")
 

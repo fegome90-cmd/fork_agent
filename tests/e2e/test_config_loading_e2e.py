@@ -9,7 +9,6 @@ Tests:
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -54,7 +53,7 @@ class TestConfigLoadingE2E:
         assert config.tmux.session_prefix == "test-"
         assert config.tmux.attach_on_create is False
 
-    def test_load_config_with_defaults(self, tmp_path: Path) -> None:
+    def test_load_config_with_defaults(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Test loading config returns defaults when no file exists."""
         # Load config without file
         config = ForkAgentConfig.load(None)
@@ -174,12 +173,12 @@ class TestConfigLoadingE2E:
         assert config.workspace.default_layout == "NESTED"
         assert config.workspace.auto_cleanup is False
 
-    def test_config_is_immutable(self, tmp_path: Path) -> None:
+    def test_config_is_immutable(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Test that loaded config is immutable (frozen)."""
         config = ForkAgentConfig()
 
         # Try to modify - should raise error
-        with pytest.raises(Exception):  # pydantic validates on init, frozen prevents mutation
+        with pytest.raises((TypeError, ValueError)):  # pydantic validates on init, frozen prevents mutation
             config.workspace.default_layout = "SIBLING"  # type: ignore
 
     def test_load_config_with_partial_values(self, tmp_path: Path) -> None:

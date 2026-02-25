@@ -25,7 +25,6 @@ from src.domain.entities.terminal import (
 )
 from src.domain.ports.observation_repository import ObservationRepository
 
-
 # =============================================================================
 # Fork Terminal Use Cases Tests
 # =============================================================================
@@ -144,7 +143,7 @@ class TestCreateForkTerminalUseCase:
         def mock_detect_platform() -> PlatformType:
             return PlatformType.DARWIN
 
-        def mock_spawn_terminal(command: str) -> TerminalResult:
+        def mock_spawn_terminal(command: str) -> TerminalResult:  # noqa: ARG001
             return TerminalResult(success=True, output="spawned", exit_code=0)
 
         # Act
@@ -162,7 +161,7 @@ class TestCreateForkTerminalUseCase:
         def mock_detect_platform() -> PlatformType:
             return PlatformType.WINDOWS
 
-        def mock_spawn_terminal(command: str) -> TerminalResult:
+        def mock_spawn_terminal(command: str) -> TerminalResult:  # noqa: ARG001
             return TerminalResult(success=False, output="failed", exit_code=127)
 
         # Act
@@ -183,7 +182,7 @@ class TestCreateForkTerminalUseCase:
             platform_detected = PlatformType.LINUX
             return PlatformType.LINUX
 
-        def mock_spawn_terminal(command: str) -> TerminalResult:
+        def mock_spawn_terminal(command: str) -> TerminalResult:  # noqa: ARG001
             return TerminalResult(success=True, output="ok", exit_code=0)
 
         # Act

@@ -4,8 +4,6 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.application.services.agent.agent_manager import (
     AgentConfig,
     AgentManager,
@@ -103,6 +101,7 @@ class TestAgentManager:
 
     def test_duplicate_agent_fails(self) -> None:
         import subprocess
+
         subprocess.run(["tmux", "kill-session", "-t", "test-dup-session"], capture_output=True)
         manager = AgentManager()
         config = AgentConfig(
@@ -176,17 +175,18 @@ class TestReconcileSessions:
         # First call: reconcile returns the session we registered
         mock_run.return_value = MagicMock(returncode=0, stdout="test-reconcile-agent\n")
         import subprocess
+
         subprocess.run(
             ["tmux", "kill-session", "-t", "test-reconcile-agent"],
             capture_output=True,
         )
         manager = AgentManager()
-        
+
         # Manually register a mock agent to test reconcile
         mock_agent = MagicMock(spec=TmuxAgent)
         mock_agent.tmux_session = "test-reconcile-agent"
         manager._agents["test-reconcile"] = mock_agent
-        
+
         # Now reconcile - should find the registered session
         result = manager.reconcile_sessions()
         assert "test-reconcile-agent" in result.registered_agents
@@ -208,6 +208,7 @@ class TestCleanupOrphans:
     def test_cleanup_skips_registered_agents(self, mock_run: MagicMock) -> None:
         mock_run.return_value = MagicMock(returncode=1, stdout="")
         import subprocess
+
         subprocess.run(
             ["tmux", "kill-session", "-t", "test-cleanup-agent"],
             capture_output=True,
@@ -220,11 +221,11 @@ class TestCleanupOrphans:
             tmux_session="test-cleanup-agent",
         )
         manager.spawn_agent(config)
-        
+
         result = manager.cleanup_orphans(dry_run=True)
         # Should not report the registered agent as orphan
         assert "test-cleanup-agent" not in result.cleaned_sessions
-        
+
         manager.terminate_agent("test-cleanup")
 
 

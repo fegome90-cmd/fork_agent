@@ -4,9 +4,7 @@
 class TerminalError(Exception):
     """Excepción base para errores de terminal."""
 
-    def __init__(
-        self, message: str, details: dict | None = None
-    ) -> None:
+    def __init__(self, message: str, details: dict | None = None) -> None:
         """Inicializa el error de terminal.
 
         Args:
@@ -42,18 +40,13 @@ class TerminalNotFoundError(TerminalError):
             terminals_tried: Lista de terminales intentados.
         """
         message = f"No se encontró emulador de terminal en {platform}"
-        super().__init__(message, {
-            "platform": platform,
-            "terminals_tried": terminals_tried
-        })
+        super().__init__(message, {"platform": platform, "terminals_tried": terminals_tried})
 
 
 class CommandExecutionError(TerminalError):
     """Excepción cuando falla la ejecución de un comando."""
 
-    def __init__(
-        self, command: str, exit_code: int, output: str
-    ) -> None:
+    def __init__(self, command: str, exit_code: int, output: str) -> None:
         """Inicializa el error de ejecución de comando.
 
         Args:
@@ -62,8 +55,4 @@ class CommandExecutionError(TerminalError):
             output: Salida del comando.
         """
         message = f"Comando '{command}' falló con código {exit_code}"
-        super().__init__(message, {
-            "command": command,
-            "exit_code": exit_code,
-            "output": output
-        })
+        super().__init__(message, {"command": command, "exit_code": exit_code, "output": output})

@@ -25,4 +25,4 @@ def get(
             typer.echo(f"Metadata: {json.dumps(obs.metadata, indent=2)}")
     except Exception:
         typer.echo(f"Observation not found: {observation_id}", err=True)
-        raise typer.Exit(1)
+        raise

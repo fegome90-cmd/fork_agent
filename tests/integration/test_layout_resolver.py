@@ -58,9 +58,7 @@ class TestNestedLayoutResolution(TestLayoutResolver):
 
         assert path == Path("/home/user/myrepo/.worktrees/feature-branch")
 
-    def test_nested_layout_with_underscore_in_name(
-        self, nested_config: WorkspaceConfig
-    ) -> None:
+    def test_nested_layout_with_underscore_in_name(self, nested_config: WorkspaceConfig) -> None:
         """Test NESTED layout with underscore in branch name."""
         resolver = LayoutResolver(nested_config)
 
@@ -81,9 +79,7 @@ class TestNestedLayoutResolution(TestLayoutResolver):
         """Test NESTED layout with deep repo path."""
         resolver = LayoutResolver(nested_config)
 
-        path = resolver.resolve_path(
-            "develop", Path("/var/repos/my-awesome-project")
-        )
+        path = resolver.resolve_path("develop", Path("/var/repos/my-awesome-project"))
 
         assert path == Path("/var/repos/my-awesome-project/.worktrees/develop")
 
@@ -101,9 +97,7 @@ class TestOuterNestedLayoutResolution(TestLayoutResolver):
 
         assert path == Path("/home/user/myrepo.worktrees/feature-branch")
 
-    def test_outer_nested_layout_uses_repo_name(
-        self, outer_nested_config: WorkspaceConfig
-    ) -> None:
+    def test_outer_nested_layout_uses_repo_name(self, outer_nested_config: WorkspaceConfig) -> None:
         """Test OUTER_NESTED layout correctly uses repo name (not full path)."""
         resolver = LayoutResolver(outer_nested_config)
 
@@ -123,15 +117,11 @@ class TestOuterNestedLayoutResolution(TestLayoutResolver):
         assert path == Path("/var/git/project.worktrees/test-branch")
         assert path.parent.name == "project.worktrees"
 
-    def test_outer_nested_layout_nested_repo(
-        self, outer_nested_config: WorkspaceConfig
-    ) -> None:
+    def test_outer_nested_layout_nested_repo(self, outer_nested_config: WorkspaceConfig) -> None:
         """Test OUTER_NESTED layout with deeply nested repo."""
         resolver = LayoutResolver(outer_nested_config)
 
-        path = resolver.resolve_path(
-            "release-v1", Path("/home/user/code/projects/main")
-        )
+        path = resolver.resolve_path("release-v1", Path("/home/user/code/projects/main"))
 
         # Parent is /home/user/code/projects
         assert path == Path("/home/user/code/projects/main.worktrees/release-v1")
@@ -140,9 +130,7 @@ class TestOuterNestedLayoutResolution(TestLayoutResolver):
 class TestSiblingLayoutResolution(TestLayoutResolver):
     """Tests for SIBLING layout path resolution."""
 
-    def test_sibling_layout_resolves_correctly(
-        self, sibling_config: WorkspaceConfig
-    ) -> None:
+    def test_sibling_layout_resolves_correctly(self, sibling_config: WorkspaceConfig) -> None:
         """Test SIBLING layout resolves to ../<repo>-<name>."""
         resolver = LayoutResolver(sibling_config)
 
@@ -150,9 +138,7 @@ class TestSiblingLayoutResolution(TestLayoutResolver):
 
         assert path == Path("/home/user/myrepo-feature-branch")
 
-    def test_sibling_layout_uses_repo_name(
-        self, sibling_config: WorkspaceConfig
-    ) -> None:
+    def test_sibling_layout_uses_repo_name(self, sibling_config: WorkspaceConfig) -> None:
         """Test SIBLING layout correctly uses repo name."""
         resolver = LayoutResolver(sibling_config)
 
@@ -160,9 +146,7 @@ class TestSiblingLayoutResolution(TestLayoutResolver):
 
         assert path == Path("/home/user/test-repo-experiment")
 
-    def test_sibling_layout_places_beside_repo(
-        self, sibling_config: WorkspaceConfig
-    ) -> None:
+    def test_sibling_layout_places_beside_repo(self, sibling_config: WorkspaceConfig) -> None:
         """Test SIBLING layout places worktrees in parent directory, beside repo."""
         resolver = LayoutResolver(sibling_config)
 
@@ -172,15 +156,11 @@ class TestSiblingLayoutResolution(TestLayoutResolver):
         assert path == Path("/home/user/myproject-hotfix")
         assert path.parent == Path("/home/user")
 
-    def test_sibling_layout_complex_repo_name(
-        self, sibling_config: WorkspaceConfig
-    ) -> None:
+    def test_sibling_layout_complex_repo_name(self, sibling_config: WorkspaceConfig) -> None:
         """Test SIBLING layout with complex repo name."""
         resolver = LayoutResolver(sibling_config)
 
-        path = resolver.resolve_path(
-            "dev", Path("/var/www/html/my-web-app")
-        )
+        path = resolver.resolve_path("dev", Path("/var/www/html/my-web-app"))
 
         assert path == Path("/var/www/html/my-web-app-dev")
 

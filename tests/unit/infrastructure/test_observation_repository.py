@@ -7,7 +7,6 @@ All tests should FAIL initially until the repository is implemented.
 from __future__ import annotations
 
 from pathlib import Path
-import sqlite3
 
 import pytest
 
@@ -401,23 +400,18 @@ class TestObservationRepositoryErrorHandling:
         DatabaseConnection.close_all()
 
     @pytest.fixture
-    def failing_db_path(self, tmp_path: Path) -> Path:
-        db_path = tmp_path / "corrupted.db"
-        config = DatabaseConfig(db_path=db_path)
-        migrations_dir = (
-            Path(__file__).parent.parent.parent.parent / "src/infrastructure/persistence/migrations"
-        )
-        run_migrations(config, migrations_dir)
-        with open(db_path, "w") as f:
-            f.write("CORRUPTED DATABASE CONTENT")
-        return db_path
+    def uninitialized_db_path(self, tmp_path: Path) -> Path:
+        # DatabaseConfig auto-creates missing parent directories, so this path is writable.
+        # Operations fail because the DB has no schema (migrations never run),
+        # resulting in sqlite3.OperationalError: no such table.
+        return tmp_path / "uninitialized_dir" / "uninitialized.db"
 
-    def test_create_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_create_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
         observation = Observation(
@@ -429,36 +423,36 @@ class TestObservationRepositoryErrorHandling:
         with pytest.raises(RepositoryError):
             repo.create(observation)
 
-    def test_get_by_id_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_get_by_id_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
 
         with pytest.raises(RepositoryError):
             repo.get_by_id("test-id")
 
-    def test_get_all_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_get_all_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
 
         with pytest.raises(RepositoryError):
             repo.get_all()
 
-    def test_update_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_update_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
         observation = Observation(
@@ -470,36 +464,36 @@ class TestObservationRepositoryErrorHandling:
         with pytest.raises(RepositoryError):
             repo.update(observation)
 
-    def test_delete_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_delete_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
 
         with pytest.raises(RepositoryError):
             repo.delete("test-id")
 
-    def test_search_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_search_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
 
         with pytest.raises(RepositoryError):
             repo.search("test")
 
-    def test_get_by_timestamp_range_handles_database_error(self, failing_db_path: Path) -> None:
+    def test_get_by_timestamp_range_handles_database_error(self, uninitialized_db_path: Path) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
 
-        config = DatabaseConfig(db_path=failing_db_path)
+        config = DatabaseConfig(db_path=uninitialized_db_path)
         connection = DatabaseConnection(config)
         repo = ObservationRepository(connection)
 

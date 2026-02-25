@@ -47,7 +47,7 @@ class ForkAgentConfig(BaseModel):
     @classmethod
     def _find_config_file(cls) -> Path | None:
         """Busca el archivo de configuración en los paths estándar.
-        
+
         Returns:
             Ruta al archivo de configuración o None si no existe.
         """
@@ -55,47 +55,47 @@ class ForkAgentConfig(BaseModel):
         repo_root = Path.cwd() / ".fork_agent.yaml"
         if repo_root.exists():
             return repo_root
-        
+
         # Path 2: ~/.config/fork_agent.yaml (user home)
         user_config = Path.home() / ".config" / "fork_agent.yaml"
         if user_config.exists():
             return user_config
-        
+
         return None
 
     @classmethod
     def load(cls, path: Path | None = None) -> Self:
         """Carga configuración desde archivo o retorna valores por defecto.
-        
+
         Args:
             path: Ruta opcional al archivo de configuración.
-            
+
         Returns:
             Instancia de ForkAgentConfig con la configuración cargada.
         """
         config_path = path or cls._find_config_file()
-        
+
         if config_path is None or not config_path.exists():
             return cls()
-        
+
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
-            
+
             return cls(**data)
-        except (yaml.YAMLError, ValueError) as e:
+        except (yaml.YAMLError, ValueError):
             # Si hay error al parsear, retornar defaults
             return cls()
 
     def save(self, path: Path) -> None:
         """Guarda la configuración a un archivo.
-        
+
         Args:
             path: Ruta donde guardar el archivo de configuración.
         """
         # Ensure parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         data = {
             "workspace": {
                 "default_layout": self.workspace.default_layout,
@@ -107,10 +107,10 @@ class ForkAgentConfig(BaseModel):
                 "attach_on_create": self.tmux.attach_on_create,
             },
         }
-        
+
         # Remove None values for cleaner YAML
         if data["workspace"]["hooks_dir"] is None:
             del data["workspace"]["hooks_dir"]
-        
+
         with open(path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)

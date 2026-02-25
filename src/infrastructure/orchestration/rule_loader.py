@@ -51,13 +51,13 @@ class RuleLoader:
                             event_type=event_type,
                             matcher=pattern,
                         )
-                        
+
                         on_failure_str = hook.get("on_failure", "abort")
                         try:
                             on_failure = OnFailurePolicy(on_failure_str)
                         except ValueError:
                             on_failure = OnFailurePolicy.ABORT
-                        
+
                         action = ShellCommandAction(
                             command=hook["command"],
                             timeout=hook.get("timeout", 30),

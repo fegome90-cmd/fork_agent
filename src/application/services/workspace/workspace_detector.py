@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.application.services.workspace.entities import LayoutType, WorktreeState, Workspace
+from src.application.services.workspace.entities import LayoutType, Workspace, WorktreeState
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 
 if TYPE_CHECKING:

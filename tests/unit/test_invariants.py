@@ -31,7 +31,9 @@ class TestWorkflowPhaseOrdering:
     This test verifies the state files are properly checked.
     """
 
-    def test_execute_requires_plan_state(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_execute_requires_plan_state(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Monkeypatch path functions to use tmp_path
         monkeypatch.setattr(
             "src.application.services.workflow.state.get_plan_state_path",
@@ -53,7 +55,9 @@ class TestWorkflowPhaseOrdering:
         plan = PlanState.load(plan_path)
         assert plan is None
 
-    def test_verify_requires_execute_state(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_verify_requires_execute_state(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
             "src.application.services.workflow.state.get_execute_state_path",
             lambda: tmp_path / "execute-state.json",
@@ -74,7 +78,9 @@ class TestWorkflowPhaseOrdering:
         exec_state = ExecuteState.load(exec_path)
         assert exec_state is None
 
-    def test_ship_requires_verify_state_with_unlock(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_ship_requires_verify_state_with_unlock(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
             "src.application.services.workflow.state.get_verify_state_path",
             lambda: tmp_path / "verify-state.json",
@@ -93,7 +99,9 @@ class TestWorkflowPhaseOrdering:
         assert loaded is not None
         assert loaded.unlock_ship is False
 
-    def test_ship_allowed_with_unlock(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_ship_allowed_with_unlock(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
             "src.application.services.workflow.state.get_verify_state_path",
             lambda: tmp_path / "verify-state.json",
@@ -121,7 +129,7 @@ class TestTmuxSessionNaming:
     """
 
     def test_session_name_follows_agent_prefix(self) -> None:
-        from src.application.services.agent.agent_manager import TmuxAgent, AgentConfig
+        from src.application.services.agent.agent_manager import AgentConfig, TmuxAgent
 
         config = AgentConfig(
             name="test-agent",
@@ -133,7 +141,7 @@ class TestTmuxSessionNaming:
         assert agent.tmux_session.startswith("agent-")
 
     def test_session_name_contains_agent_name(self) -> None:
-        from src.application.services.agent.agent_manager import TmuxAgent, AgentConfig
+        from src.application.services.agent.agent_manager import AgentConfig, TmuxAgent
 
         config = AgentConfig(
             name="my-special-agent",
@@ -145,7 +153,7 @@ class TestTmuxSessionNaming:
         assert "my-special-agent" in agent.tmux_session
 
     def test_session_name_format_structure(self) -> None:
-        from src.application.services.agent.agent_manager import TmuxAgent, AgentConfig
+        from src.application.services.agent.agent_manager import AgentConfig, TmuxAgent
 
         config = AgentConfig(
             name="agent",

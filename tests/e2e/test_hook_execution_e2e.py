@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 
-from src.application.services.workspace.entities import HookResult
 from src.application.services.workspace.hook_runner import HookRunner
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 
@@ -28,7 +27,7 @@ class TestHookExecutionE2E:
         hook_path.write_text(
             "#!/bin/bash\n"
             "WORKSPACE_PATH=$1\n"
-            "echo \"Setup executed for: $WORKSPACE_PATH\" > \"$WORKSPACE_PATH/.setup_log\"\n"
+            'echo "Setup executed for: $WORKSPACE_PATH" > "$WORKSPACE_PATH/.setup_log"\n'
             "exit 0\n"
         )
         hook_path.chmod(0o755)
@@ -41,7 +40,7 @@ class TestHookExecutionE2E:
         hook_path.write_text(
             "#!/bin/bash\n"
             "WORKSPACE_PATH=$1\n"
-            "echo \"Teardown executed for: $WORKSPACE_PATH\" > \"$WORKSPACE_PATH/.teardown_log\"\n"
+            'echo "Teardown executed for: $WORKSPACE_PATH" > "$WORKSPACE_PATH/.teardown_log"\n'
             "exit 0\n"
         )
         hook_path.chmod(0o755)
@@ -50,7 +49,7 @@ class TestHookExecutionE2E:
     def test_setup_hook_executes_on_workspace_creation(
         self,
         workspace_manager: WorkspaceManager,
-        setup_hook_script: Path,
+        setup_hook_script: Path,  # noqa: ARG002
     ) -> None:
         """Test that setup hook executes when creating workspace."""
         # Create workspace
@@ -64,7 +63,7 @@ class TestHookExecutionE2E:
     def test_setup_hook_result_stored_in_workspace(
         self,
         workspace_manager: WorkspaceManager,
-        setup_hook_script: Path,
+        setup_hook_script: Path,  # noqa: ARG002
     ) -> None:
         """Test that setup hook result is stored in workspace entity."""
         workspace = workspace_manager.create_workspace("hook-result-test")
@@ -77,8 +76,8 @@ class TestHookExecutionE2E:
     def test_teardown_hook_executes_on_workspace_removal(
         self,
         workspace_manager: WorkspaceManager,
-        setup_hook_script: Path,
-        teardown_hook_script: Path,
+        setup_hook_script: Path,  # noqa: ARG002
+        teardown_hook_script: Path,  # noqa: ARG002
     ) -> None:
         """Test that teardown hook executes when removing workspace."""
         # Create workspace (this runs setup hook)
@@ -106,7 +105,7 @@ class TestHookExecutionE2E:
         hook_path.write_text(
             "#!/bin/bash\n"
             "WORKSPACE_PATH=$1\n"
-            "echo \"Path: $WORKSPACE_PATH\" > \"$WORKSPACE_PATH/.path_log\"\n"
+            'echo "Path: $WORKSPACE_PATH" > "$WORKSPACE_PATH/.path_log"\n'
             "exit 0\n"
         )
         hook_path.chmod(0o755)
@@ -127,10 +126,7 @@ class TestHookExecutionE2E:
         """Test that workspace creation succeeds even if hook fails."""
         # Create failing hook
         hook_path = hooks_dir / "setup.sh"
-        hook_path.write_text(
-            "#!/bin/bash\n"
-            "exit 1\n"
-        )
+        hook_path.write_text("#!/bin/bash\nexit 1\n")
         hook_path.chmod(0o755)
 
         # Create workspace - should still succeed
@@ -187,8 +183,8 @@ class TestHookExecutionE2E:
         hook_path.write_text(
             "#!/bin/bash\n"
             "WORKSPACE_PATH=$1\n"
-            "echo \"HOME=$HOME\" > \"$WORKSPACE_PATH/.env_log\"\n"
-            "echo \"USER=$USER\" >> \"$WORKSPACE_PATH/.env_log\"\n"
+            'echo "HOME=$HOME" > "$WORKSPACE_PATH/.env_log"\n'
+            'echo "USER=$USER" >> "$WORKSPACE_PATH/.env_log"\n'
             "exit 0\n"
         )
         hook_path.chmod(0o755)

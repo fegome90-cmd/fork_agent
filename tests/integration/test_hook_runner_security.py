@@ -9,15 +9,12 @@ These tests verify:
 from __future__ import annotations
 
 import os
-import subprocess
-import tempfile
-import time
 from pathlib import Path
 
 import pytest
 
+from src.application.services.workspace.exceptions import HookExecutionError, SecurityError
 from src.application.services.workspace.hook_runner import HookRunner
-from src.application.services.workspace.exceptions import SecurityError, HookExecutionError
 
 
 class TestHookRunnerSecurity:
@@ -96,9 +93,7 @@ class TestPathTraversalBlocked(TestHookRunnerSecurity):
 class TestTimeoutWorks(TestHookRunnerSecurity):
     """Tests for M-01: Timeout functionality."""
 
-    def test_hook_timeout_expires(
-        self, tmp_path: Path, temp_workspace_dir: Path
-    ) -> None:
+    def test_hook_timeout_expires(self, tmp_path: Path, temp_workspace_dir: Path) -> None:
         """Test that hook execution times out (M-01)."""
         # Create a hook that sleeps too long
         hooks_dir = tmp_path / "hooks"

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.message_store import MessageStore
@@ -328,9 +325,7 @@ class TestMessageStoreCleanupExpired:
         import sqlite3
 
         conn = sqlite3.connect(str(tmp_path / "test.db"))
-        conn.execute(
-            "UPDATE messages SET expires_at = 0 WHERE id = ?", (msg.id,)
-        )
+        conn.execute("UPDATE messages SET expires_at = 0 WHERE id = ?", (msg.id,))
         conn.commit()
         conn.close()
 

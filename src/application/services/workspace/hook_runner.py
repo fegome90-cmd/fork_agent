@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import subprocess
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,7 +12,7 @@ from src.application.services.workspace.entities import HookResult
 from src.application.services.workspace.exceptions import HookExecutionError, SecurityError
 
 if TYPE_CHECKING:
-    from collections.abc import Set
+    pass
 
 # Dangerous environment variables that should never be passed to hooks
 DANGEROUS_ENV_VARS: frozenset[str] = frozenset(
@@ -34,7 +33,6 @@ DANGEROUS_ENV_VARS: frozenset[str] = frozenset(
         "PS1",
         "PS2",
         "FIGNORE",
-        "GLOBIGNORE",
     }
 )
 
@@ -113,7 +111,7 @@ class HookRunner:
         try:
             resolved_path = path.resolve()
         except (OSError, ValueError) as e:
-            raise SecurityError(f"Failed to resolve path: {path}", e)
+            raise SecurityError(f"Failed to resolve path: {path}", e) from None
 
         # Verify path exists
         if not resolved_path.exists():
@@ -149,7 +147,11 @@ class HookRunner:
                 continue
 
             # Skip variables with dangerous patterns
-            if any(key.startswith(pattern.rstrip("*")) for pattern in DANGEROUS_ENV_VARS if "*" in pattern):
+            if any(
+                key.startswith(pattern.rstrip("*"))
+                for pattern in DANGEROUS_ENV_VARS
+                if "*" in pattern
+            ):
                 continue
 
             # Only include allowed variables
@@ -237,13 +239,13 @@ class HookRunner:
             raise HookExecutionError(
                 f"Hook '{hook_name}' timed out after {self._timeout} seconds",
                 e,
-            )
+            ) from None
         except OSError as e:
             duration_ms = int((time.monotonic() - start_time) * 1000)
             raise HookExecutionError(
                 f"Failed to execute hook '{hook_name}': {e}",
                 e,
-            )
+            ) from None
 
         duration_ms = int((time.monotonic() - start_time) * 1000)
 

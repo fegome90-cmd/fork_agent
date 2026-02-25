@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from src.infrastructure.tmux_orchestrator.dead_letter_queue import (
     DeadLetterItem,
     DeadLetterQueue,
@@ -53,7 +51,7 @@ class TestDeadLetterQueue:
         count = dlq2.load()
         assert count == 1
 
-    def test_max_size(self, tmp_path):
+    def test_max_size(self, tmp_path):  # noqa: ARG002
         dlq = DeadLetterQueue(max_size=2)
         dlq.add("s1", 0, {}, "e1", 1)
         dlq.add("s2", 0, {}, "e2", 1)

@@ -6,7 +6,6 @@ import time
 import uuid
 from typing import Any
 
-from src.application.exceptions import ObservationNotFoundError
 from src.domain.entities.observation import Observation
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,

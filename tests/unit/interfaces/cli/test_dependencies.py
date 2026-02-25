@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.interfaces.cli import dependencies
 
 
@@ -20,7 +18,7 @@ class TestGetContainer:
             mock_container = MagicMock()
             mock_create.return_value = mock_container
 
-            result = dependencies.get_container(Path("/custom/path"))
+            dependencies.get_container(Path("/custom/path"))
 
             mock_create.assert_called_once_with(Path("/custom/path"))
 
@@ -33,7 +31,7 @@ class TestGetRepository:
             mock_container.observation_repository.return_value = mock_repo
             mock_get_container.return_value = mock_container
 
-            result = dependencies.get_repository()
+            dependencies.get_repository()
 
             mock_container.observation_repository.assert_called_once()
 
@@ -44,7 +42,7 @@ class TestGetRepository:
             mock_container.observation_repository.return_value = mock_repo
             mock_get_container.return_value = mock_container
 
-            result = dependencies.get_repository(Path("/custom/path"))
+            dependencies.get_repository(Path("/custom/path"))
 
             mock_get_container.assert_called_once_with(Path("/custom/path"))
             mock_container.observation_repository.assert_called_once()
@@ -58,7 +56,7 @@ class TestGetMemoryService:
             mock_container.memory_service.return_value = mock_service
             mock_get_container.return_value = mock_container
 
-            result = dependencies.get_memory_service()
+            dependencies.get_memory_service()
 
             mock_container.memory_service.assert_called_once()
 
@@ -69,7 +67,7 @@ class TestGetMemoryService:
             mock_container.memory_service.return_value = mock_service
             mock_get_container.return_value = mock_container
 
-            result = dependencies.get_memory_service(Path("/custom/path"))
+            dependencies.get_memory_service(Path("/custom/path"))
 
             mock_get_container.assert_called_once_with(Path("/custom/path"))
             mock_container.memory_service.assert_called_once()
@@ -86,7 +84,6 @@ class TestGetMemoryService:
             assert result is mock_service
 
 
-
 class TestGetSchedulerService:
     def test_get_scheduler_service_returns_service(self) -> None:
         with patch("src.interfaces.cli.dependencies.get_container") as mock_get_container:
@@ -95,7 +92,7 @@ class TestGetSchedulerService:
             mock_container.scheduler_service.return_value = mock_service
             mock_get_container.return_value = mock_container
 
-            result = dependencies.get_scheduler_service()
+            dependencies.get_scheduler_service()
 
             mock_container.scheduler_service.assert_called_once()
 
@@ -106,7 +103,7 @@ class TestGetSchedulerService:
             mock_container.scheduler_service.return_value = mock_service
             mock_get_container.return_value = mock_container
 
-            result = dependencies.get_scheduler_service(Path("/custom/path"))
+            dependencies.get_scheduler_service(Path("/custom/path"))
 
             mock_get_container.assert_called_once_with(Path("/custom/path"))
             mock_container.scheduler_service.assert_called_once()

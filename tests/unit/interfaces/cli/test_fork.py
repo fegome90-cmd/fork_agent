@@ -16,11 +16,11 @@ class TestForkCLI:
         mock_result = TerminalResult(success=True, output="test output", exit_code=0)
         mock_fork = MagicMock(return_value=mock_result)
         cli = create_fork_cli(mock_fork)
-        
+
         # Act
         with patch.object(sys, "argv", ["fork", "echo", "hello"]):
             exit_code = cli()
-        
+
         # Assert
         mock_fork.assert_called_once_with("echo hello")
         assert exit_code == 0
@@ -30,12 +30,11 @@ class TestForkCLI:
         # Arrange
         mock_fork = MagicMock()
         cli = create_fork_cli(mock_fork)
-        
+
         # Act
-        with patch.object(sys, "argv", ["fork"]):
-            with patch("builtins.print") as mock_print:
-                exit_code = cli()
-        
+        with patch.object(sys, "argv", ["fork"]), patch("builtins.print") as mock_print:
+            exit_code = cli()
+
         # Assert
         mock_print.assert_called_once_with("Uso: fork <comando>")
         assert exit_code == 1
@@ -47,12 +46,14 @@ class TestForkCLI:
         mock_result = TerminalResult(success=False, output="error", exit_code=1)
         mock_fork = MagicMock(return_value=mock_result)
         cli = create_fork_cli(mock_fork)
-        
+
         # Act
-        with patch.object(sys, "argv", ["fork", "invalid"]):
-            with patch("builtins.print") as mock_print:
-                exit_code = cli()
-        
+        with (
+            patch.object(sys, "argv", ["fork", "invalid"]),
+            patch("builtins.print") as mock_print,
+        ):
+            exit_code = cli()
+
         # Assert
         mock_print.assert_called_once_with("error")
         assert exit_code == 1
@@ -62,12 +63,14 @@ class TestForkCLI:
         # Arrange
         mock_fork = MagicMock(side_effect=Exception("Test error"))
         cli = create_fork_cli(mock_fork)
-        
+
         # Act
-        with patch.object(sys, "argv", ["fork", "test"]):
-            with patch("builtins.print") as mock_print:
-                exit_code = cli()
-        
+        with (
+            patch.object(sys, "argv", ["fork", "test"]),
+            patch("builtins.print") as mock_print,
+        ):
+            exit_code = cli()
+
         # Assert
         mock_print.assert_called_once()
         assert exit_code == 1
@@ -78,11 +81,11 @@ class TestForkCLI:
         mock_result = TerminalResult(success=True, output="files", exit_code=0)
         mock_fork = MagicMock(return_value=mock_result)
         cli = create_fork_cli(mock_fork)
-        
+
         # Act
         with patch.object(sys, "argv", ["fork", "ls", "-la"]):
             exit_code = cli()
-        
+
         # Assert
         mock_fork.assert_called_once_with("ls -la")
         assert exit_code == 0

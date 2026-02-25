@@ -1,15 +1,16 @@
 """Unit tests for workspace entities."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from src.application.services.workspace.entities import (
     HookResult,
     LayoutType,
-    WorktreeState,
     Workspace,
     WorkspaceConfig,
     WorkspaceHook,
+    WorktreeState,
 )
 
 
@@ -71,6 +72,8 @@ class TestWorkspace:
 
     def test_workspace_immutability(self) -> None:
         """Test that Workspace is immutable (frozen=True)."""
+        from dataclasses import FrozenInstanceError
+
         workspace = Workspace(
             name="feature-branch",
             path=Path("/test/repo/.worktrees/feature-branch"),
@@ -79,10 +82,10 @@ class TestWorkspace:
             repo_root=Path("/test/repo"),
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             workspace.name = "new-name"
 
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             workspace.state = WorktreeState.MERGED
 
     def test_workspace_validates_name_type(self) -> None:
@@ -234,16 +237,18 @@ class TestWorkspaceConfig:
 
     def test_workspace_config_immutability(self) -> None:
         """Test that WorkspaceConfig is immutable (frozen=True)."""
+        from dataclasses import FrozenInstanceError
+
         config = WorkspaceConfig(
             default_layout=LayoutType.NESTED,
             auto_cleanup=True,
             hooks_dir=Path("/test/repo/.git/hooks"),
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             config.auto_cleanup = False
 
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             config.default_layout = LayoutType.SIBLING
 
     def test_workspace_config_validates_layout_type(self) -> None:
@@ -303,6 +308,8 @@ class TestHookResult:
 
     def test_hook_result_immutability(self) -> None:
         """Test that HookResult is immutable (frozen=True)."""
+        from dataclasses import FrozenInstanceError
+
         result = HookResult(
             success=True,
             exit_code=0,
@@ -310,9 +317,9 @@ class TestHookResult:
             stderr="",
             duration_ms=100,
         )
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.success = False
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.exit_code = 1
 
     def test_hook_result_validates_success_type(self) -> None:
@@ -397,13 +404,15 @@ class TestWorkspaceHook:
 
     def test_workspace_hook_immutability(self) -> None:
         """Test that WorkspaceHook is immutable (frozen=True)."""
+        from dataclasses import FrozenInstanceError
+
         hook = WorkspaceHook(
             workspace_id="ws-001",
             setup_path=Path("/test/setup.sh"),
         )
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             hook.workspace_id = "ws-002"
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             hook.setup_path = Path("/other/setup.sh")
 
     def test_workspace_hook_validates_workspace_id_type(self) -> None:

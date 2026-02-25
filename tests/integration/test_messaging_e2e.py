@@ -6,6 +6,7 @@ They create real tmux sessions and test the full messaging flow.
 
 from __future__ import annotations
 
+import contextlib
 import subprocess
 import time
 from pathlib import Path
@@ -16,7 +17,6 @@ from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
     decode_message,
-    encode_message,
 )
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.message_store import MessageStore
@@ -54,14 +54,12 @@ def tmux_cleanup():
 
     # Cleanup: kill all test sessions
     for session_name in sessions_to_cleanup:
-        try:
+        with contextlib.suppress(subprocess.SubprocessError, subprocess.TimeoutExpired):
             subprocess.run(
                 ["tmux", "kill-session", "-t", session_name],
                 capture_output=True,
                 timeout=5,
             )
-        except (subprocess.SubprocessError, subprocess.TimeoutExpired):
-            pass
 
 
 @pytest.fixture
@@ -81,9 +79,7 @@ def messenger(temp_db: Path) -> AgentMessenger:
 class TestTmuxSessionLifecycle:
     """Tests for tmux session creation and cleanup."""
 
-    def test_create_and_list_session(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_create_and_list_session(self, tmux_cleanup, temp_db: Path) -> None:  # noqa: ARG002
         """Should create a tmux session and list it."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
 
@@ -100,7 +96,7 @@ class TestTmuxSessionLifecycle:
 
         assert session_name in session_names
 
-    def test_kill_session(self, tmux_cleanup) -> None:
+    def test_kill_session(self, tmux_cleanup) -> None:  # noqa: ARG002
         """Should kill a tmux session."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
 
@@ -123,9 +119,7 @@ class TestTmuxSessionLifecycle:
 class TestMessageSendAndCapture:
     """Tests for sending messages and capturing them."""
 
-    def test_send_message_to_session(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_send_message_to_session(self, tmux_cleanup, temp_db: Path) -> None:
         """Should send a message to a tmux session and store it."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -165,9 +159,7 @@ class TestMessageSendAndCapture:
         assert len(messages) == 1
         assert messages[0].payload == "test message e2e"
 
-    def test_capture_sent_message(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_capture_sent_message(self, tmux_cleanup, temp_db: Path) -> None:
         """Should capture a message that was sent to a session."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -211,9 +203,7 @@ class TestMessageSendAndCapture:
 class TestMessageBroadcast:
     """Tests for broadcasting messages to all sessions."""
 
-    def test_broadcast_includes_created_sessions(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_broadcast_includes_created_sessions(self, tmux_cleanup, temp_db: Path) -> None:
         """Should broadcast a message to our test sessions."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -247,9 +237,7 @@ class TestMessageBroadcast:
         # And should match total windows in all sessions
         assert count == total_windows, f"Broadcast count {count} != total windows {total_windows}"
 
-    def test_broadcast_stores_messages(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_broadcast_stores_messages(self, tmux_cleanup, temp_db: Path) -> None:
         """Should store broadcast messages in the database."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -283,9 +271,7 @@ class TestMessageBroadcast:
 class TestMessageProtocolE2E:
     """End-to-end tests for message protocol."""
 
-    def test_full_message_round_trip(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_full_message_round_trip(self, tmux_cleanup, temp_db: Path) -> None:
         """Should encode, send, capture, and decode a message."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -349,9 +335,7 @@ class TestMessageProtocolE2E:
 class TestMessageHistory:
     """Tests for message history functionality."""
 
-    def test_history_includes_sent_and_received(
-        self, tmux_cleanup, temp_db: Path
-    ) -> None:
+    def test_history_includes_sent_and_received(self, tmux_cleanup, temp_db: Path) -> None:
         """History should include both sent and received messages."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)

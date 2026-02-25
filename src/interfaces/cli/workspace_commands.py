@@ -13,10 +13,10 @@ import click
 from src.application.services.workspace.entities import LayoutType
 from src.application.services.workspace.exceptions import (
     GitError,
+    WorkspaceError,
     WorkspaceExistsError,
     WorkspaceNotCleanError,
     WorkspaceNotFoundError,
-    WorkspaceError,
 )
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 

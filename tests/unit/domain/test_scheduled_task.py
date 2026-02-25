@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+
 import pytest
 
 from src.domain.entities.scheduled_task import ScheduledTask, TaskStatus

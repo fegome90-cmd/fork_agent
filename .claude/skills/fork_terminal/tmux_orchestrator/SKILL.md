@@ -180,3 +180,30 @@ ENTREGAR: Tests pasando, código documentado
 | Agente no recibe mensaje | Verificar window index correcto |
 | Output vacío | Agente puede estar en modo interactivo, usar `capture-pane` |
 | Modelo no disponible | Usar `opencode models` para ver disponibles |
+
+## Integración con Modelos
+
+Consulta `.claude/skills/fork_terminal/cookbook/modelos.md` para guía completa.
+
+| Modelo | Uso | Cuándo |
+|--------|-----|--------|
+| OpenCode (glm-5-free) | Orquestación | Planning, coordinación |
+| Claude Code (sonnet) | Plan y código | Writing, refactoring |
+| Codex (GPT-5.3-Codex) | Deep work | Análisis profundo |
+| Gemini Flash 2.5 | Fast task | Tareas rápidas |
+
+## Integración con Context Memory
+
+Al finalizar sesión, ejecutar en PARALELO:
+
+```bash
+# 1. Guardar handoff
+/fork-checkpoint
+
+# 2. Guardar contexto machine-readable
+cm-save <nombre-sesion>
+```
+
+Esto permite:
+- `/fork-resume` - Continuar desde último handoff
+- `cm-load <nombre>` - Rehidratar contexto completo

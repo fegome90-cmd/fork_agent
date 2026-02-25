@@ -10,7 +10,6 @@ import time
 import uuid
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional
 
 
 class MessageType(Enum):
@@ -52,7 +51,7 @@ class AgentMessage:
     message_type: MessageType
     payload: str
     created_at: int
-    correlation_id: Optional[str] = None
+    correlation_id: str | None = None
 
     @classmethod
     def create(
@@ -62,7 +61,7 @@ class AgentMessage:
         message_type: MessageType,
         payload: str,
         correlation_id: str | None = None,
-    ) -> "AgentMessage":
+    ) -> AgentMessage:
         """Factory method to create a new message with auto-generated ID and timestamp.
 
         Args:

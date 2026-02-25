@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 from src.domain.entities.terminal import (
-    TerminalResult,
+    PlatformType,
     TerminalConfig,
     TerminalInfo,
-    PlatformType,
+    TerminalResult,
 )
 
 

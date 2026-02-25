@@ -59,9 +59,7 @@ class TestMemoryServiceSearch:
     def mock_repository(self) -> MagicMock:
         return MagicMock(spec=ObservationRepository)
 
-    def test_search_returns_matching_observations(
-        self, mock_repository: MagicMock
-    ) -> None:
+    def test_search_returns_matching_observations(self, mock_repository: MagicMock) -> None:
         from src.application.services.memory_service import MemoryService
 
         mock_repository.search.return_value = [
@@ -83,13 +81,11 @@ class TestMemoryServiceSearch:
         ]
 
         service = MemoryService(repository=mock_repository)
-        results = service.search("test", limit=5)
+        service.search("test", limit=5)
 
         mock_repository.search.assert_called_once_with("test", limit=5)
 
-    def test_search_returns_empty_list_when_no_match(
-        self, mock_repository: MagicMock
-    ) -> None:
+    def test_search_returns_empty_list_when_no_match(self, mock_repository: MagicMock) -> None:
         from src.application.services.memory_service import MemoryService
 
         mock_repository.search.return_value = []
@@ -107,9 +103,7 @@ class TestMemoryServiceGetRecent:
     def mock_repository(self) -> MagicMock:
         return MagicMock(spec=ObservationRepository)
 
-    def test_get_recent_returns_latest_observations(
-        self, mock_repository: MagicMock
-    ) -> None:
+    def test_get_recent_returns_latest_observations(self, mock_repository: MagicMock) -> None:
         from src.application.services.memory_service import MemoryService
 
         mock_repository.get_all.return_value = [
@@ -195,9 +189,7 @@ class TestMemoryServiceGetByTimeRange:
     def mock_repository(self) -> MagicMock:
         return MagicMock(spec=ObservationRepository)
 
-    def test_get_by_time_range_returns_observations(
-        self, mock_repository: MagicMock
-    ) -> None:
+    def test_get_by_time_range_returns_observations(self, mock_repository: MagicMock) -> None:
         from src.application.services.memory_service import MemoryService
 
         mock_repository.get_by_timestamp_range.return_value = [

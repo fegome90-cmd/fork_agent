@@ -1,4 +1,3 @@
-import pytest
 from src.infrastructure.tmux_orchestrator.circuit_breaker import (
     CircuitState,
     TmuxCircuitBreaker,
@@ -87,6 +86,7 @@ class TestCircuitBreakerTransitions:
         assert cb.state == CircuitState.OPEN
 
         import time
+
         time.sleep(1.1)
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -96,6 +96,7 @@ class TestCircuitBreakerTransitions:
         assert cb.state == CircuitState.OPEN
 
         import time
+
         time.sleep(1.1)
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -108,6 +109,7 @@ class TestCircuitBreakerTransitions:
         assert cb.state == CircuitState.OPEN
 
         import time
+
         time.sleep(1.1)
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -119,6 +121,7 @@ class TestCircuitBreakerTransitions:
         cb.record_failure()
 
         import time
+
         time.sleep(1.1)
 
         assert cb.can_execute() is True
