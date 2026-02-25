@@ -120,7 +120,7 @@ class TestWorkflowVerify:
     def test_verify_success(self, tmp_path: Path) -> None:
 
         plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
-        exec_state = ExecuteState(session_id="test-exec", phase=WorkflowPhase.EXECUTING)
+        exec_state = ExecuteState(session_id="test-exec", phase=WorkflowPhase.EXECUTED)
 
         plan_path = tmp_path / "plan-state.json"
         exec_path = tmp_path / "execute-state.json"
@@ -153,7 +153,7 @@ class TestWorkflowVerify:
         )
 
         plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
-        exec_state = ExecuteState(session_id="test-exec", phase=WorkflowPhase.EXECUTING)
+        exec_state = ExecuteState(session_id="test-exec", phase=WorkflowPhase.EXECUTED)
         plan_path = tmp_path / "plan-state.json"
         exec_path = tmp_path / "execute-state.json"
         plan_state.save(plan_path)
@@ -206,7 +206,7 @@ class TestWorkflowShip:
 
     def test_ship_blocked_without_unlock(self, tmp_path: Path) -> None:
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=False)
+        verify_state = VerifyState(session_id="test-verify", unlock_ship=False, phase=WorkflowPhase.VERIFIED)
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
@@ -221,7 +221,7 @@ class TestWorkflowShip:
 
     def test_ship_allowed_with_unlock(self, tmp_path: Path) -> None:
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=True)
+        verify_state = VerifyState(session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED)
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
@@ -240,7 +240,7 @@ class TestWorkflowShip:
             WorkflowShipStartEvent,
         )
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=True)
+        verify_state = VerifyState(session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED)
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 

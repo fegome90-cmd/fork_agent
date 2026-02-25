@@ -28,3 +28,18 @@ class ObservationNotFoundError(MemoryError):
         self, message: str = "Observation not found.", original_exception: Exception | None = None
     ):
         super().__init__(message, original_exception)
+
+
+class WorkflowError(Exception):
+    """Base exception for all workflow-related errors."""
+
+    pass
+
+
+class PhaseSkipError(WorkflowError):
+    """Raised when attempting to skip a workflow phase without proper validation."""
+
+    def __init__(self, message: str, current_phase: str, target_phase: str):
+        super().__init__(message)
+        self.current_phase = current_phase
+        self.target_phase = target_phase

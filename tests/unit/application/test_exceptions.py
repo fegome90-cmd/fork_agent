@@ -5,8 +5,10 @@ import pytest
 from src.application.exceptions import (
     MemoryError,
     ObservationNotFoundError,
+    PhaseSkipError,
     RepositoryError,
     ServiceError,
+    WorkflowError,
 )
 
 
@@ -42,3 +44,33 @@ def test_exception_can_wrap_original_exception() -> None:
     except RepositoryError as e:
         assert e.original_exception is original
         assert str(e) == "Failed to save data"
+
+
+def test_raise_phase_skip_error() -> None:
+    """Verify that PhaseSkipError can be raised with proper attributes."""
+    with pytest.raises(PhaseSkipError) as exc_info:
+        raise PhaseSkipError(
+            message="Cannot skip to verify",
+            current_phase="planning",
+            target_phase="verify",
+        )
+    error = exc_info.value
+    assert error.current_phase == "planning"
+    assert error.target_phase == "verify"
+    assert "Cannot skip to verify" in str(error)
+
+
+def test_phase_skip_error_inherits_from_workflow_error() -> None:
+    """Verify that PhaseSkipError inherits from WorkflowError."""
+    error = PhaseSkipError(
+        message="Test",
+        current_phase="planning",
+        target_phase="verify",
+    )
+    assert isinstance(error, WorkflowError)
+
+
+def test_raise_workflow_error() -> None:
+    """Verify that WorkflowError can be raised."""
+    with pytest.raises(WorkflowError, match="Workflow error"):
+        raise WorkflowError("Workflow error")

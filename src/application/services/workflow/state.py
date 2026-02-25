@@ -1,19 +1,23 @@
 """Workflow state management.
 
 State Schema Versioning:
-- v1 (current): Includes schema_version field
+- v2 (current): Includes decisions field in PlanState
+- v1 (legacy): No decisions field - auto-migrated on load
 - v0 (legacy): No schema_version field - auto-migrated on load
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-CURRENT_SCHEMA_VERSION = 1
+from src.domain.entities.user_decision import DecisionStatus, UserDecision
+
+import json
+
+CURRENT_SCHEMA_VERSION = 2
 
 
 class StateError(Exception):
@@ -50,6 +54,7 @@ class Task:
     session_name: str | None = None
     agent_pid: int | None = None
 
+
 @dataclass
 class PlanState:
     session_id: str
@@ -58,6 +63,7 @@ class PlanState:
     started_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     plan_file: str = ".claude/plans/plan.md"
     tasks: list[Task] = field(default_factory=list)
+    decisions: dict[str, UserDecision] = field(default_factory=dict)
     schema_version: int = CURRENT_SCHEMA_VERSION
     migrated_from: int | None = None
 
@@ -83,7 +89,17 @@ class PlanState:
                 }
                 for t in self.tasks
             ],
+            "decisions": {
+                k: {
+                    "key": d.key,
+                    "value": d.value,
+                    "status": d.status.value,
+                    "rationale": d.rationale,
+                }
+                for k, d in self.decisions.items()
+            },
         }
+
     @classmethod
     def from_json(cls, data: dict) -> PlanState:
         # Detect legacy state (v0) - no schema_version field
@@ -98,11 +114,18 @@ class PlanState:
                 f"Maximum supported version is {CURRENT_SCHEMA_VERSION}."
             )
 
-        # Migration: v0 -> v1
+        # Migration tracking
         migrated_from: int | None = None
+
+        # Migration: v0 -> v1
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 1  # Migrate to current
+
+        # Migration: v1 -> v2 (add decisions field)
+        if schema_version == 1:
+            migrated_from = 1
+
+        schema_version = 2  # Always use current version
 
         tasks = [
             Task(
@@ -117,6 +140,18 @@ class PlanState:
             )
             for t in data.get("tasks", [])
         ]
+
+        # Parse decisions (new in v2)
+        decisions: dict[str, UserDecision] = {}
+        decisions_data = data.get("decisions", {})
+        for k, d in decisions_data.items():
+            decisions[k] = UserDecision(
+                key=d["key"],
+                value=d["value"],
+                status=DecisionStatus(d["status"]),
+                rationale=d.get("rationale"),
+            )
+
         return cls(
             session_id=data["session_id"],
             status=data.get("status", "planning"),
@@ -124,6 +159,7 @@ class PlanState:
             started_at=data.get("started_at", datetime.utcnow().isoformat() + "Z"),
             plan_file=data.get("plan_file", ".claude/plans/plan.md"),
             tasks=tasks,
+            decisions=decisions,
             schema_version=schema_version,
             migrated_from=migrated_from,
         )
@@ -147,6 +183,28 @@ class PlanState:
             return cls.from_json(data)
         except json.JSONDecodeError as e:
             raise InvalidStateError(f"PlanState: invalid JSON - {e}") from e
+
+    def add_decision(
+        self, key: str, value: str, status: DecisionStatus, rationale: str | None = None
+    ) -> PlanState:
+        """Create a new PlanState with an added decision."""
+        new_decisions = dict(self.decisions)
+        new_decisions[key] = UserDecision(key=key, value=value, status=status, rationale=rationale)
+        return PlanState(
+            session_id=self.session_id,
+            status=self.status,
+            phase=self.phase,
+            started_at=self.started_at,
+            plan_file=self.plan_file,
+            tasks=self.tasks,
+            decisions=new_decisions,
+            schema_version=self.schema_version,
+            migrated_from=self.migrated_from,
+        )
+
+    def get_decision(self, key: str) -> UserDecision | None:
+        """Get a decision by key."""
+        return self.decisions.get(key)
 
 
 @dataclass
@@ -183,25 +241,23 @@ class ExecuteState:
             ],
             "current_task_index": self.current_task_index,
         }
+
     @classmethod
     def from_json(cls, data: dict) -> ExecuteState:
-        # Detect legacy state (v0) - no schema_version field
         schema_version = data.get("schema_version")
         if schema_version is None:
-            schema_version = 0  # Legacy state
+            schema_version = 0
 
-        # Fail-closed for unknown future versions
         if schema_version > CURRENT_SCHEMA_VERSION:
             raise UnsupportedSchemaError(
                 f"ExecuteState schema version {schema_version} is not supported. "
                 f"Maximum supported version is {CURRENT_SCHEMA_VERSION}."
             )
 
-        # Migration: v0 -> v1
         migrated_from: int | None = None
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 1  # Migrate to current
+            schema_version = 2
 
         tasks = [
             Task(
@@ -216,6 +272,7 @@ class ExecuteState:
             )
             for t in data.get("tasks", [])
         ]
+
         return cls(
             session_id=data["session_id"],
             status=data.get("status", "idle"),
@@ -277,23 +334,20 @@ class VerifyState:
 
     @classmethod
     def from_json(cls, data: dict) -> VerifyState:
-        # Detect legacy state (v0) - no schema_version field
         schema_version = data.get("schema_version")
         if schema_version is None:
-            schema_version = 0  # Legacy state
+            schema_version = 0
 
-        # Fail-closed for unknown future versions
         if schema_version > CURRENT_SCHEMA_VERSION:
             raise UnsupportedSchemaError(
                 f"VerifyState schema version {schema_version} is not supported. "
                 f"Maximum supported version is {CURRENT_SCHEMA_VERSION}."
             )
 
-        # Migration: v0 -> v1
         migrated_from: int | None = None
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 1  # Migrate to current
+            schema_version = 2
 
         return cls(
             session_id=data["session_id"],

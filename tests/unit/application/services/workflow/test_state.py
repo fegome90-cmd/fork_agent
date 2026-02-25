@@ -35,7 +35,7 @@ class TestPlanStateVersioning:
         assert data["schema_version"] == CURRENT_SCHEMA_VERSION
 
     def test_from_json_v1_loads_correctly(self) -> None:
-        """Loading v1 state should work without migration."""
+        """Loading v1 state should be migrated to v2."""
         data = {
             "session_id": "test-session",
             "status": "planning",
@@ -44,11 +44,11 @@ class TestPlanStateVersioning:
             "tasks": [],
         }
         state = PlanState.from_json(data)
-        assert state.schema_version == 1
-        assert state.migrated_from is None
+        assert state.schema_version == 2
+        assert state.migrated_from == 1
 
-    def test_from_json_v0_migrates_to_v1(self) -> None:
-        """Legacy v0 state should be migrated to v1."""
+    def test_from_json_v0_migrates_to_v2(self) -> None:
+        """Legacy v0 state should be migrated to v2."""
         data = {
             "session_id": "test-session",
             "status": "planning",
@@ -57,7 +57,7 @@ class TestPlanStateVersioning:
             "tasks": [],
         }
         state = PlanState.from_json(data)
-        assert state.schema_version == 1
+        assert state.schema_version == 2
         assert state.migrated_from == 0
 
     def test_from_json_unknown_future_version_raises(self) -> None:
@@ -136,6 +136,24 @@ class TestPlanStateVersioning:
         assert loaded.status == state.status
         assert loaded.schema_version == state.schema_version
 
+    def test_decisions_field(self) -> None:
+        """Test that decisions field works correctly."""
+        from src.domain.entities.user_decision import DecisionStatus, UserDecision
+
+        state = PlanState(session_id="test-session")
+        # New state should have empty decisions
+        assert state.decisions == {}
+
+        # Test add_decision method
+        new_state = state.add_decision(
+            key="test-key",
+            value="test-value",
+            status=DecisionStatus.LOCKED,
+            rationale="Test rationale",
+        )
+        assert "test-key" in new_state.decisions
+        assert new_state.decisions["test-key"].value == "test-value"
+
 
 class TestExecuteStateVersioning:
     """Tests for ExecuteState schema versioning."""
@@ -146,10 +164,10 @@ class TestExecuteStateVersioning:
         assert state.schema_version == CURRENT_SCHEMA_VERSION
 
     def test_from_json_v0_migrates(self) -> None:
-        """Legacy v0 state should be migrated."""
+        """Legacy v0 state should be migrated to v2."""
         data = {"session_id": "test", "schema_version": None, "tasks": []}
         state = ExecuteState.from_json(data)
-        assert state.schema_version == 1
+        assert state.schema_version == 2
         assert state.migrated_from == 0
 
 
@@ -162,8 +180,8 @@ class TestVerifyStateVersioning:
         assert state.schema_version == CURRENT_SCHEMA_VERSION
 
     def test_from_json_v0_migrates(self) -> None:
-        """Legacy v0 state should be migrated."""
+        """Legacy v0 state should be migrated to v2."""
         data = {"session_id": "test", "schema_version": None, "tasks": []}
         state = VerifyState.from_json(data)
-        assert state.schema_version == 1
+        assert state.schema_version == 2
         assert state.migrated_from == 0
