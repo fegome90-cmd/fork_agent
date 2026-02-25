@@ -13,8 +13,13 @@ from src.application.services.orchestration.events import (
     WorkflowExecuteStartEvent,
     WorkflowOutlineCompleteEvent,
     WorkflowOutlineStartEvent,
+    WorkflowShipCompleteEvent,
+    WorkflowShipStartEvent,
+    WorkflowVerifyCompleteEvent,
+    WorkflowVerifyStartEvent,
 )
 from src.application.services.orchestration.hook_service import HookService
+from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook_service
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
@@ -27,16 +32,18 @@ from src.application.services.workflow.state import (
 
 logger = logging.getLogger(__name__)
 
-# Singleton HookService instance
-_hook_service: HookService | None = None
-
 
 def _get_hook_service() -> HookService:
-    """Get or create singleton HookService instance."""
-    global _hook_service
-    if _hook_service is None:
-        _hook_service = HookService()
-    return _hook_service
+    """Get HookService from ctx.obj if available (for testability), else use shared singleton."""
+    try:
+        ctx = typer.get_current_context()
+        if isinstance(ctx.obj, dict):
+            if "hook_service" not in ctx.obj:
+                ctx.obj["hook_service"] = _get_shared_hook_service()
+            return ctx.obj["hook_service"]
+    except RuntimeError:
+        pass
+    return _get_shared_hook_service()
 
 
 def _dispatch_event(event: object, context: str = "") -> None:
@@ -177,21 +184,35 @@ def execute(
 def verify(
     run_tests: bool = typer.Option(True, "--tests/--no-tests", help="Run tests"),
 ) -> None:
-    _check_plan_exists()
+    plan = _check_plan_exists()
     _check_execute_exists()
+    session_id = f"verify-{uuid.uuid4().hex[:8]}"
+
+    # Dispatch verify start event
+    _dispatch_event(
+        WorkflowVerifyStartEvent(plan_id=plan.session_id, run_tests=run_tests),
+        context="verify_start",
+    )
+
     verify_path = get_verify_state_path()
+    test_results: dict[str, bool] = {"passed": True} if run_tests else {}
     verify_state = VerifyState(
-        session_id=f"verify-{uuid.uuid4().hex[:8]}",
+        session_id=session_id,
         status="verified",
         phase=WorkflowPhase.VERIFIED,
         unlock_ship=True,
+        test_results=test_results,
     )
-    if run_tests:
-        verify_state.test_results = {"passed": True}
     verify_state.save(verify_path)
     typer.echo(f"✓ Verification complete: {verify_state.session_id}")
     typer.echo(f"  Unlock ship: {verify_state.unlock_ship}")
     typer.echo("  Next: Run 'memory workflow ship'")
+
+    # Dispatch verify complete event
+    _dispatch_event(
+        WorkflowVerifyCompleteEvent(plan_id=plan.session_id, test_results=test_results),
+        context="verify_complete",
+    )
 
 
 @app.command("ship")
@@ -205,9 +226,22 @@ def ship(
             "Error: Verification not complete. Run 'memory workflow verify' first.", err=True
         )
         raise typer.Exit(1)
+
+    # Dispatch ship start event
+    _dispatch_event(
+        WorkflowShipStartEvent(plan_id=verify_state.session_id, target_branch=target_branch),
+        context="ship_start",
+    )
+
     typer.echo(f"✓ Shipping to {target_branch}")
     typer.echo(f"  Session: {verify_state.session_id}")
     typer.echo("Workflow complete!")
+
+    # Dispatch ship complete event
+    _dispatch_event(
+        WorkflowShipCompleteEvent(plan_id=verify_state.session_id, target_branch=target_branch),
+        context="ship_complete",
+    )
 
 
 @app.command("status")

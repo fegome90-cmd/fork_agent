@@ -223,6 +223,22 @@ class TestWorkflowVerifyEvents:
         assert event.plan_id == "plan-123"
         assert event.test_results == {"passed": True, "coverage": True}
 
+    def test_verify_complete_event_test_results_is_immutable(self) -> None:
+        """Should wrap test_results in a read-only MappingProxyType."""
+        from types import MappingProxyType
+
+        from src.application.services.orchestration.events import (
+            WorkflowVerifyCompleteEvent,
+        )
+
+        event = WorkflowVerifyCompleteEvent(
+            plan_id="plan-123", test_results={"passed": True}
+        )
+
+        assert isinstance(event.test_results, MappingProxyType)
+        with pytest.raises(TypeError):
+            event.test_results["new_key"] = False  # type: ignore[index]
+
 
 class TestWorkflowShipEvents:
     """Tests for WorkflowShipStartEvent and CompleteEvent."""

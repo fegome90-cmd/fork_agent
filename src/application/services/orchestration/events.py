@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Literal
+from types import MappingProxyType
+from typing import Literal, Mapping
 
 WorkflowPhaseLiteral = Literal["outline", "execute", "verify", "ship"]
 SubagentStatusLiteral = Literal["completed", "failed", "cancelled", "timeout"]
@@ -171,11 +172,15 @@ class WorkflowVerifyCompleteEvent:
 
     Attributes:
         plan_id: The unique identifier of the plan.
-        test_results: Results of the verification (test name -> passed).
+        test_results: Read-only results of the verification (test name -> passed).
     """
 
     plan_id: str
-    test_results: dict[str, bool] = field(default_factory=dict)
+    test_results: Mapping[str, bool] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.test_results, dict):
+            object.__setattr__(self, "test_results", MappingProxyType(self.test_results))
 
 
 @dataclass(frozen=True)

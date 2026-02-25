@@ -241,3 +241,13 @@ class TestRegexMatcherSpec:
         event = WorkflowOutlineStartEvent(plan_id="dev-123")
 
         assert spec.is_satisfied_by(event) is False
+
+    def test_invalid_regex_never_matches(self) -> None:
+        """Should not match any event when regex is invalid (no accidental match-all)."""
+        from src.application.services.orchestration.events import UserCommandEvent
+        from src.application.services.orchestration.specs import RegexMatcherSpec
+
+        spec = RegexMatcherSpec(event_type="UserCommand", matcher="[invalid")
+        event = UserCommandEvent(command_name="anything")
+
+        assert spec.is_satisfied_by(event) is False
