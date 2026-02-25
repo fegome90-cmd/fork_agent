@@ -165,6 +165,8 @@ Ver `pyproject.toml` para configuración completa.
 - **Repository Pattern:** Protocol en `domain/ports/`, implementación en `infrastructure/`
 - **Orchestration:** Eventos, acciones y hooks (`src/application/services/orchestration/`)
 - **Workflow:** Estado persistente (`src/application/services/workflow/`)
+- **Workflow Events:** `WorkflowOutlineStart/Complete`, `WorkflowExecuteStart/Complete`, `WorkflowVerifyStart/Complete`, `WorkflowShipStart/Complete`
+- **Worktree Events:** `WorktreeCreated`, `WorktreeMerged`, `WorktreeRemoved` (en `src/application/services/orchestration/events.py`)
 
 ---
 

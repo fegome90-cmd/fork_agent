@@ -196,8 +196,10 @@ class TestMessageSendAndCapture:
         # Capture pane content
         content = orchestrator.capture_content(session_name, window_index, lines=50)
 
-        # The encoded message should be in the pane
-        assert FORK_MSG_PREFIX in content, f"Message not found in pane. Content: {content[:200]}"
+        # The encoded message should be in the pane (normalize newlines for robustness)
+        # Terminal width may split the message across lines
+        normalized_content = content.replace("\n", "")
+        assert FORK_MSG_PREFIX in normalized_content, f"Message not found in pane. Content: {content[:200]}"
 
 
 class TestMessageBroadcast:

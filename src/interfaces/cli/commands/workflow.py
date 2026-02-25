@@ -17,9 +17,11 @@ from src.application.services.orchestration.events import (
     WorkflowShipStartEvent,
     WorkflowVerifyCompleteEvent,
     WorkflowVerifyStartEvent,
+    WorktreeCreatedEvent,
+    WorktreeMergedEvent,
+    WorktreeRemovedEvent,
 )
 from src.application.services.orchestration.hook_service import HookService
-from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook_service
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
@@ -35,11 +37,7 @@ from src.infrastructure.persistence.container import (
     get_tmux_orchestrator,
     get_workspace_manager,
 )
-from src.application.services.orchestration.events import (
-    WorktreeCreatedEvent,
-    WorktreeMergedEvent,
-    WorktreeRemovedEvent,
-)
+from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook_service
 
 logger = logging.getLogger(__name__)
 
@@ -377,6 +375,27 @@ def verify(
     except Exception as e:
         logger.debug("Failed to save verify to memory: %s", e)
 
+
+@app.command("ship")
+def ship(
+    target_branch: str = typer.Option("main", "--branch", "-b", help="Target branch"),
+    cleanup: bool = typer.Option(True, "--cleanup/--no-cleanup", help="Cleanup worktrees"),
+) -> None:
+    verify_state = _check_verify_exists()
+    if not verify_state.unlock_ship:
+        typer.echo(
+            "Error: Verification not complete. Run 'memory workflow verify' first.", err=True
+        )
+        raise typer.Exit(1)
+
+    # Note: plan check not needed here, verify already validated the workflow
+
+    # Dispatch ship start event
+    _dispatch_event(
+        WorkflowShipStartEvent(plan_id=verify_state.session_id, target_branch=target_branch),
+        context="ship_start",
+    )
+
     exec_path = get_execute_state_path()
     exec_state = ExecuteState.load(exec_path)
 
@@ -431,6 +450,8 @@ def verify(
         except Exception as e:
             logger.error("Error initializing WorkspaceManager for cleanup: %s", e)
 
+    typer.echo(f"\u2713 Shipping to {target_branch}")
+    typer.echo(f"  Session: {verify_state.session_id}")
     typer.echo("Workflow complete!")
 
     # Dispatch ship complete event

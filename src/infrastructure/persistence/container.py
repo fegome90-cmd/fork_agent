@@ -8,6 +8,8 @@ from dependency_injector import containers, providers
 
 from src.application.services.memory_service import MemoryService
 from src.application.services.scheduler_service import SchedulerService
+from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
+from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.migrations import MigrationRunner, run_migrations
 from src.infrastructure.persistence.repositories.observation_repository import (
@@ -16,10 +18,8 @@ from src.infrastructure.persistence.repositories.observation_repository import (
 from src.infrastructure.persistence.repositories.scheduled_task_repository import (
     ScheduledTaskRepository,
 )
-from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
-from src.application.services.workspace.workspace_manager import WorkspaceManager
-from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
+from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 DEFAULT_DB_PATH = Path("data/memory.db")
 DEFAULT_MIGRATIONS_DIR = Path(__file__).parent / "migrations"

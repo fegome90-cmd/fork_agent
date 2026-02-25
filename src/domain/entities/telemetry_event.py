@@ -7,7 +7,7 @@ import types
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -120,7 +120,7 @@ class TelemetryEvent:
 
         Automatically generates ID, timestamps, and expiration.
         """
-        now_ts = datetime.now(timezone.utc).timestamp()
+        now_ts = datetime.now(UTC).timestamp()
         now_ms = int(now_ts * 1000)
 
         # Calculate expiration based on category

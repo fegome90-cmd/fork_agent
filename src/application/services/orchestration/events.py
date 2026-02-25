@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Literal, Mapping
+from typing import Literal
 
 WorkflowPhaseLiteral = Literal["outline", "execute", "verify", "ship"]
 SubagentStatusLiteral = Literal["completed", "failed", "cancelled", "timeout"]

@@ -136,6 +136,28 @@ Sistema de eventos inspirado en claudikins-kernel para automatización:
 - **UserCommand**: Comando CLI ejecutado
 - **FileWritten**: Archivo escrito
 
+### Workflow Events
+
+Eventos del workflow (outline → execute → verify → ship):
+
+- **WorkflowOutlineStart**: Plan 开始
+- **WorkflowOutlineComplete**: Plan 完成
+- **WorkflowExecuteStart**: 执行开始
+- **WorkflowExecuteComplete**: 执行完成
+- **WorkflowVerifyStart**: 验证开始
+- **WorkflowVerifyComplete**: 验证完成
+- **WorkflowShipStart**: Shipping 开始
+- **WorkflowShipComplete**: Shipping 完成
+
+### Worktree Events
+
+Eventos de ciclo de vida de worktrees:
+
+- **WorktreeCreated**: Worktree creado
+- **WorktreeMerged**: Worktree mergeado a branch
+- **WorktreeRemoved**: Worktree eliminado
+
+
 ### Configuración
 
 Los hooks se configuran en `.hooks/hooks.json`:
