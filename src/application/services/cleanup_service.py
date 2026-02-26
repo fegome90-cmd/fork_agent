@@ -29,12 +29,18 @@ class CleanupService:
         """Delete observations older than specified days.
 
         Args:
-            days: Number of days to keep. Default is 90.
+            days: Number of days to keep. Must be positive. Default is 90.
             dry_run: If True, only count records without deleting.
 
         Returns:
             CleanupResult with counts of deleted records.
+
+        Raises:
+            ValueError: If days is not positive.
         """
+        if days <= 0:
+            raise ValueError(f"days must be positive, got {days}")
+
         cutoff_timestamp = self._calculate_cutoff_timestamp(days)
 
         if dry_run:
@@ -85,21 +91,28 @@ class CleanupService:
             raise RuntimeError(f"Failed to count old observations: {e}") from e
 
     def _delete_old_observations(self, cutoff_timestamp: int) -> CleanupResult:
-        """Delete old observations from both observations and FTS tables."""
+        """Delete old observations from both observations and FTS tables.
+
+        Note: We delete from observations_fts FIRST because the FTS deletion
+        uses a subquery that references the observations table. If we deleted
+        from observations first, the subquery would return no rows.
+        """
         try:
             with self._connection as conn:
-                cursor = conn.execute(
-                    "DELETE FROM observations WHERE timestamp < ?",
-                    (cutoff_timestamp,),
-                )
-                deleted_count = cursor.rowcount
-
+                # Delete from FTS first (references observations table in subquery)
                 fts_cursor = conn.execute(
                     """DELETE FROM observations_fts
                        WHERE rowid IN (SELECT rowid FROM observations WHERE timestamp < ?)""",
                     (cutoff_timestamp,),
                 )
                 fts_deleted_count = fts_cursor.rowcount
+
+                # Then delete from observations
+                cursor = conn.execute(
+                    "DELETE FROM observations WHERE timestamp < ?",
+                    (cutoff_timestamp,),
+                )
+                deleted_count = cursor.rowcount
 
             return CleanupResult(deleted_count=deleted_count, fts_deleted_count=fts_deleted_count)
         except sqlite3.Error as e:

@@ -13,9 +13,12 @@ from src.interfaces.cli.commands import delete, get, list, save, search, stats
 from src.interfaces.cli.commands.cleanup import cleanup
 from src.interfaces.cli.commands.health import health
 from src.interfaces.cli.commands.schedule import app as schedule_app
-from src.interfaces.cli.commands.telemetry import app as telemetry_app
+
 from src.interfaces.cli.commands.workflow import app as workflow_app
-from src.interfaces.cli.dependencies import get_hook_service, get_memory_service
+from src.interfaces.cli.dependencies import (
+    get_hook_service,
+    get_memory_service,
+)
 
 logger = logging.getLogger(__name__)
 

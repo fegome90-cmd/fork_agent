@@ -15,7 +15,16 @@ DEFAULT_DB_PATH = Path("data/memory.db")
 
 
 def _get_cleanup_service_from_context(ctx: typer.Context) -> CleanupService:
-    """Get cleanup service from typer context."""
+    """Get cleanup service from typer context.
+
+    Prefers the injected service from ctx.obj if available,
+    falls back to constructing from db_path otherwise.
+    """
+    # Try to get from injected context first
+    if ctx.obj is not None and hasattr(ctx.obj, "cleanup_service"):
+        return ctx.obj.cleanup_service()
+
+    # Fallback: construct from db_path
     db_path = DEFAULT_DB_PATH
     if ctx.parent and ctx.parent.params:
         db_path = Path(ctx.parent.params.get("db_path", DEFAULT_DB_PATH))

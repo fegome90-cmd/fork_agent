@@ -40,6 +40,7 @@ class HealthCheckService:
         Returns:
             HealthCheckResult with health status and details.
         """
+        _ = verbose  # Reserved for future detailed diagnostics
         issues: list[str] = []
 
         # Check integrity

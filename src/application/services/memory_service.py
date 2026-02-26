@@ -38,6 +38,23 @@ class MemoryService:
         return self._repository.search(query, limit=limit)
 
     def get_recent(self, limit: int = 10, offset: int = 0) -> list[Observation]:
+        """Get recent observations with pagination.
+
+        Args:
+            limit: Maximum number of observations to return. Must be >= 0.
+            offset: Number of observations to skip. Must be >= 0.
+
+        Returns:
+            List of observations.
+
+        Raises:
+            ValueError: If limit or offset are negative.
+        """
+        if limit < 0:
+            raise ValueError(f"limit must be >= 0, got {limit}")
+        if offset < 0:
+            raise ValueError(f"offset must be >= 0, got {offset}")
+
         return self._repository.get_all(limit=limit, offset=offset)
 
     def get_by_id(self, observation_id: str) -> Observation:
