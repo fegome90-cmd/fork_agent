@@ -47,6 +47,17 @@ class TestPlanStateVersioning:
         assert state.schema_version == 3
         assert state.migrated_from == 1
 
+    def test_from_json_v2_migrates_to_v3(self) -> None:
+        """Loading v2 state should be migrated to v3."""
+        data = {
+            "session_id": "test-session",
+            "schema_version": 2,
+            "decisions": {},  # v2 format
+        }
+        state = PlanState.from_json(data)
+        assert state.schema_version == 3
+        assert state.migrated_from == 2
+
     def test_from_json_v0_migrates_to_v3(self) -> None:
         """Legacy v0 state should be migrated to v3."""
         """Legacy v0 state should be migrated to v2."""

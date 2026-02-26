@@ -1,0 +1,55 @@
+id: WO-P2-1
+priority: P2
+title: "Implementar Comando Loop (run/loop)"
+
+objective: |
+  Crear comando `memory workflow run <task>` que automatice el ciclo completo:
+  outline → execute → verify → ship en un solo comando, con feedback por fase.
+
+scope: |
+  - `src/interfaces/cli/commands/workflow.py` (agregar nuevo comando)
+  - Opcional: crear `src/application/services/workflow/loop_runner.py`
+
+constraints: |
+  - Debe permitir flags individuales: --skip-verify, --no-ship
+  - Debe mostrar progreso claro entre fases
+  - Debe permitir Ctrl+C graceful (no dejar estado huérfano)
+  - Debe manejar errores en cada fase y parar/fallback según configuración
+
+dod: |
+  - [ ] Nuevo comando: `memory workflow run <task_description>`
+  - [ ] Ejecuta outline → execute → verify → ship automáticamente
+  - [ ] Muestra output de cada fase: "=== OUTLINE ===", "=== EXECUTE ===", etc.
+  - [ ] Si una fase falla, para y permite retry
+  - [ ] Flags: --skip-verify, --no-ship, --force (bypass gates)
+  - [ ] Help muestra todas las opciones
+
+validation_commands: |
+  # Test comando existe
+  memory workflow run --help
+  # Debe mostrar help con opciones
+
+  # Test ejecución completa (si P0-1 y P0-2 están hechos)
+  memory workflow run "test loop command"
+  # Debe ejecutar outline → execute → verify → ship
+
+  # Test con --skip-verify
+  memory workflow run "test skip" --skip-verify
+  # Debe ejecutar outline → execute → ship (skip verify)
+
+evidence_required: |
+  - `memory workflow run --help` muestra ayuda
+  - Output muestra progreso por fase
+
+dependencies: |
+  - WO-P0-1 (Verify runner real) - necesario para verify real
+  - WO-P0-2 (ExitGate) - necesario para que gates funcionen
+  - WO-P0-3 (Phase correctness) - necesario para transiciones correctas
+
+risks: |
+  - Comando largo puede timeout - permitir configuración
+  - Errores en fases intermedias necesitan cleanup adecuado
+  - User experience puede ser confusa sin feedback claro
+
+related_audit_finding: |
+  - Confirmed: No existe comando run/loop

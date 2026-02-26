@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
@@ -23,12 +24,15 @@ from src.application.services.orchestration.hook_service import HookService
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
+    VerifyResults,
     VerifyState,
     WorkflowPhase,
     get_execute_state_path,
     get_plan_state_path,
+    get_state_dir,
     get_verify_state_path,
 )
+from src.application.services.workflow.verify_runner import verify_runner
 from src.infrastructure.persistence.container import (
     get_memory_service,
     get_workspace_manager,
@@ -270,7 +274,17 @@ def verify(
     )
 
     verify_path = get_verify_state_path()
-    test_results: dict[str, bool] = {"passed": True} if run_tests else {}
+    test_results: VerifyResults = {}
+    if run_tests:
+        try:
+            test_results = verify_runner.run()
+            output_path = get_state_dir() / "verify-output.txt"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            # Run again to capture output (or we could modify run() to return stdout)
+            # For now, just note that output would be captured in a full implementation
+        except Exception as e:
+            logger.warning("Verify runner failed: %s", e)
+            test_results = {"passed": False, "error": str(e)}
     verify_state = VerifyState(
         session_id=session_id,
         status="verified",
@@ -308,8 +322,52 @@ def verify(
 def ship(
     target_branch: str = typer.Option("main", "--branch", "-b", help="Target branch"),
     cleanup: bool = typer.Option(True, "--cleanup/--no-cleanup", help="Cleanup worktrees"),
+    force: bool = typer.Option(False, "--force", help="Force ship without verification"),
+    reason: str = typer.Option("", "--reason", help="Reason for forced ship (required with --force)"),
 ) -> None:
-    verify_state = _check_verify_exists()
+    # Handle --force: skip verification gate
+    if force:
+        if not reason.strip():
+            typer.echo("Error: --force requires --reason", err=True)
+            raise typer.Exit(1)
+        # Create minimal verify_state for forced ship
+        verify_state = VerifyState(
+            session_id=f"forced-{uuid.uuid4().hex[:8]}",
+            phase=WorkflowPhase.VERIFIED,
+            unlock_ship=True,
+        )
+        # Audit event for forced ship
+        try:
+            memory = get_memory_service()
+            memory.save(
+                content="workflow:ship:forced",
+                metadata={
+                    "session_id": verify_state.session_id,
+                    "reason": reason,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "forced_by": "cli",
+                },
+            )
+            typer.echo("Warning: Forced ship executed (audit event logged)")
+        except Exception as e:
+            logger.warning("Failed to log forced ship audit event: %s", e)
+    else:
+        verify_state = _check_verify_exists()
+
+        # ExitGate: Validate verification passed
+        test_results = verify_state.test_results
+        # Empty test_results means --no-tests was used (user opted out)
+        # This is allowed - treat as passed
+        if not test_results:
+            passed = True
+            exit_code = 0
+        else:
+            passed = test_results.get("passed", False)
+            exit_code = test_results.get("exit_code", -1)
+
+        if not passed and exit_code != 0:
+            typer.echo("Error: Tests failed, cannot ship", err=True)
+            raise typer.Exit(1)
 
     # Validate phase transition: ship requires verified phase
     _validate_phase_transition(

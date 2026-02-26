@@ -1,0 +1,57 @@
+id: WO-P0-3
+priority: P0
+title: "Corregir Phase Correctness en VerifyState"
+
+objective: |
+  Fix el mismatch entre el campo `phase` en `.claude/verify-state.json` 
+  (actualmente "planning" en lugar de "verified") y asegurar que todas las
+  transiciones de fase usen los valores correctos del enum WorkflowPhase.
+
+scope: |
+  - `src/application/services/workflow/state.py` (VerifyState class)
+  - `src/interfaces/cli/commands/workflow.py` (verify handler)
+
+constraints: |
+  - Backward compatible: no romper estados existentes
+  - Solo modificar el valor de phase que se guarda, no el flujo
+
+dod: |
+  - [ ] verify handler guarda `phase=WorkflowPhase.VERIFIED` en VerifyState
+  - [ ] El archivo `.claude/verify-state.json` muestra `"phase": "verified"` después de verify
+  - [ ] Migration suave: si phase es null o incorrecto, corregir al cargar
+  - [ ] NO agregar validación de phase en ship - eso vive en P0-2
+  - [ ] verify handler guarda `phase=WorkflowPhase.VERIFIED` en VerifyState
+  - [ ] El archivo `.claude/verify-state.json` muestra `"phase": "verified"` después de verify
+  - [ ] ship handler valida phase == WorkflowPhase.VERIFIED antes de permitir ship
+  - [ ] Estado existente migrate correctamente (si hay plan-state.json o execute-state.json con phase wrong)
+
+validation_commands: |
+  # Limpiar estado existente
+  rm -f .claude/plan-state.json
+  rm -f .claude/execute-state.json
+  rm -f .claude/verify-state.json
+
+  # Ejecutar workflow completo
+  memory workflow outline "test phase"
+  memory workflow execute
+  memory workflow verify
+
+  # Verificar phase en verify-state.json
+  cat .claude/verify-state.json | grep phase
+  # Debe mostrar: "phase": "verified"
+
+  # Verificar también en ship
+  memory workflow ship
+  # No debe fallar por phase mismatch
+
+evidence_required: |
+  - `.claude/verify-state.json` contiene `"phase": "verified"` (no "planning")
+  - `.claude/plan-state.json` contiene `"phase": "outlined"`
+  - `.claude/execute-state.json` contiene `"phase": "executed"` o `"executing"`
+
+dependencies: []
+risks: |
+  - Si hay datos legacy con phase incorrecto, puede fallar - handle gracefully
+
+related_audit_finding: |
+  - Confirmed: phase mismatch en verify-state.json ("planning" vs "verified")
