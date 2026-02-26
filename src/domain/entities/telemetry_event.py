@@ -8,11 +8,11 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class EventCategory(str, Enum):
+class EventCategory(StrEnum):
     """Categories of telemetry events."""
 
     SESSION = "session"
@@ -26,7 +26,7 @@ class EventCategory(str, Enum):
     ERROR = "error"
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Standard event types for telemetry."""
 
     # Session events

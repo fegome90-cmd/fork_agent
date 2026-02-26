@@ -10,14 +10,16 @@ app = typer.Typer()
 @app.command()
 def list_observations(
     ctx: typer.Context,
-    limit: int = typer.Option(10, "--limit", "-l"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of observations to return"),
+    offset: int = typer.Option(0, "--offset", "-o", help="Number of observations to skip"),
 ) -> None:
     memory_service = ctx.obj
-    results = memory_service.get_recent(limit=limit)
+    results = memory_service.get_recent(limit=limit, offset=offset)
 
     if not results:
         typer.echo("No observations found")
         return
 
+    typer.echo(f"Showing {len(results)} observations (offset: {offset})")
     for obs in results:
         typer.echo(f"[{obs.id[:8]}] {obs.content[:80]}...")

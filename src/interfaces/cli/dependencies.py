@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from src.application.services.cleanup_service import CleanupService
 from src.application.services.memory_service import MemoryService
 from src.application.services.orchestration.hook_service import HookService
 from src.application.services.scheduler_service import SchedulerService
+from src.application.services.telemetry.telemetry_service import TelemetryService
 from src.infrastructure.persistence.container import Container, create_container
+from src.infrastructure.persistence.health_check import HealthCheckService
 
 _hook_service: HookService | None = None
 
@@ -39,3 +42,21 @@ def get_scheduler_service(db_path: Path | None = None) -> SchedulerService:
     """Get SchedulerService instance for CLI commands."""
     container = get_container(db_path)
     return container.scheduler_service()
+
+
+def get_cleanup_service(db_path: Path | None = None) -> CleanupService:
+    """Get CleanupService instance for CLI commands."""
+    container = get_container(db_path)
+    return container.cleanup_service()
+
+
+def get_health_check_service(db_path: Path | None = None) -> HealthCheckService:
+    """Get HealthCheckService instance for CLI commands."""
+    container = get_container(db_path)
+    return container.health_check_service()
+
+
+def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
+    """Get TelemetryService instance for CLI commands."""
+    container = get_container(db_path)
+    return container.telemetry_service()  # type: ignore[no-any-return]

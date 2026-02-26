@@ -48,4 +48,4 @@ class TestListCommand:
         result = runner.invoke(app, ["--limit", "5"], obj=mock_memory)
 
         assert result.exit_code == 0
-        mock_memory.get_recent.assert_called_once_with(limit=5)
+        mock_memory.get_recent.assert_called_once_with(limit=5, offset=0)

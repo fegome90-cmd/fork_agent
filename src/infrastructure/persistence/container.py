@@ -6,11 +6,15 @@ from pathlib import Path
 
 from dependency_injector import containers, providers
 
+from src.application.services.cleanup_service import CleanupService
 from src.application.services.memory_service import MemoryService
 from src.application.services.scheduler_service import SchedulerService
+from src.application.services.telemetry.telemetry_service import TelemetryService
+
 from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
+from src.infrastructure.persistence.health_check import HealthCheckService
 from src.infrastructure.persistence.migrations import MigrationRunner, run_migrations
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,
@@ -18,6 +22,10 @@ from src.infrastructure.persistence.repositories.observation_repository import (
 from src.infrastructure.persistence.repositories.scheduled_task_repository import (
     ScheduledTaskRepository,
 )
+from src.infrastructure.persistence.repositories.telemetry_repository import (
+    TelemetryRepositoryImpl,
+)
+
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
@@ -65,10 +73,33 @@ class Container(containers.DeclarativeContainer):
         repository=scheduled_task_repository,
     )
 
+    cleanup_service = providers.Singleton(
+        CleanupService,
+        connection=database_connection,
+    )
+
+    health_check_service = providers.Singleton(
+        HealthCheckService,
+        connection=database_connection,
+        db_path=config.db_path,
+    )
+
     tmux_orchestrator = providers.Singleton(
         TmuxOrchestrator,
         safety_mode=False,
     )
+
+    telemetry_repository = providers.Singleton(
+        TelemetryRepositoryImpl,
+        connection=database_connection,
+    )
+
+    telemetry_service = providers.Singleton(
+        TelemetryService,
+        repository=telemetry_repository,
+    )
+
+
 
 def create_container(db_path: Path | None = None) -> Container:
     container = Container()

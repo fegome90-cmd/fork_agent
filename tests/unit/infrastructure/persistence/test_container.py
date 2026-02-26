@@ -137,7 +137,10 @@ class TestDetectMemoryDbPath:
 
     def test_returns_worktree_path_when_in_worktree(self) -> None:
         """Should return worktree-specific path when in a worktree."""
-        with patch("src.infrastructure.persistence.container.get_workspace_manager") as mock_get_wm:
+        with (
+            patch("src.infrastructure.persistence.container.get_workspace_manager") as mock_get_wm,
+            patch("src.infrastructure.persistence.container.Path.mkdir"),
+        ):
             mock_workspace = MagicMock()
             mock_workspace.path = Path("/some/worktree")
 

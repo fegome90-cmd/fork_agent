@@ -9,10 +9,17 @@ from pathlib import Path
 import typer
 
 from src.application.services.orchestration.events import SessionStartEvent
-from src.interfaces.cli.commands import delete, get, list, save, search
+from src.interfaces.cli.commands import delete, get, list, save, search, stats
+from src.interfaces.cli.commands.cleanup import cleanup
+from src.interfaces.cli.commands.health import health
 from src.interfaces.cli.commands.schedule import app as schedule_app
+from src.interfaces.cli.commands.telemetry import app as telemetry_app
+
 from src.interfaces.cli.commands.workflow import app as workflow_app
-from src.interfaces.cli.dependencies import get_hook_service, get_memory_service
+from src.interfaces.cli.dependencies import (
+    get_hook_service,
+    get_memory_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +34,15 @@ app.command(name="list")(list.list_observations)
 app.command(name="get")(get.get)
 app.command(name="delete")(delete.delete)
 
+app.command(name="cleanup")(cleanup)
+
+app.command(name="health")(health)
+
 app.add_typer(schedule_app, name="schedule")
-app.add_typer(workflow_app, name="workflow")
+app.add_typer(telemetry_app, name="telemetry")
+
+app.command(name="stats")(stats.stats)
+app.command(name="clear-slow-queries")(stats.clear_slow_queries)
 
 
 @app.callback()

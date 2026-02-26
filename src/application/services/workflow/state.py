@@ -1,23 +1,29 @@
 """Workflow state management.
 
 State Schema Versioning:
-- v2 (current): Includes decisions field in PlanState
+- v3 (current): Includes goal and derived_requirements in PlanState
+- v2 (legacy): Includes decisions field in PlanState
 - v1 (legacy): No decisions field - auto-migrated on load
 - v0 (legacy): No schema_version field - auto-migrated on load
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
+from src.domain.entities.derived_requirement import (
+    DerivedRequirement,
+    RequirementPriority,
+    RequirementSource,
+)
+from src.domain.entities.goal import Goal
 from src.domain.entities.user_decision import DecisionStatus, UserDecision
 
-import json
-
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 class StateError(Exception):
@@ -32,7 +38,7 @@ class UnsupportedSchemaError(StateError):
     """Raised when schema version is not supported."""
 
 
-class WorkflowPhase(str, Enum):
+class WorkflowPhase(StrEnum):
     PLANNING = "planning"
     OUTLINED = "outlined"
     EXECUTING = "executing"
@@ -53,6 +59,8 @@ class Task:
     worktree_path: str | None = None
     session_name: str | None = None
     agent_pid: int | None = None
+    depends_on: tuple[str, ...] = ()
+    requirement_ids: tuple[str, ...] = ()
 
 
 @dataclass
@@ -64,6 +72,8 @@ class PlanState:
     plan_file: str = ".claude/plans/plan.md"
     tasks: list[Task] = field(default_factory=list)
     decisions: dict[str, UserDecision] = field(default_factory=dict)
+    goal: Goal | None = None
+    derived_requirements: tuple[DerivedRequirement, ...] = ()
     schema_version: int = CURRENT_SCHEMA_VERSION
     migrated_from: int | None = None
 
@@ -86,6 +96,8 @@ class PlanState:
                     "worktree_path": t.worktree_path,
                     "session_name": t.session_name,
                     "agent_pid": t.agent_pid,
+                    "depends_on": list(t.depends_on),
+                    "requirement_ids": list(t.requirement_ids),
                 }
                 for t in self.tasks
             ],
@@ -98,6 +110,24 @@ class PlanState:
                 }
                 for k, d in self.decisions.items()
             },
+            "goal": {
+                "objective": self.goal.objective,
+                "must_haves": list(self.goal.must_haves),
+                "nice_to_haves": list(self.goal.nice_to_haves),
+                "scope_in": list(self.goal.scope_in),
+                "scope_out": list(self.goal.scope_out),
+            }
+            if self.goal
+            else None,
+            "derived_requirements": [
+                {
+                    "id": r.id,
+                    "description": r.description,
+                    "source": r.source.value,
+                    "priority": r.priority.value,
+                }
+                for r in self.derived_requirements
+            ],
         }
 
     @classmethod
@@ -125,8 +155,13 @@ class PlanState:
         if schema_version == 1:
             migrated_from = 1
 
-        schema_version = 2  # Always use current version
+        # Migration: v2 -> v3 (add goal and derived_requirements)
+        if schema_version == 2:
+            migrated_from = 2
 
+        schema_version = 3  # Always use current version
+
+        # Parse tasks with new fields
         tasks = [
             Task(
                 id=t["id"],
@@ -137,6 +172,8 @@ class PlanState:
                 worktree_path=t.get("worktree_path"),
                 session_name=t.get("session_name"),
                 agent_pid=t.get("agent_pid"),
+                depends_on=tuple(t.get("depends_on", [])),
+                requirement_ids=tuple(t.get("requirement_ids", [])),
             )
             for t in data.get("tasks", [])
         ]
@@ -152,6 +189,32 @@ class PlanState:
                 rationale=d.get("rationale"),
             )
 
+        # Parse goal (new in v3)
+        goal: Goal | None = None
+        goal_data = data.get("goal")
+        if goal_data:
+            goal = Goal(
+                objective=goal_data["objective"],
+                must_haves=tuple(goal_data.get("must_haves", [])),
+                nice_to_haves=tuple(goal_data.get("nice_to_haves", [])),
+                scope_in=tuple(goal_data.get("scope_in", [])),
+                scope_out=tuple(goal_data.get("scope_out", [])),
+            )
+
+        # Parse derived_requirements (new in v3)
+        derived_requirements: tuple[DerivedRequirement, ...] = ()
+        req_data = data.get("derived_requirements", [])
+        if req_data:
+            derived_requirements = tuple(
+                DerivedRequirement(
+                    id=r["id"],
+                    description=r["description"],
+                    source=RequirementSource(r["source"]),
+                    priority=RequirementPriority(r["priority"]),
+                )
+                for r in req_data
+            )
+
         return cls(
             session_id=data["session_id"],
             status=data.get("status", "planning"),
@@ -160,6 +223,8 @@ class PlanState:
             plan_file=data.get("plan_file", ".claude/plans/plan.md"),
             tasks=tasks,
             decisions=decisions,
+            goal=goal,
+            derived_requirements=derived_requirements,
             schema_version=schema_version,
             migrated_from=migrated_from,
         )
@@ -198,6 +263,8 @@ class PlanState:
             plan_file=self.plan_file,
             tasks=self.tasks,
             decisions=new_decisions,
+            goal=self.goal,
+            derived_requirements=self.derived_requirements,
             schema_version=self.schema_version,
             migrated_from=self.migrated_from,
         )
@@ -236,6 +303,8 @@ class ExecuteState:
                     "worktree_path": t.worktree_path,
                     "session_name": t.session_name,
                     "agent_pid": t.agent_pid,
+                    "depends_on": list(t.depends_on),
+                    "requirement_ids": list(t.requirement_ids),
                 }
                 for t in self.tasks
             ],
@@ -257,7 +326,7 @@ class ExecuteState:
         migrated_from: int | None = None
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 2
+            schema_version = 3
 
         tasks = [
             Task(
@@ -269,6 +338,8 @@ class ExecuteState:
                 worktree_path=t.get("worktree_path"),
                 session_name=t.get("session_name"),
                 agent_pid=t.get("agent_pid"),
+                depends_on=tuple(t.get("depends_on", [])),
+                requirement_ids=tuple(t.get("requirement_ids", [])),
             )
             for t in data.get("tasks", [])
         ]
@@ -347,7 +418,7 @@ class VerifyState:
         migrated_from: int | None = None
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 2
+            schema_version = 3
 
         return cls(
             session_id=data["session_id"],

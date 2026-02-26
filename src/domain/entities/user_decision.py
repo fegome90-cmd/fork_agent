@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class DecisionStatus(str, Enum):
+class DecisionStatus(StrEnum):
     """Decision status enum with string values for database persistence."""
 
     LOCKED = "locked"
