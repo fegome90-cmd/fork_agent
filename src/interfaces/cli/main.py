@@ -13,6 +13,7 @@ from src.interfaces.cli.commands import delete, get, list, save, search, stats
 from src.interfaces.cli.commands.cleanup import cleanup
 from src.interfaces.cli.commands.health import health
 from src.interfaces.cli.commands.schedule import app as schedule_app
+from src.interfaces.cli.commands.telemetry import app as telemetry_app
 
 from src.interfaces.cli.commands.workflow import app as workflow_app
 from src.interfaces.cli.dependencies import (
@@ -39,7 +40,6 @@ app.command(name="health")(health)
 
 app.add_typer(schedule_app, name="schedule")
 app.add_typer(telemetry_app, name="telemetry")
-app.add_typer(workflow_app, name="workflow")
 
 app.command(name="stats")(stats.stats)
 app.command(name="clear-slow-queries")(stats.clear_slow_queries)
