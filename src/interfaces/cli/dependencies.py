@@ -9,10 +9,24 @@ from src.application.services.memory_service import MemoryService
 from src.application.services.orchestration.hook_service import HookService
 from src.application.services.scheduler_service import SchedulerService
 from src.application.services.telemetry.telemetry_service import TelemetryService
-from src.infrastructure.persistence.container import Container, create_container
+from src.application.services.workflow.executor import WorkflowExecutor
+from src.infrastructure.persistence.container import (
+    Container,
+    create_container,
+)
+from src.infrastructure.persistence.container import (
+    get_memory_service as _get_memory_service,
+)
+from src.infrastructure.persistence.container import (
+    get_tmux_orchestrator as _get_tmux_orchestrator,
+)
+from src.infrastructure.persistence.container import (
+    get_workspace_manager as _get_workspace_manager,
+)
 from src.infrastructure.persistence.health_check import HealthCheckService
 
 _hook_service: HookService | None = None
+_workflow_executor: WorkflowExecutor | None = None
 
 
 def get_hook_service() -> HookService:
@@ -60,3 +74,16 @@ def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
     """Get TelemetryService instance for CLI commands."""
     container = get_container(db_path)
     return container.telemetry_service()  # type: ignore[no-any-return]
+
+
+def get_workflow_executor() -> WorkflowExecutor:
+    """Get or create shared singleton WorkflowExecutor instance."""
+    global _workflow_executor
+    if _workflow_executor is None:
+        _workflow_executor = WorkflowExecutor(
+            tmux_orchestrator=_get_tmux_orchestrator(),
+            memory_service=_get_memory_service(),
+            workspace_manager=_get_workspace_manager(),
+            hook_service=get_hook_service(),
+        )
+    return _workflow_executor

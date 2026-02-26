@@ -1,8 +1,14 @@
 {
-  "active_plan": "/Users/felipe_gonzalez/Developer/tmux_fork/.sisyphus/plans/fix-workspace-tests.md",
-  "started_at": "2026-02-22T11:50:00.000Z",
-  "completed_at": "2026-02-22T12:15:00.000Z",
-  "session_ids": ["ses_37af5ae7effeYpncSq8rFt4klz", "ses_current"],
-  "plan_name": "fix-workspace-tests",
-  "status": "completed"
+  "active_plan": "/Users/felipe_gonzalez/Developer/tmux_fork/.sisyphus/plans/integration-gaps-wave2-wave3.md",
+  "started_at": "2026-02-26T02:40:00.000Z",
+  "completed_at": "2026-02-26T02:45:00.000Z",
+  "session_ids": ["ses_wave2_wave3_complete"],
+  "plan_name": "integration-gaps-wave2-wave3",
+  "status": "completed",
+  "wave1_status": "completed",
+  "wave2_status": "completed",
+  "wave3_status": "completed",
+  "wave4_status": "completed",
+  "wave5_status": "completed",
+  "wave6_status": "completed"
 }
