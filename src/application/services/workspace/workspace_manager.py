@@ -133,11 +133,17 @@ class WorkspaceManagerABC(ABC):
         ...
 
     @abstractmethod
-    def merge_workspace(self, name: str, delete_branch: bool = True) -> None:
-        """Merge a workspace branch to main.
+    def merge_workspace(
+        self,
+        name: str,
+        target_branch: str = "main",
+        delete_branch: bool = True,
+    ) -> None:
+        """Merge a workspace branch to target branch.
 
         Args:
             name: Name of the workspace to merge.
+            target_branch: The target branch to merge into (default: "main").
             delete_branch: Whether to delete the branch after merging.
 
         Raises:
@@ -364,11 +370,17 @@ class WorkspaceManager(WorkspaceManagerABC):
         # Delete the branch
         self._git.branch_delete(name, force=force)
 
-    def merge_workspace(self, name: str, delete_branch: bool = True) -> None:
-        """Merge a workspace branch to main.
+    def merge_workspace(
+        self,
+        name: str,
+        target_branch: str = "main",
+        delete_branch: bool = True,
+    ) -> None:
+        """Merge a workspace branch to target branch.
 
         Args:
             name: Name of the workspace to merge.
+            target_branch: The target branch to merge into (default: "main").
             delete_branch: Whether to delete the branch after merging.
 
         Raises:
@@ -380,6 +392,15 @@ class WorkspaceManager(WorkspaceManagerABC):
 
         # Get the repo root for running merge commands
         repo_root = workspace.repo_root
+
+        # First checkout the target branch
+        try:
+            self._git._run_git_command(
+                ["checkout", target_branch],
+                cwd=repo_root,
+            )
+        except GitError as e:
+            raise GitError(f"Failed to checkout target branch '{target_branch}': {e}", e) from e
 
         # Merge the branch (we need to be in the main worktree for this)
         # Run: git merge <branch_name> --no-edit

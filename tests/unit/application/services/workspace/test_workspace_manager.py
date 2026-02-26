@@ -349,7 +349,8 @@ class TestWorkspaceManagerMerge:
 
         workspace_manager.merge_workspace("feature")
 
-        mock_git_executor._run_git_command.assert_called_once()
+        # Now there are 2 calls: checkout and merge
+        assert mock_git_executor._run_git_command.call_count == 2
         mock_git_executor.branch_delete.assert_called_once()
 
     def test_merge_workspace_no_delete_branch(
@@ -364,6 +365,21 @@ class TestWorkspaceManagerMerge:
         workspace_manager.merge_workspace("feature", delete_branch=False)
 
         mock_git_executor.branch_delete.assert_not_called()
+
+    def test_merge_workspace_custom_target_branch(
+        self, workspace_manager: WorkspaceManager, mock_git_executor: MagicMock
+    ) -> None:
+        mock_git_executor.get_repo_root.return_value = Path("/test/repo")
+        mock_git_executor.worktree_list.return_value = [
+            {"path": "/test/repo", "branch": "refs/heads/develop"},
+            {"path": "/test/repo/.worktrees/feature", "branch": "refs/heads/feature"},
+        ]
+
+        workspace_manager.merge_workspace("feature", target_branch="develop")
+
+        # Verify checkout to develop branch
+        calls = mock_git_executor._run_git_command.call_args_list
+        assert calls[0][0][0] == ["checkout", "develop"]
 
     def test_merge_workspace_git_error(
         self, workspace_manager: WorkspaceManager, mock_git_executor: MagicMock
