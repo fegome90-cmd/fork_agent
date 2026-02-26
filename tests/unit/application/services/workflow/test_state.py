@@ -44,10 +44,11 @@ class TestPlanStateVersioning:
             "tasks": [],
         }
         state = PlanState.from_json(data)
-        assert state.schema_version == 2
+        assert state.schema_version == 3
         assert state.migrated_from == 1
 
-    def test_from_json_v0_migrates_to_v2(self) -> None:
+    def test_from_json_v0_migrates_to_v3(self) -> None:
+        """Legacy v0 state should be migrated to v3."""
         """Legacy v0 state should be migrated to v2."""
         data = {
             "session_id": "test-session",
@@ -57,7 +58,7 @@ class TestPlanStateVersioning:
             "tasks": [],
         }
         state = PlanState.from_json(data)
-        assert state.schema_version == 2
+        assert state.schema_version == 3
         assert state.migrated_from == 0
 
     def test_from_json_unknown_future_version_raises(self) -> None:
@@ -138,7 +139,7 @@ class TestPlanStateVersioning:
 
     def test_decisions_field(self) -> None:
         """Test that decisions field works correctly."""
-        from src.domain.entities.user_decision import DecisionStatus, UserDecision
+        from src.domain.entities.user_decision import DecisionStatus
 
         state = PlanState(session_id="test-session")
         # New state should have empty decisions
@@ -164,10 +165,11 @@ class TestExecuteStateVersioning:
         assert state.schema_version == CURRENT_SCHEMA_VERSION
 
     def test_from_json_v0_migrates(self) -> None:
+        """Legacy v0 state should be migrated to v3."""
         """Legacy v0 state should be migrated to v2."""
         data = {"session_id": "test", "schema_version": None, "tasks": []}
         state = ExecuteState.from_json(data)
-        assert state.schema_version == 2
+        assert state.schema_version == 3
         assert state.migrated_from == 0
 
 
@@ -180,8 +182,9 @@ class TestVerifyStateVersioning:
         assert state.schema_version == CURRENT_SCHEMA_VERSION
 
     def test_from_json_v0_migrates(self) -> None:
+        """Legacy v0 state should be migrated to v3."""
         """Legacy v0 state should be migrated to v2."""
         data = {"session_id": "test", "schema_version": None, "tasks": []}
         state = VerifyState.from_json(data)
-        assert state.schema_version == 2
+        assert state.schema_version == 3
         assert state.migrated_from == 0

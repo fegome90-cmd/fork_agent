@@ -9,9 +9,10 @@ State Schema Versioning:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from src.domain.entities.derived_requirement import (
@@ -21,8 +22,6 @@ from src.domain.entities.derived_requirement import (
 )
 from src.domain.entities.goal import Goal
 from src.domain.entities.user_decision import DecisionStatus, UserDecision
-
-import json
 
 CURRENT_SCHEMA_VERSION = 3
 
@@ -39,7 +38,7 @@ class UnsupportedSchemaError(StateError):
     """Raised when schema version is not supported."""
 
 
-class WorkflowPhase(str, Enum):
+class WorkflowPhase(StrEnum):
     PLANNING = "planning"
     OUTLINED = "outlined"
     EXECUTING = "executing"

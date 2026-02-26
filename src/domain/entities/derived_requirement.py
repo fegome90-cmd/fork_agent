@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class RequirementPriority(str, Enum):
+class RequirementPriority(StrEnum):
     """Requirement priority enum with string values for database persistence."""
 
     MUST = "must"
     NICE = "nice"
 
 
-class RequirementSource(str, Enum):
+class RequirementSource(StrEnum):
     """Requirement source enum with string values for database persistence."""
 
     EXPLICIT = "explicit"

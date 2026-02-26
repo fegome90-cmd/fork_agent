@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from src.domain.entities.goal import Goal
+from src.application.services.workflow.goal_analyzer import (
+    GoalAnalysisError,
+    GoalAnalyzer,
+    slugify,
+)
 from src.domain.entities.derived_requirement import (
-    DerivedRequirement,
     RequirementPriority,
     RequirementSource,
 )
-from src.application.services.workflow.goal_analyzer import (
-    GoalAnalyzer,
-    GoalAnalysisError,
-    slugify,
-)
+from src.domain.entities.goal import Goal
 
 
 class TestSlugify:

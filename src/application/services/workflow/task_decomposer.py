@@ -216,8 +216,7 @@ class TaskDecomposer:
             return False
 
         for task in tasks:
-            if task.id not in visited:
-                if has_cycle(task.id):
-                    raise CircularDependencyError(
-                        f"Circular dependency detected involving task '{task.id}'"
-                    )
+            if task.id not in visited and has_cycle(task.id):
+                raise CircularDependencyError(
+                    f"Circular dependency detected involving task '{task.id}'"
+                )

@@ -6,13 +6,13 @@ from pathlib import Path
 
 from dependency_injector import containers, providers
 
+from src.application.services.cleanup_service import CleanupService
 from src.application.services.memory_service import MemoryService
 from src.application.services.scheduler_service import SchedulerService
-from src.application.services.cleanup_service import CleanupService
-from src.infrastructure.persistence.health_check import HealthCheckService
 from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
+from src.infrastructure.persistence.health_check import HealthCheckService
 from src.infrastructure.persistence.migrations import MigrationRunner, run_migrations
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,

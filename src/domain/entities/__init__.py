@@ -24,10 +24,6 @@ __all__ = [
     "RequirementSource",
 ]
 
-from src.domain.entities.message import AgentMessage, MessageType
-from src.domain.entities.observation import Observation
-from src.domain.entities.terminal import PlatformType, TerminalConfig, TerminalResult
-from src.domain.entities.user_decision import DecisionStatus, UserDecision
 
 __all__ = [
     "AgentMessage",
@@ -40,9 +36,6 @@ __all__ = [
     "UserDecision",
 ]
 
-from src.domain.entities.message import AgentMessage, MessageType
-from src.domain.entities.observation import Observation
-from src.domain.entities.terminal import PlatformType, TerminalConfig, TerminalResult
 
 __all__ = [
     "AgentMessage",

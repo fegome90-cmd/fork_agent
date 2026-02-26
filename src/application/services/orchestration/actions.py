@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class OnFailurePolicy(str, Enum):
+class OnFailurePolicy(StrEnum):
     """Policy for handling hook failures."""
 
     ABORT = "abort"

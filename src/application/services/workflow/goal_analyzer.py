@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from src.domain.entities.derived_requirement import (
     DerivedRequirement,
