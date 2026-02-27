@@ -290,7 +290,7 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 cursor = conn.execute(
-                    """SELECT id, timestamp, content, metadata
+                    """SELECT id, timestamp, content, metadata, idempotency_key
                        FROM observations
                        WHERE timestamp >= ? AND timestamp <= ?
                        ORDER BY timestamp DESC""",
