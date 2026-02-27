@@ -20,11 +20,11 @@ from src.application.services.memory.event_metadata import (
     MemoryEventMetadata,
 )
 from src.application.services.messaging.memory_hook_config import (
-    MemoryHookConfig,
     DEFAULT_HOOK_CONFIG,
+    MemoryHookConfig,
 )
 from src.application.services.messaging.rate_limiter import RateLimiter
-from src.domain.entities.message import AgentMessage, MessageType
+from src.domain.entities.message import AgentMessage
 
 if TYPE_CHECKING:
     from src.application.services.memory_service import MemoryService
@@ -161,7 +161,7 @@ class MemoryHook:
         timestamp_ms = int(time.time() * 1000)
 
         metadata = MemoryEventMetadata(
-            event_type=EventType.MESSAGE_SENT.value,
+            event_type=EventType.AGENT_MESSAGE.value,  # Canonical: agent_message
             run_id=run_id,
             task_id=task_id,
             agent_id=msg.from_agent,

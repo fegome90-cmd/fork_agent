@@ -4,20 +4,15 @@ Secure tmux control via UDS with API key auth and command allowlist.
 """
 from __future__ import annotations
 
-import asyncio
-import hashlib
 import hmac
-import json
 import logging
 import os
 import subprocess
-import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, Header, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
 logging.basicConfig(
@@ -76,9 +71,9 @@ class CapturePaneRequest(BaseModel):
     capture_all: bool = False
 
 
-class SessionInfo name: str
-    windows: int(BaseModel):
-    = 0
+class SessionInfo(BaseModel):
+    name: str
+    windows: int = 0
     panes: int = 0
 
 

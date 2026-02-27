@@ -130,7 +130,6 @@ class WorkflowExecutor:
         result_session: str | None = None
         result_worktree_path: str | None = None
         result_worktree_name: str | None = None
-        result_pid: int | None = None
 
         # Generate session name and run_id if not provided
         if session_name is None:

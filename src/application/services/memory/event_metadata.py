@@ -7,6 +7,7 @@ to ensure consistent querying capabilities.
 
 from __future__ import annotations
 
+import contextlib
 from enum import StrEnum
 from typing import Any
 
@@ -46,7 +47,8 @@ class EventType(StrEnum):
     MEMORY_DELETE = "memory_delete"
 
     # Messaging
-    MESSAGE_SENT = "message_sent"
+    AGENT_MESSAGE = "agent_message"
+    MESSAGE_SENT = "message_sent"  # Deprecated: use AGENT_MESSAGE
     MESSAGE_RECEIVED = "message_received"
     MESSAGE_IMPORTANT = "message_important"
 
@@ -107,21 +109,16 @@ class MemoryEventMetadata(BaseModel):
     @classmethod
     def validate_event_type(cls, v: str) -> str:
         """Ensure event_type is a known type."""
-        try:
+        with contextlib.suppress(ValueError):
             EventType(v)
-        except ValueError:
-            # Allow custom event types but warn via validation
-            pass
         return v
 
     @field_validator("mode")
     @classmethod
     def validate_mode(cls, v: str) -> str:
         """Ensure mode is a known type."""
-        try:
+        with contextlib.suppress(ValueError):
             ExecutionMode(v)
-        except ValueError:
-            pass
         return v
 
     @field_validator("idempotency_key")
