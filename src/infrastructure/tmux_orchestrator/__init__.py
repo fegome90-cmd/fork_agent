@@ -1,16 +1,21 @@
-"""Tmux Orchestrator for OpenCode agents.
+"""Tmux Orchestrator for AI coding agents.
 
-Enables coordination of multiple OpenCode agent sessions via tmux.
+Enables coordination of multiple agent sessions via tmux.
+Supports multiple backends: opencode, pi.dev, etc.
 """
 
 from __future__ import annotations
 
 import logging
 import subprocess
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.domain.ports.agent_backend import AgentBackend
 
 logger = logging.getLogger(__name__)
 
@@ -124,12 +129,30 @@ class TmuxOrchestrator:
         return result.stdout if result.returncode == 0 else ""
 
     def send_message(self, session: str, window: int, message: str) -> bool:
+        """Send a command to tmux window.
+
+        DEPRECATED: Use send_command() for shell commands.
+        This method will be removed in v2.0.
+        """
+        warnings.warn(
+            "send_message() is deprecated. Use send_command() for commands.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._send_keys(session, window, message)
+
+    def send_command(self, session: str, window: int, command: str) -> bool:
+        """Send a shell command to tmux window (for actual commands only)."""
+        return self._send_keys(session, window, command)
+
+    def _send_keys(self, session: str, window: int, text: str) -> bool:
+        """Internal: send text via tmux send-keys."""
         if self._safety_mode:
-            print(f"SAFETY: Would send to {session}:{window}: {message[:50]}...")
+            print(f"SAFETY: Would send to {session}:{window}: {text[:50]}...")
             return True
         try:
             result = subprocess.run(
-                ["tmux", "send-keys", "-t", f"{session}:{window}", message],
+                ["tmux", "send-keys", "-t", f"{session}:{window}", text],
                 capture_output=True,
                 timeout=5,
             )
@@ -138,7 +161,7 @@ class TmuxOrchestrator:
             subprocess.run(["tmux", "send-keys", "-t", f"{session}:{window}", "Enter"], timeout=5)
             return True
         except subprocess.TimeoutExpired:
-            logger.error(f"Timeout sending message to {session}:{window}")
+            logger.error(f"Timeout sending to {session}:{window}")
             return False
 
     def create_session(self, name: str, working_dir: Path | None = None) -> bool:
@@ -183,11 +206,25 @@ class TmuxOrchestrator:
         self,
         session: str,
         window: int,
-        model: str,
-        prompt: str,
+        backend: AgentBackend,
+        task: str,
+        model: str | None = None,
     ) -> bool:
-        cmd = f"opencode run -m {model} '{prompt}'"
-        return self.send_message(session, window, cmd)
+        """Launch an agent in a tmux window using the specified backend.
+
+        Args:
+            session: Tmux session name.
+            window: Window index within the session.
+            backend: Agent backend implementation (opencode, pi, etc.).
+            task: Task/prompt for the agent.
+            model: Optional model override. Uses backend default if not specified.
+
+        Returns:
+            True if command was sent successfully.
+        """
+        actual_model = model or backend.get_default_model()
+        cmd = backend.get_launch_command(task, actual_model)
+        return self.send_command(session, window, cmd)
 
     def get_status(self) -> dict[str, Any]:
         sessions = self.get_sessions()
@@ -217,21 +254,42 @@ class TmuxOrchestrator:
 
 def create_agent_session(
     name: str,
-    model: str = "opencode/glm-5-free",
-    prompt: str = "",
+    backend: AgentBackend | None = None,
+    task: str = "",
+    model: str | None = None,
     working_dir: Path | None = None,
 ) -> tuple[str, int] | None:
+    """Create a new agent session in tmux.
+
+    Args:
+        name: Session name.
+        backend: Agent backend to use. Falls back to default if not specified.
+        task: Optional task/prompt for the agent.
+        model: Optional model override.
+        working_dir: Working directory for the session.
+
+    Returns:
+        Tuple of (session_name, window_index) or None on failure.
+    """
+    from src.infrastructure.agent_backends import get_default_backend
+
     orchestrator = TmuxOrchestrator(safety_mode=False)
     if not orchestrator.create_session(name, working_dir or PROJECT_ROOT):
         return None
-    if prompt:
-        orchestrator.send_message(name, 0, f"opencode run -m {model} '{prompt}'")
+
+    if task:
+        actual_backend = backend or get_default_backend()
+        if actual_backend is None:
+            logger.warning("No agent backend available")
+            return (name, 0)
+        orchestrator.launch_agent(name, 0, actual_backend, task, model)
+
     return (name, 0)
 
 
 def send_task_to_agent(session: str, window: int, task: str) -> bool:
     orchestrator = TmuxOrchestrator(safety_mode=False)
-    return orchestrator.send_message(session, window, task)
+    return orchestrator.send_command(session, window, task)
 
 
 def get_agent_output(session: str, window: int, lines: int = 100) -> str:

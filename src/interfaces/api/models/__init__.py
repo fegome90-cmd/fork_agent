@@ -63,8 +63,16 @@ class AgentSession(BaseModel):
 class AgentSessionCreate(BaseModel):
     """Request para crear sesion de agente."""
 
-    agent_type: str = Field(..., min_length=1)
+    agent_type: str = Field(
+        default="opencode",
+        min_length=1,
+        description="Agent backend: 'opencode' or 'pi'",
+    )
     task: str = Field(..., min_length=1)
+    model: str | None = Field(
+        default=None,
+        description="Optional model override (uses backend default if not specified)",
+    )
     workspace: str | None = None
     hooks: bool = True
     tmux: bool = True
@@ -156,11 +164,23 @@ class ObservationListResponse(BaseModel):
     data: list[Observation]
 
 
+class AgentInfo(BaseModel):
+    """Information about an agent backend."""
+
+    name: str
+    display_name: str
+    available: bool
+
+
 class HealthResponse(BaseModel):
     """Response de health check."""
 
     status: str
     pm2: dict[str, str | int]
+    agents: list[AgentInfo] = Field(
+        default_factory=list,
+        description="Available agent backends",
+    )
     version: str
 
 
