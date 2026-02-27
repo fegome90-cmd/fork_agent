@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.interfaces.api.config import api_settings
 from src.interfaces.api.middleware.rate_limit import RateLimitMiddleware
-from src.interfaces.api.routes import agents, memory, processes, system, webhooks, workflow
+from src.interfaces.api.routes import agents, discovery, memory, processes, system, webhooks, workflow
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ app.include_router(workflow.router, prefix="/api/v1")
 app.include_router(memory.router, prefix="/api/v1")
 app.include_router(system.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
+app.include_router(discovery.router, prefix="/api/v1")
 
 
 @app.get("/", include_in_schema=False)
