@@ -32,6 +32,42 @@ class TestVerifyEvidence:
         with pytest.raises(AttributeError):
             evidence.passed = False
 
+    def test_verify_evidence_empty_artifact_path_raises(self) -> None:
+        with pytest.raises(ValueError, match="artifact_path must be non-empty"):
+            VerifyEvidence(
+                artifact_path="",
+                passed=True,
+                exit_code=0,
+                timestamp="2026-02-26T10:00:00",
+            )
+
+    def test_verify_evidence_empty_timestamp_raises(self) -> None:
+        with pytest.raises(ValueError, match="timestamp must be non-empty"):
+            VerifyEvidence(
+                artifact_path="/path/to/artifact.json",
+                passed=True,
+                exit_code=0,
+                timestamp="",
+            )
+
+    def test_verify_evidence_negative_exit_code_raises(self) -> None:
+        with pytest.raises(ValueError, match="exit_code must be a non-negative integer"):
+            VerifyEvidence(
+                artifact_path="/path/to/artifact.json",
+                passed=True,
+                exit_code=-1,
+                timestamp="2026-02-26T10:00:00",
+            )
+
+    def test_verify_evidence_non_int_exit_code_raises(self) -> None:
+        with pytest.raises(ValueError, match="exit_code must be a non-negative integer"):
+            VerifyEvidence(
+                artifact_path="/path/to/artifact.json",
+                passed=True,
+                exit_code=1.5,  # type: ignore[arg-type]
+                timestamp="2026-02-26T10:00:00",
+            )
+
 
 class TestPromiseContract:
     def test_promise_contract_creation_minimal(self) -> None:
@@ -298,15 +334,10 @@ class TestPromiseStateTransitions:
             task="Build an API",
             state=PromiseState.CREATED,
         )
-        evidence = VerifyEvidence(
-            artifact_path="/path/to/artifact.json",
-            passed=True,
-            exit_code=0,
-            timestamp="2026-02-26T10:00:00",
-        )
-        new_contract = contract.transition_to(PromiseState.RUNNING, evidence)
+        # Evidence is only kept for verification states, not RUNNING
+        new_contract = contract.transition_to(PromiseState.RUNNING)
         assert new_contract.state == PromiseState.RUNNING
-        assert new_contract.verify_evidence == evidence
+        assert new_contract.verify_evidence is None  # No evidence for non-verification states
         assert new_contract.id == contract.id
         assert new_contract.plan_id == contract.plan_id
 
@@ -320,3 +351,62 @@ class TestPromiseStateTransitions:
         )
         with pytest.raises(ValueError, match="Cannot transition"):
             contract.transition_to(PromiseState.SHIPPED)
+
+    def test_transition_to_verify_passed_requires_evidence(self) -> None:
+        contract = PromiseContract(
+            id="promise-123",
+            session_id="session-456",
+            plan_id="plan-789",
+            task="Build an API",
+            state=PromiseState.RUNNING,
+        )
+        with pytest.raises(ValueError, match="Evidence required for transition to verify_passed"):
+            contract.transition_to(PromiseState.VERIFY_PASSED)
+
+    def test_transition_to_verify_failed_requires_evidence(self) -> None:
+        contract = PromiseContract(
+            id="promise-123",
+            session_id="session-456",
+            plan_id="plan-789",
+            task="Build an API",
+            state=PromiseState.RUNNING,
+        )
+        with pytest.raises(ValueError, match="Evidence required for transition to verify_failed"):
+            contract.transition_to(PromiseState.VERIFY_FAILED)
+
+    def test_transition_to_verify_passed_with_evidence(self) -> None:
+        contract = PromiseContract(
+            id="promise-123",
+            session_id="session-456",
+            plan_id="plan-789",
+            task="Build an API",
+            state=PromiseState.RUNNING,
+        )
+        evidence = VerifyEvidence(
+            artifact_path="/path/to/artifact.json",
+            passed=True,
+            exit_code=0,
+            timestamp="2026-02-26T10:00:00",
+        )
+        new_contract = contract.transition_to(PromiseState.VERIFY_PASSED, evidence)
+        assert new_contract.state == PromiseState.VERIFY_PASSED
+        assert new_contract.verify_evidence == evidence
+
+    def test_transition_to_shipped_clears_evidence(self) -> None:
+        evidence = VerifyEvidence(
+            artifact_path="/path/to/artifact.json",
+            passed=True,
+            exit_code=0,
+            timestamp="2026-02-26T10:00:00",
+        )
+        contract = PromiseContract(
+            id="promise-123",
+            session_id="session-456",
+            plan_id="plan-789",
+            task="Build an API",
+            state=PromiseState.VERIFY_PASSED,
+            verify_evidence=evidence,
+        )
+        new_contract = contract.transition_to(PromiseState.SHIPPED)
+        assert new_contract.state == PromiseState.SHIPPED
+        assert new_contract.verify_evidence is None  # Evidence cleared for non-verification states

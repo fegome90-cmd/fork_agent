@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -149,15 +150,20 @@ def events(
     """Show recent telemetry events."""
     telemetry = get_telemetry_service()
 
+    # Get all matching events (no limit initially)
     events = telemetry.get_events(
         event_type=event_type,
         session_id=session,
-        limit=limit,
+        limit=1000,  # Get all, filter, then slice
     )
 
-    # Also filter by category if specified (client-side since query doesn't support it directly)
+    # Filter by category first
     if category:
         events = [e for e in events if e.event_category == category]
+
+    # Then apply limit
+    if limit:
+        events = events[:limit]
 
     typer.echo(f"Showing {len(events)} events:\n")
 
@@ -208,6 +214,7 @@ def session(
 
     typer.echo("\n--- Tmux ---")
     typer.echo(f"  Sessions Created: {summary.tmux_sessions_created}")
+    typer.echo(f"  Sessions Killed: {summary.tmux_sessions_killed}")
 
     typer.echo("\n--- Memory ---")
     typer.echo(f"  Saves: {summary.memory_saves}")
@@ -250,7 +257,7 @@ def export(
     if format == "prometheus":
         content = telemetry.export_prometheus()
     elif format == "json":
-        content = str(telemetry.export_json(period))
+        content = json.dumps(telemetry.export_json(period), indent=2)
     else:
         typer.echo(f"Error: Unknown format '{format}'. Use 'prometheus' or 'json'.", err=True)
         raise typer.Exit(1)

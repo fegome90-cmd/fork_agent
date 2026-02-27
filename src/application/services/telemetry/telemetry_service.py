@@ -225,9 +225,7 @@ class TelemetryService:
             updates["memory_searches"] = summary.memory_searches + 1
         elif event.event_type == EventType.MEMORY_DELETE:
             updates["memory_deletes"] = summary.memory_deletes + 1
-        elif event.event_type == EventType.WORKFLOW_OUTLINE:
-            updates["workflow_started"] = summary.workflow_started + 1
-        elif event.event_type == EventType.WORKFLOW_EXECUTE:
+        elif event.event_type in (EventType.WORKFLOW_OUTLINE, EventType.WORKFLOW_EXECUTE):
             updates["workflow_started"] = summary.workflow_started + 1
         elif event.event_type == EventType.WORKFLOW_SHIP:
             updates["workflow_completed"] = summary.workflow_completed + 1

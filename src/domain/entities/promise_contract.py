@@ -28,6 +28,15 @@ class VerifyEvidence:
     exit_code: int
     timestamp: str
 
+    def __post_init__(self) -> None:
+        """Validate evidence fields."""
+        if not self.artifact_path:
+            raise ValueError("artifact_path must be non-empty")
+        if not self.timestamp:
+            raise ValueError("timestamp must be non-empty")
+        if not isinstance(self.exit_code, int) or self.exit_code < 0:
+            raise ValueError("exit_code must be a non-negative integer")
+
 
 @dataclass(frozen=True)
 class PromiseContract:
@@ -125,10 +134,21 @@ class PromiseContract:
             A new PromiseContract instance with the updated state.
 
         Raises:
-            ValueError: If the transition is not allowed.
+            ValueError: If the transition is not allowed or evidence is missing for verification states.
         """
         if not self.can_transition_to(new_state):
             raise ValueError(f"Cannot transition from {self.state.value} to {new_state.value}")
+
+        # Define verification states that require evidence
+        verification_states = {PromiseState.VERIFY_PASSED, PromiseState.VERIFY_FAILED}
+
+        # Require evidence for verification states
+        if new_state in verification_states and verify_evidence is None:
+            raise ValueError(f"Evidence required for transition to {new_state.value}")
+
+        # Don't carry stale evidence to non-verification states
+        final_evidence = verify_evidence if new_state in verification_states else None
+
         now = datetime.now()
         return PromiseContract(
             id=self.id,
@@ -136,9 +156,7 @@ class PromiseContract:
             plan_id=self.plan_id,
             task=self.task,
             state=new_state,
-            verify_evidence=verify_evidence
-            if verify_evidence is not None
-            else self.verify_evidence,
+            verify_evidence=final_evidence,
             created_at=self.created_at,
             updated_at=now,
             metadata=self.metadata,

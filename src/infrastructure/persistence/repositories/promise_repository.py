@@ -153,8 +153,19 @@ class PromiseContractRepository:
             The updated promise contract.
 
         Raises:
-            RepositoryError: If the contract is not found.
+            RepositoryError: If the contract is not found or transition is invalid.
         """
+        # Load current contract and validate transition
+        current = self.get_by_id(contract_id)
+        if current is None:
+            raise RepositoryError(f"Contract {contract_id} not found")
+
+        # Validate transition is allowed
+        if not current.can_transition_to(state):
+            raise RepositoryError(
+                f"Invalid transition from {current.state.value} to {state.value}"
+            )
+
         now = datetime.now().isoformat()
         try:
             with self._connection as conn:

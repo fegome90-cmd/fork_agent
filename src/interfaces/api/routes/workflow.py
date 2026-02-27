@@ -1,13 +1,19 @@
 """Rutas para workflow."""
 
+from __future__ import annotations
+
+import logging
 import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.application.exceptions import RepositoryError
 from src.domain.entities.promise_contract import PromiseContract, PromiseState, VerifyEvidence
 from src.interfaces.api.dependencies import get_promise_repository, verify_api_key
 from src.interfaces.api.models import WorkflowPlanRequest, WorkflowResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workflow", tags=["workflow"])
 
@@ -97,15 +103,21 @@ async def ship_plan(
     try:
         repo = get_promise_repository()
         contract = repo.get_by_plan_id(plan_id)
-        if contract is not None and contract.state != PromiseState.VERIFY_PASSED:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Cannot ship: PromiseContract state is {contract.state.value}",
-            )
-    except HTTPException:
-        raise
-    except Exception:
-        pass
+    except RepositoryError as e:
+        logger.error(f"Repository error: {e}")
+        raise HTTPException(status_code=500, detail="Database error") from None
+
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    if contract.state != PromiseState.VERIFY_PASSED:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Contract must be VERIFY_PASSED, got {contract.state}"
+        )
+
+    # Persist SHIPPED state
+    repo.update_state(contract.id, PromiseState.SHIPPED)
 
     data = {
         "plan_id": plan_id,
@@ -121,23 +133,29 @@ async def get_plan_status(
     plan_id: str,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
-    data = {
-        "plan_id": plan_id,
-        "status": "pending",
-        "created_at": datetime.now(),
-    }
-
     try:
         repo = get_promise_repository()
         contract = repo.get_by_plan_id(plan_id)
-        if contract is not None:
-            data["promise_contract"] = {
-                "id": contract.id,
-                "state": contract.state.value,
-                "created_at": contract.created_at.isoformat() if contract.created_at else None,
-                "updated_at": contract.updated_at.isoformat() if contract.updated_at else None,
+        if contract is None:
+            return WorkflowResponse(
+                data={
+                    "plan_id": plan_id,
+                    "status": "pending",
+                    "created_at": datetime.now(),
+                }
+            )
+        return WorkflowResponse(
+            data={
+                "plan_id": plan_id,
+                "status": contract.state.value,
+                "promise_contract": {
+                    "id": contract.id,
+                    "state": contract.state.value,
+                    "created_at": contract.created_at.isoformat() if contract.created_at else None,
+                    "updated_at": contract.updated_at.isoformat() if contract.updated_at else None,
+                },
             }
-    except Exception:
-        pass
-
-    return WorkflowResponse(data=data)
+        )
+    except RepositoryError as e:
+        logger.error(f"Repository error fetching contract: {e}")
+        raise HTTPException(status_code=500, detail="Database error") from None

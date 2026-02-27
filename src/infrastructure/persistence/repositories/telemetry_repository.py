@@ -8,7 +8,6 @@ import sqlite3
 import types
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from src.domain.entities.telemetry_event import (
@@ -130,9 +129,9 @@ class TelemetryRepositoryImpl(TelemetryRepository):
             id=row["id"],
             metric_name=row["metric_name"],
             metric_type=row["metric_type"],
-            labels=types.MappingProxyType(self._deserialize_attributes(row["labels"]))
-            if row["labels"]
-            else None,
+            labels=types.MappingProxyType(
+                self._deserialize_attributes(row["labels"]) if row["labels"] else {}
+            ),
             labels_hash=row["labels_hash"],
             bucket_start=row["bucket_start"],
             bucket_duration=row["bucket_duration"],
@@ -276,8 +275,8 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         start_time: int,
         end_time: int,
     ) -> list[MetricBucket]:
-        labels_json = json.dumps(labels)
-        NS|        labels_hash = hashlib.md5(labels_json.encode(), usedforsecurity=False).hexdigest()
+        labels_json = json.dumps(labels, sort_keys=True, separators=(",", ":"))
+        labels_hash = hashlib.md5(labels_json.encode(), usedforsecurity=False).hexdigest()
 
         with self._connection as conn:
             cursor = conn.execute(
@@ -299,8 +298,8 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         now = int(datetime.now(UTC).timestamp())
         bucket_start = (now // bucket_duration) * bucket_duration
 
-        labels_json = json.dumps(labels)
-        NS|        labels_hash = hashlib.md5(labels_json.encode(), usedforsecurity=False).hexdigest()
+        labels_json = json.dumps(labels, sort_keys=True, separators=(",", ":"))
+        labels_hash = hashlib.md5(labels_json.encode(), usedforsecurity=False).hexdigest()
 
         with self._connection as conn:
             # Try to update existing bucket
