@@ -1,4 +1,14 @@
 """Pytest configuration and fixtures."""
+import pytest
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line("markers", "bughunt: bug detection tests for integration issues")
+    config.addinivalue_line("markers", "integration: integration tests")
+
+
+from src.domain.entities.terminal import PlatformType, TerminalConfig, TerminalResult
 
 import pytest
 

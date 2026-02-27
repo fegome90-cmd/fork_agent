@@ -18,12 +18,14 @@ class Observation:
         timestamp: Unix timestamp in milliseconds.
         content: The main content/text of the observation.
         metadata: Optional JSON-serializable metadata dictionary.
+        idempotency_key: Optional unique key for deduplication.
     """
 
     id: str
     timestamp: int
     content: str
     metadata: dict[str, Any] | None = None
+    idempotency_key: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str):
@@ -40,3 +42,7 @@ class Observation:
             raise ValueError("content no puede estar vacío")
         if self.metadata is not None and not isinstance(self.metadata, dict):
             raise TypeError("metadata debe ser un diccionario o None")
+        if self.idempotency_key is not None and not isinstance(self.idempotency_key, str):
+            raise TypeError("idempotency_key debe ser un string o None")
+        if self.idempotency_key is not None and not self.idempotency_key:
+            raise ValueError("idempotency_key no puede estar vacío")

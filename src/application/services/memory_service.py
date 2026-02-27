@@ -34,6 +34,52 @@ class MemoryService:
         self._repository.create(observation)
         return observation
 
+    def save_event(
+        self,
+        content: str,
+        metadata: dict[str, Any],
+        idempotency_key: str,
+    ) -> str:
+        """Save a structured event observation with idempotency guarantee.
+
+        This method is designed for structured events (workflow, agents, etc.)
+        and guarantees idempotency via the idempotency_key.
+
+        If an event with the same idempotency_key already exists, this is a no-op
+        and returns the existing observation ID.
+
+        Args:
+            content: Event content/description
+            metadata: Event metadata (should follow MemoryEventMetadata contract)
+            idempotency_key: Unique key for deduplication
+
+        Returns:
+            The observation ID (existing or new)
+
+        Example:
+            >>> from src.application.services.memory.event_metadata import (
+            ...     create_event_metadata, EventType, ExecutionMode
+            ... )
+            >>> meta = create_event_metadata(
+            ...     event_type=EventType.AGENT_SPAWNED,
+            ...     run_id="run-123",
+            ...     task_id="task-456",
+            ...     agent_id="agent:0",
+            ...     session_name="session-1",
+            ...     mode=ExecutionMode.WORKTREE,
+            ... )
+            >>> obs_id = memory.save_event(
+            ...     content="Agent spawned in worktree",
+            ...     metadata=meta.model_dump(),
+            ...     idempotency_key=meta.idempotency_key,
+            ... )
+        """
+        return self._repository.save_event(
+            content=content,
+            metadata=metadata,
+            idempotency_key=idempotency_key,
+        )
+
     def search(self, query: str, limit: int | None = None) -> list[Observation]:
         return self._repository.search(query, limit=limit)
 
