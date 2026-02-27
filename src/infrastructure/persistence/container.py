@@ -10,7 +10,6 @@ from src.application.services.cleanup_service import CleanupService
 from src.application.services.memory_service import MemoryService
 from src.application.services.scheduler_service import SchedulerService
 from src.application.services.telemetry.telemetry_service import TelemetryService
-
 from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
@@ -19,13 +18,15 @@ from src.infrastructure.persistence.migrations import MigrationRunner, run_migra
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,
 )
+from src.infrastructure.persistence.repositories.promise_repository import (
+    PromiseContractRepository,
+)
 from src.infrastructure.persistence.repositories.scheduled_task_repository import (
     ScheduledTaskRepository,
 )
 from src.infrastructure.persistence.repositories.telemetry_repository import (
     TelemetryRepositoryImpl,
 )
-
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
@@ -60,6 +61,11 @@ class Container(containers.DeclarativeContainer):
 
     scheduled_task_repository = providers.Singleton(
         ScheduledTaskRepository,
+        connection=database_connection,
+    )
+
+    promise_contract_repository = providers.Singleton(
+        PromiseContractRepository,
         connection=database_connection,
     )
 

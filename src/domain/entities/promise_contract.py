@@ -26,7 +26,7 @@ class VerifyEvidence:
     artifact_path: str
     passed: bool
     exit_code: int
-    timestamp: str
+    timestamp: datetime
 
 
 @dataclass(frozen=True)
@@ -59,33 +59,33 @@ class PromiseContract:
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str):
-            raise TypeError("id must be a string")
+            raise TypeError("id debe ser un string")
         if not self.id:
-            raise ValueError("id cannot be empty")
+            raise ValueError("id no puede estar vacío")
         if not isinstance(self.session_id, str):
-            raise TypeError("session_id must be a string")
+            raise TypeError("session_id debe ser un string")
         if not self.session_id:
-            raise ValueError("session_id cannot be empty")
+            raise ValueError("session_id no puede estar vacío")
         if not isinstance(self.plan_id, str):
-            raise TypeError("plan_id must be a string")
+            raise TypeError("plan_id debe ser un string")
         if not self.plan_id:
-            raise ValueError("plan_id cannot be empty")
+            raise ValueError("plan_id no puede estar vacío")
         if not isinstance(self.task, str):
-            raise TypeError("task must be a string")
+            raise TypeError("task debe ser un string")
         if not self.task:
-            raise ValueError("task cannot be empty")
+            raise ValueError("task no puede estar vacío")
         if not isinstance(self.state, PromiseState):
-            raise TypeError("state must be a PromiseState enum")
+            raise TypeError("state debe ser un enum PromiseState")
         if self.verify_evidence is not None and not isinstance(
             self.verify_evidence, VerifyEvidence
         ):
-            raise TypeError("verify_evidence must be a VerifyEvidence or None")
+            raise TypeError("verify_evidence debe ser un VerifyEvidence o None")
         if self.created_at is not None and not isinstance(self.created_at, datetime):
-            raise TypeError("created_at must be a datetime or None")
+            raise TypeError("created_at debe ser un datetime o None")
         if self.updated_at is not None and not isinstance(self.updated_at, datetime):
-            raise TypeError("updated_at must be a datetime or None")
+            raise TypeError("updated_at debe ser un datetime o None")
         if self.metadata is not None and not isinstance(self.metadata, dict):
-            raise TypeError("metadata must be a dictionary or None")
+            raise TypeError("metadata debe ser un diccionario o None")
 
     def can_transition_to(self, new_state: PromiseState) -> bool:
         """Validate state transition is allowed.
