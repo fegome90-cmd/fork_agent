@@ -79,7 +79,7 @@ async def verify_plan(
         )
         repo.save(contract)
     except Exception as e:
-        logger.error(f"Failed to persist verify evidence for plan {plan_id}: {e}")
+        logger.exception(f"Failed to persist verify evidence for plan {plan_id}")
         raise HTTPException(
             status_code=500, detail=f"Verification failed to persist evidence: {str(e)}"
         )

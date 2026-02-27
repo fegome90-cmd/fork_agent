@@ -9,7 +9,8 @@ class APISettings(BaseSettings):
     """Configuración de la API."""
 
     api_key: str = ""
-    host: str = "0.0.0.0"
+    # SECURITY: Default to localhost. Set HOST=0.0.0.0 explicitly for public binding.
+    host: str = "127.0.0.1"
     port: int = 8080
     debug: bool = False
     pm2_host: str = "localhost"

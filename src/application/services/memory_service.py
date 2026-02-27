@@ -4,21 +4,29 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.domain.entities.observation import Observation
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,
 )
 
+if TYPE_CHECKING:
+    from src.application.services.telemetry.telemetry_service import TelemetryService
+
 
 class MemoryService:
     """Service for managing observations with business logic."""
 
-    __slots__ = ("_repository",)
+    __slots__ = ("_repository", "_telemetry")
 
-    def __init__(self, repository: ObservationRepository) -> None:
+    def __init__(
+        self,
+        repository: ObservationRepository,
+        telemetry_service: TelemetryService | None = None,
+    ) -> None:
         self._repository = repository
+        self._telemetry = telemetry_service
 
     def save(
         self,
@@ -32,6 +40,15 @@ class MemoryService:
             metadata=metadata,
         )
         self._repository.create(observation)
+
+        # Track telemetry if available
+        if self._telemetry:
+            self._telemetry.track_memory_save(
+                observation_id=observation.id,
+                content_length=len(content),
+                has_metadata=metadata is not None,
+            )
+
         return observation
 
     def save_event(
@@ -81,7 +98,20 @@ class MemoryService:
         )
 
     def search(self, query: str, limit: int | None = None) -> list[Observation]:
-        return self._repository.search(query, limit=limit)
+        start_ms = int(time.time() * 1000)
+        results = self._repository.search(query, limit=limit)
+        duration_ms = int(time.time() * 1000) - start_ms
+
+        # Track telemetry if available
+        if self._telemetry:
+            self._telemetry.track_memory_search(
+                query_length=len(query),
+                limit=limit or 10,
+                results_count=len(results),
+                duration_ms=duration_ms,
+            )
+
+        return results
 
     def get_recent(self, limit: int = 10, offset: int = 0) -> list[Observation]:
         """Get recent observations with pagination.
@@ -108,6 +138,10 @@ class MemoryService:
 
     def delete(self, observation_id: str) -> None:
         self._repository.delete(observation_id)
+
+        # Track telemetry if available
+        if self._telemetry:
+            self._telemetry.track_memory_delete(observation_id=observation_id)
 
     def get_by_time_range(self, start: int, end: int) -> list[Observation]:
         return self._repository.get_by_timestamp_range(start, end)
