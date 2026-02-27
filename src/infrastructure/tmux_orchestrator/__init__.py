@@ -222,9 +222,26 @@ class TmuxOrchestrator:
         Returns:
             True if command was sent successfully.
         """
+        windows = self._get_windows(session)
+        if not windows:
+            logger.warning("No windows found in tmux session %s", session)
+            return False
+
+        target_window = window
+        existing_indexes = {w.window_index for w in windows}
+        if target_window not in existing_indexes:
+            active_window = next((w.window_index for w in windows if w.active), None)
+            target_window = active_window if active_window is not None else windows[0].window_index
+            logger.info(
+                "Requested window %s not found in session %s, using window %s",
+                window,
+                session,
+                target_window,
+            )
+
         actual_model = model or backend.get_default_model()
         cmd = backend.get_launch_command(task, actual_model)
-        return self.send_command(session, window, cmd)
+        return self.send_command(session, target_window, cmd)
 
     def get_status(self) -> dict[str, Any]:
         sessions = self.get_sessions()

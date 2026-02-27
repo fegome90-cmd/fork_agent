@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from typer.testing import CliRunner
@@ -262,6 +263,98 @@ class TestWorkflowShip:
         event_types = [type(e) for e in dispatched]
         assert WorkflowShipStartEvent in event_types
         assert WorkflowShipCompleteEvent in event_types
+
+
+    def test_ship_records_preflight_failed_event(self, tmp_path: Path) -> None:
+        from src.interfaces.cli.commands import workflow as workflow_module
+
+        verify_state = VerifyState(session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED)
+        verify_path = tmp_path / "verify-state.json"
+        verify_state.save(verify_path)
+
+        events: list[tuple[str, dict[str, Any]]] = []
+
+        preflight_error = workflow_module.ShipPreflightError(
+            "dirty_worktree_cross_branch",
+            current_branch="feature-x",
+            target_branch="main",
+            dirty_files_count=3,
+            mode="no-worktree",
+            reason="dirty_worktree_cross_branch",
+        )
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_verify_state_path",
+                return_value=verify_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow._enforce_ship_checkout_preflight",
+                side_effect=preflight_error,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow._record_ship_event",
+                side_effect=lambda name, meta: events.append((name, meta)),
+            ),
+        ):
+            result = runner.invoke(get_app(), ["ship", "--force", "--reason", "test", "--target", "main", "--no-worktree"])
+
+        assert result.exit_code == 1
+        assert any(name == "preflight_failed" for name, _ in events)
+        assert not any(name == "completed" for name, _ in events)
+
+    def test_ship_branch_alias_deprecated_keeps_target_metadata(self, tmp_path: Path) -> None:
+        events: list[tuple[str, dict[str, Any]]] = []
+
+        with (
+            patch("src.interfaces.cli.commands.workflow._enforce_ship_checkout_preflight"),
+            patch("src.interfaces.cli.commands.workflow._dispatch_event"),
+            patch(
+                "src.interfaces.cli.commands.workflow._record_ship_event",
+                side_effect=lambda name, meta: events.append((name, meta)),
+            ),
+            patch("src.interfaces.cli.commands.workflow._get_current_branch", return_value="feat-branch"),
+            patch("src.interfaces.cli.commands.workflow._get_dirty_files", return_value=[]),
+            patch("src.interfaces.cli.commands.workflow.get_execute_state_path", return_value=tmp_path / "execute-state.json"),
+        ):
+            result = runner.invoke(
+                get_app(),
+                ["ship", "--force", "--reason", "test", "--branch", "main", "--use-worktree"],
+            )
+
+        assert result.exit_code == 0
+        started_events = [meta for name, meta in events if name == "started"]
+        assert started_events
+        assert started_events[0]["target_branch"] == "main"
+
+    def test_ship_use_worktree_mode_in_events(self, tmp_path: Path) -> None:
+        events: list[tuple[str, dict[str, Any]]] = []
+
+        with (
+            patch("src.interfaces.cli.commands.workflow._enforce_ship_checkout_preflight"),
+            patch("src.interfaces.cli.commands.workflow._dispatch_event"),
+            patch("src.interfaces.cli.commands.workflow._merge_branch_via_temp_worktree"),
+            patch(
+                "src.interfaces.cli.commands.workflow._record_ship_event",
+                side_effect=lambda name, meta: events.append((name, meta)),
+            ),
+            patch("src.interfaces.cli.commands.workflow._get_current_branch", return_value="feat-branch"),
+            patch("src.interfaces.cli.commands.workflow._get_dirty_files", return_value=["a.py", "b.py"]),
+            patch("src.interfaces.cli.commands.workflow.get_execute_state_path", return_value=tmp_path / "execute-state.json"),
+        ):
+            result = runner.invoke(
+                get_app(),
+                ["ship", "--force", "--reason", "test", "--target", "main", "--use-worktree"],
+            )
+
+        assert result.exit_code == 0
+        started_events = [meta for name, meta in events if name == "started"]
+        completed_events = [meta for name, meta in events if name == "completed"]
+        assert started_events and completed_events
+        assert started_events[0]["mode"] == "worktree"
+        assert started_events[0]["dirty_files_count"] == 2
+        assert completed_events[0]["mode"] == "worktree"
+        assert completed_events[0]["dirty_files_count"] == 2
 
 
 class TestWorkflowStatus:

@@ -118,11 +118,8 @@ class ShellActionRunner:
         safe_env = self._get_safe_env()
 
         try:
-            KP|        try:
             result = subprocess.run(
                 action.command,  # nosec B602
-                shell=True,
-                action.command,
                 shell=True,
                 capture_output=True,
                 text=True,
