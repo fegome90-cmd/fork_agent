@@ -36,10 +36,8 @@ class ObservationRepository:
 
         try:
             with self._connection as conn:
-                # Use INSERT OR IGNORE for idempotency_key duplicates
-                # This makes the operation idempotent without raising exceptions
                 conn.execute(
-                    """INSERT OR IGNORE INTO observations (id, timestamp, content, metadata, idempotency_key)
+                    """INSERT INTO observations (id, timestamp, content, metadata, idempotency_key)
                        VALUES (?, ?, ?, ?, ?)""",
                     (
                         observation.id,
@@ -50,8 +48,6 @@ class ObservationRepository:
                     ),
                 )
         except sqlite3.IntegrityError as e:
-            # This should only happen for duplicate ID (not idempotency_key)
-            # since we use INSERT OR IGNORE
             raise RepositoryError(
                 f"Observation with id '{observation.id}' already exists",
                 e,
