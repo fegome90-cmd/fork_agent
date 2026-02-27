@@ -11,23 +11,24 @@ from src.domain.entities.promise_contract import PromiseContract, PromiseState, 
 
 class TestVerifyEvidence:
     def test_verify_evidence_creation(self) -> None:
+        ts = datetime(2026, 2, 26, 10, 0, 0)
         evidence = VerifyEvidence(
             artifact_path="/path/to/artifact.json",
             passed=True,
             exit_code=0,
-            timestamp="2026-02-26T10:00:00",
+            timestamp=ts,
         )
         assert evidence.artifact_path == "/path/to/artifact.json"
         assert evidence.passed is True
         assert evidence.exit_code == 0
-        assert evidence.timestamp == "2026-02-26T10:00:00"
+        assert evidence.timestamp == ts
 
     def test_verify_evidence_immutable(self) -> None:
         evidence = VerifyEvidence(
             artifact_path="/path/to/artifact.json",
             passed=True,
             exit_code=0,
-            timestamp="2026-02-26T10:00:00",
+            timestamp=datetime(2026, 2, 26, 10, 0, 0),
         )
         with pytest.raises(AttributeError):
             evidence.passed = False
@@ -55,7 +56,7 @@ class TestPromiseContract:
             artifact_path="/path/to/artifact.json",
             passed=True,
             exit_code=0,
-            timestamp=now.isoformat(),
+            timestamp=now,
         )
         contract = PromiseContract(
             id="promise-123",
@@ -84,7 +85,7 @@ class TestPromiseContract:
             contract.task = "New task"
 
     def test_promise_contract_empty_id_raises(self) -> None:
-        with pytest.raises(ValueError, match="cannot be empty"):
+        with pytest.raises(ValueError, match="no puede estar vacío"):
             PromiseContract(
                 id="",
                 session_id="session-456",
@@ -94,7 +95,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_empty_session_id_raises(self) -> None:
-        with pytest.raises(ValueError, match="cannot be empty"):
+        with pytest.raises(ValueError, match="no puede estar vacío"):
             PromiseContract(
                 id="promise-123",
                 session_id="",
@@ -104,7 +105,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_empty_plan_id_raises(self) -> None:
-        with pytest.raises(ValueError, match="cannot be empty"):
+        with pytest.raises(ValueError, match="no puede estar vacío"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -114,7 +115,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_empty_task_raises(self) -> None:
-        with pytest.raises(ValueError, match="cannot be empty"):
+        with pytest.raises(ValueError, match="no puede estar vacío"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -124,7 +125,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_id_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="id must be a string"):
+        with pytest.raises(TypeError, match="id debe ser un string"):
             PromiseContract(
                 id=123,  # type: ignore[arg-type]
                 session_id="session-456",
@@ -134,7 +135,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_session_id_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="session_id must be a string"):
+        with pytest.raises(TypeError, match="session_id debe ser un string"):
             PromiseContract(
                 id="promise-123",
                 session_id=456,  # type: ignore[arg-type]
@@ -144,7 +145,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_plan_id_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="plan_id must be a string"):
+        with pytest.raises(TypeError, match="plan_id debe ser un string"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -154,7 +155,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_task_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="task must be a string"):
+        with pytest.raises(TypeError, match="task debe ser un string"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -164,7 +165,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_state_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="state must be a PromiseState enum"):
+        with pytest.raises(TypeError, match="state debe ser un enum PromiseState"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -174,7 +175,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_verify_evidence_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="verify_evidence must be a VerifyEvidence"):
+        with pytest.raises(TypeError, match="verify_evidence debe ser un VerifyEvidence"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -185,7 +186,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_created_at_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="created_at must be a datetime"):
+        with pytest.raises(TypeError, match="created_at debe ser un datetime"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -196,7 +197,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_updated_at_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="updated_at must be a datetime"):
+        with pytest.raises(TypeError, match="updated_at debe ser un datetime"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -207,7 +208,7 @@ class TestPromiseContract:
             )
 
     def test_promise_contract_invalid_metadata_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="metadata must be a dictionary"):
+        with pytest.raises(TypeError, match="metadata debe ser un diccionario"):
             PromiseContract(
                 id="promise-123",
                 session_id="session-456",
@@ -302,7 +303,7 @@ class TestPromiseStateTransitions:
             artifact_path="/path/to/artifact.json",
             passed=True,
             exit_code=0,
-            timestamp="2026-02-26T10:00:00",
+            timestamp=datetime(2026, 2, 26, 10, 0, 0),
         )
         new_contract = contract.transition_to(PromiseState.RUNNING, evidence)
         assert new_contract.state == PromiseState.RUNNING

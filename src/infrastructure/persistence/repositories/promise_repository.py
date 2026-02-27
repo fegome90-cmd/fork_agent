@@ -153,8 +153,15 @@ class PromiseContractRepository:
             The updated promise contract.
 
         Raises:
-            RepositoryError: If the contract is not found.
+            RepositoryError: If the contract is not found or the transition is invalid.
         """
+        current = self.get_by_id(contract_id)
+        if current is None:
+            raise RepositoryError(f"PromiseContract '{contract_id}' not found")
+        if not current.can_transition_to(state):
+            raise RepositoryError(
+                f"Invalid state transition from '{current.state.value}' to '{state.value}'"
+            )
         now = datetime.now().isoformat()
         try:
             with self._connection as conn:
@@ -162,9 +169,8 @@ class PromiseContractRepository:
                     "UPDATE promise_contracts SET state = ?, updated_at = ? WHERE id = ?",
                     (state.value, now, contract_id),
                 )
-
                 if cursor.rowcount == 0:
-                    raise RepositoryError(f"PromiseContract '{contract_id}' not found")
+                    raise RepositoryError(f"PromiseContract '{contract_id}' not found during update")
         except RepositoryError:
             raise
         except sqlite3.Error as e:
@@ -203,7 +209,7 @@ class PromiseContractRepository:
                 "artifact_path": evidence.artifact_path,
                 "passed": evidence.passed,
                 "exit_code": evidence.exit_code,
-                "timestamp": evidence.timestamp,
+                "timestamp": evidence.timestamp.isoformat(),
             }
         )
 
@@ -216,7 +222,7 @@ class PromiseContractRepository:
             artifact_path=data["artifact_path"],
             passed=data["passed"],
             exit_code=data["exit_code"],
-            timestamp=data["timestamp"],
+            timestamp=datetime.fromisoformat(data["timestamp"]),
         )
 
     def _serialize_metadata(self, metadata: dict[str, Any] | None) -> str | None:

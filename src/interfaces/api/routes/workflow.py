@@ -1,5 +1,6 @@
 """Rutas para workflow."""
 
+import logging
 import uuid
 from datetime import datetime
 
@@ -11,6 +12,8 @@ from src.interfaces.api.models import WorkflowPlanRequest, WorkflowResponse
 
 router = APIRouter(prefix="/workflow", tags=["workflow"])
 
+logger = logging.getLogger(__name__)
+
 _DEFAULT_SESSION_ID = "api-session"
 
 
@@ -19,6 +22,7 @@ async def create_plan(
     request: WorkflowPlanRequest,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
+    """Crea un nuevo plan de trabajo."""
     plan_id = f"plan-{uuid.uuid4().hex[:6]}"
     data = {
         "plan_id": plan_id,
@@ -34,6 +38,7 @@ async def execute_plan(
     plan_id: str,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
+    """Ejecuta un plan de trabajo."""
     execute_id = f"exec-{uuid.uuid4().hex[:6]}"
     data = {
         "execute_id": execute_id,
@@ -49,31 +54,35 @@ async def verify_plan(
     plan_id: str,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
+    """Verifica el resultado de un plan de trabajo."""
     verify_id = f"verify-{uuid.uuid4().hex[:3]}"
     passed = True
     now = datetime.now()
 
     try:
         repo = get_promise_repository()
-        contract = PromiseContract(
-            id=f"promise-{uuid.uuid4().hex[:8]}",
-            session_id=_DEFAULT_SESSION_ID,
-            plan_id=plan_id,
-            task=f"Workflow plan {plan_id}",
-            state=PromiseState.VERIFY_PASSED,
-            verify_evidence=VerifyEvidence(
-                artifact_path="",
-                passed=passed,
-                exit_code=0,
-                timestamp=now.isoformat(),
-            ),
-            created_at=now,
-            updated_at=now,
-            metadata={"verify_id": verify_id},
+        existing_contract = repo.get_by_plan_id(plan_id)
+        verify_evidence = VerifyEvidence(
+            artifact_path="n/a",
+            passed=passed,
+            exit_code=0,
+            timestamp=now,
         )
-        repo.save(contract)
+        if existing_contract is None:
+            contract = PromiseContract(
+                id=f"promise-{uuid.uuid4().hex[:8]}",
+                session_id=_DEFAULT_SESSION_ID,
+                plan_id=plan_id,
+                task=f"Workflow plan {plan_id}",
+                state=PromiseState.VERIFY_PASSED,
+                verify_evidence=verify_evidence,
+                created_at=now,
+                updated_at=now,
+                metadata={"verify_id": verify_id},
+            )
+            repo.save(contract)
     except Exception:
-        pass
+        logger.debug("Failed to persist PromiseContract for plan_id=%s", plan_id, exc_info=True)
 
     data = {
         "verify_id": verify_id,
@@ -91,6 +100,7 @@ async def ship_plan(
     request: dict,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
+    """Envía un plan de trabajo verificado."""
     branch = request.get("branch", "main")
     commit_message = request.get("commit_message", "")
 
@@ -102,10 +112,12 @@ async def ship_plan(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Cannot ship: PromiseContract state is {contract.state.value}",
             )
+        if contract is not None:
+            repo.update_state(contract.id, PromiseState.SHIPPED)
     except HTTPException:
         raise
     except Exception:
-        pass
+        logger.debug("Failed to update PromiseContract state for plan_id=%s", plan_id, exc_info=True)
 
     data = {
         "plan_id": plan_id,
@@ -121,6 +133,7 @@ async def get_plan_status(
     plan_id: str,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
+    """Obtiene el estado de un plan de trabajo."""
     data = {
         "plan_id": plan_id,
         "status": "pending",
@@ -138,6 +151,6 @@ async def get_plan_status(
                 "updated_at": contract.updated_at.isoformat() if contract.updated_at else None,
             }
     except Exception:
-        pass
+        logger.debug("Failed to retrieve PromiseContract for plan_id=%s", plan_id, exc_info=True)
 
     return WorkflowResponse(data=data)

@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS promise_contracts (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
-    plan_id TEXT NOT NULL,
+    plan_id TEXT NOT NULL UNIQUE,
     task TEXT NOT NULL,
     state TEXT NOT NULL CHECK(state IN (
         'created', 'running', 'verify_passed', 'verify_failed', 'shipped', 'failed'
