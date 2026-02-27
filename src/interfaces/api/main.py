@@ -11,9 +11,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.interfaces.api.config import api_settings
+from src.interfaces.api.config import get_api_settings
 from src.interfaces.api.middleware.rate_limit import RateLimitMiddleware
-from src.interfaces.api.routes import agents, memory, processes, system, webhooks, workflow
+from src.interfaces.api.routes import (
+    agents,
+    discovery,
+    memory,
+    processes,
+    system,
+    webhooks,
+    workflow,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +44,9 @@ async def lifespan(_app: FastAPI):
     signal.signal(signal.SIGINT, signal_handler)
 
     logger.info("Fork Agent API starting up")
+    settings = get_api_settings()
     logging.basicConfig(
-        level=logging.INFO if not api_settings.debug else logging.DEBUG,
+        level=logging.INFO if not settings.debug else logging.DEBUG,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
@@ -53,9 +62,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-cors_origins = api_settings.cors_origins if api_settings.cors_origins else ["http://localhost:3000"]
+settings = get_api_settings()
+cors_origins = settings.cors_origins if settings.cors_origins else ["http://localhost:3000"]
 
-app.add_middleware(RateLimitMiddleware, requests_per_minute=api_settings.rate_limit)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=settings.rate_limit)
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,6 +81,7 @@ app.include_router(workflow.router, prefix="/api/v1")
 app.include_router(memory.router, prefix="/api/v1")
 app.include_router(system.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
+app.include_router(discovery.router, prefix="/api/v1")
 
 
 @app.get("/", include_in_schema=False)
@@ -81,11 +92,12 @@ async def root():
 def main() -> None:
     import uvicorn
 
+    settings = get_api_settings()
     uvicorn.run(
         "src.interfaces.api.main:app",
-        host=api_settings.host,
-        port=api_settings.port,
-        reload=api_settings.debug,
+        host=settings.host,
+        port=settings.port,
+        reload=settings.debug,
     )
 
 

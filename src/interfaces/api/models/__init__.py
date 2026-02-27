@@ -235,3 +235,66 @@ class WebhookListResponse(BaseModel):
     """Response para listar webhooks."""
 
     data: list[WebhookSafe]
+
+
+# Discovery card models
+from src.interfaces.api.models.discovery import (
+    AgentBackendInfo,
+    AuthInfo,
+    CardType,
+    DiscoveryCardEnvelope,
+    EndpointSummary,
+    ErrorGuidance,
+    OverviewCardData,
+    WorkflowCardData,
+    WorkflowListResponse,
+    WorkflowStep,
+)
+
+__all__ = [
+    # Process models
+    "ProcessInfo",
+    "ProcessListResponse",
+    "ProcessStartRequest",
+    "ProcessScaleRequest",
+    "ProcessResponse",
+    # Agent models
+    "AgentSession",
+    "AgentSessionCreate",
+    "AgentSessionResponse",
+    "SessionListResponse",
+    # Workflow models
+    "WorkflowPlanRequest",
+    "WorkflowPlan",
+    "WorkflowExecute",
+    "WorkflowVerify",
+    "WorkflowShip",
+    "WorkflowResponse",
+    # Observation models
+    "ObservationCreate",
+    "Observation",
+    "ObservationResponse",
+    "ObservationListResponse",
+    # System models
+    "AgentInfo",
+    "HealthResponse",
+    "MetricsResponse",
+    "ErrorResponse",
+    # Webhook models
+    "WebhookCreate",
+    "Webhook",
+    "WebhookSafe",
+    "WebhookResponse",
+    "WebhookListResponse",
+    # Discovery models
+    "CardType",
+    "AuthInfo",
+    "EndpointSummary",
+    "AgentBackendInfo",
+    "WorkflowStep",
+    "WorkflowCardData",
+    "ErrorGuidance",
+    "OverviewCardData",
+    "DiscoveryCardEnvelope",
+    "WorkflowListResponse",
+]

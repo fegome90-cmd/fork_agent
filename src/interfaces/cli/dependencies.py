@@ -27,6 +27,7 @@ from src.infrastructure.persistence.health_check import HealthCheckService
 
 _hook_service: HookService | None = None
 _workflow_executor: WorkflowExecutor | None = None
+_container_cache: dict[str, Container] = {}
 
 
 def get_hook_service() -> HookService:
@@ -38,7 +39,11 @@ def get_hook_service() -> HookService:
 
 
 def get_container(db_path: Path | None = None) -> Container:
-    return create_container(db_path)
+    """Get or create cached container for the given db_path."""
+    cache_key = str(db_path or "default")
+    if cache_key not in _container_cache:
+        _container_cache[cache_key] = create_container(db_path)
+    return _container_cache[cache_key]
 
 
 def get_repository(db_path: Path | None = None):

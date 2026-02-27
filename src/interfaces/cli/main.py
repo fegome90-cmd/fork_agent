@@ -19,6 +19,7 @@ from src.interfaces.cli.commands.workflow import app as workflow_app
 from src.interfaces.cli.dependencies import (
     get_hook_service,
     get_memory_service,
+    get_telemetry_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,9 +57,15 @@ def main(
     ),
 ) -> None:
     ctx.obj = get_memory_service(Path(db_path))
+
+    # Initialize telemetry session
+    session_id = f"cli-{uuid.uuid4().hex[:8]}"
+    telemetry = get_telemetry_service(Path(db_path))
+    if telemetry.is_enabled and not telemetry.session_id:
+        telemetry.start_session(session_id=session_id)
+
     # Dispatch session start event using the shared singleton to avoid duplicate hooks.json parsing
     try:
-        session_id = f"cli-{uuid.uuid4().hex[:8]}"
         get_hook_service().dispatch(SessionStartEvent(session_id=session_id))
     except Exception as e:
         logger.debug("Hook dispatch failed [session_start]: %s", e)

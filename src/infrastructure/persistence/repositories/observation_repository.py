@@ -37,9 +37,15 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 conn.execute(
-                    """INSERT INTO observations (id, timestamp, content, metadata)
-                       VALUES (?, ?, ?, ?)""",
-                    (observation.id, observation.timestamp, observation.content, metadata_json),
+                    """INSERT INTO observations (id, timestamp, content, metadata, idempotency_key)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        observation.id,
+                        observation.timestamp,
+                        observation.content,
+                        metadata_json,
+                        observation.idempotency_key,
+                    ),
                 )
         except sqlite3.IntegrityError as e:
             raise RepositoryError(
@@ -48,6 +54,77 @@ class ObservationRepository:
             ) from e
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to create observation: {e}", e) from e
+
+    def save_event(
+        self,
+        content: str,
+        metadata: dict[str, Any],
+        idempotency_key: str,
+    ) -> str:
+        """Save an event observation with idempotency guarantee.
+
+        This method is designed for structured events (workflow, agents, etc.)
+        and guarantees idempotency via the idempotency_key.
+
+        If an event with the same idempotency_key already exists, this returns
+        the existing observation ID without creating a duplicate.
+
+        Args:
+            content: Event content/description
+            metadata: Event metadata (should follow MemoryEventMetadata contract)
+            idempotency_key: Unique key for deduplication
+
+        Returns:
+            The observation ID (existing if duplicate, new otherwise)
+
+        Raises:
+            RepositoryError: If database error occurs (not duplicate idempotency)
+        """
+        import time
+        import uuid
+
+        # Check if already exists (idempotency check)
+        existing = self.get_by_idempotency_key(idempotency_key)
+        if existing is not None:
+            return existing.id
+
+        # Create new observation
+        timestamp = int(time.time() * 1000)
+        observation_id = str(uuid.uuid4())
+
+        observation = Observation(
+            id=observation_id,
+            timestamp=timestamp,
+            content=content,
+            metadata=metadata,
+            idempotency_key=idempotency_key,
+        )
+
+        self.create(observation)
+        return observation_id
+
+    def get_by_idempotency_key(self, idempotency_key: str) -> Observation | None:
+        """Get an observation by its idempotency key.
+
+        Args:
+            idempotency_key: The unique idempotency key
+
+        Returns:
+            Observation if found, None otherwise
+        """
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    "SELECT id, timestamp, content, metadata, idempotency_key "
+                    "FROM observations WHERE idempotency_key = ?",
+                    (idempotency_key,),
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    return None
+                return self._row_to_observation(row)
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to get observation by idempotency_key: {e}", e) from e
 
     def get_by_id(self, observation_id: str) -> Observation:
         """Retrieve an observation by its ID.
@@ -64,7 +141,7 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 cursor = conn.execute(
-                    "SELECT id, timestamp, content, metadata FROM observations WHERE id = ?",
+                    "SELECT id, timestamp, content, metadata, idempotency_key FROM observations WHERE id = ?",
                     (observation_id,),
                 )
                 row = cursor.fetchone()
@@ -90,7 +167,7 @@ class ObservationRepository:
         """
         try:
             sql = (
-                "SELECT id, timestamp, content, metadata FROM observations ORDER BY timestamp DESC"
+                "SELECT id, timestamp, content, metadata, idempotency_key FROM observations ORDER BY timestamp DESC"
             )
             params: list[str | int] = []
 
@@ -176,7 +253,7 @@ class ObservationRepository:
             if not sanitized_query:
                 return []
             sql = """
-                SELECT o.id, o.timestamp, o.content, o.metadata
+                SELECT o.id, o.timestamp, o.content, o.metadata, o.idempotency_key
                 FROM observations o
                 JOIN observations_fts fts ON o.rowid = fts.rowid
                 WHERE observations_fts MATCH ?
@@ -209,7 +286,7 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 cursor = conn.execute(
-                    """SELECT id, timestamp, content, metadata
+                    """SELECT id, timestamp, content, metadata, idempotency_key
                        FROM observations
                        WHERE timestamp >= ? AND timestamp <= ?
                        ORDER BY timestamp DESC""",
@@ -224,11 +301,18 @@ class ObservationRepository:
     def _row_to_observation(self, row: sqlite3.Row) -> Observation:
         """Convert a database row to an Observation entity."""
         metadata = self._deserialize_metadata(row["metadata"])
+        # Handle idempotency_key which may not exist in older migrations
+        idempotency_key = None
+        try:
+            idempotency_key = row["idempotency_key"] if "idempotency_key" in row.keys() else None
+        except (KeyError, IndexError):
+            pass
         return Observation(
             id=row["id"],
             timestamp=row["timestamp"],
             content=row["content"],
             metadata=metadata,
+            idempotency_key=idempotency_key,
         )
 
     def _serialize_metadata(self, metadata: dict[str, Any] | None) -> str | None:

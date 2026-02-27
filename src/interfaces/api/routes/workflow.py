@@ -68,7 +68,7 @@ async def verify_plan(
             task=f"Workflow plan {plan_id}",
             state=PromiseState.VERIFY_PASSED,
             verify_evidence=VerifyEvidence(
-                artifact_path="",
+                artifact_path=f"/tmp/verify-{verify_id}.json",
                 passed=passed,
                 exit_code=0,
                 timestamp=now.isoformat(),
@@ -78,8 +78,11 @@ async def verify_plan(
             metadata={"verify_id": verify_id},
         )
         repo.save(contract)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception(f"Failed to persist verify evidence for plan {plan_id}")
+        raise HTTPException(
+            status_code=500, detail=f"Verification failed to persist evidence: {str(e)}"
+        )
 
     data = {
         "verify_id": verify_id,
@@ -112,8 +115,7 @@ async def ship_plan(
 
     if contract.state != PromiseState.VERIFY_PASSED:
         raise HTTPException(
-            status_code=409,
-            detail=f"Contract must be VERIFY_PASSED, got {contract.state}"
+            status_code=409, detail=f"Contract must be VERIFY_PASSED, got {contract.state}"
         )
 
     # Persist SHIPPED state

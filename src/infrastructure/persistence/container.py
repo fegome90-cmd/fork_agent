@@ -63,9 +63,20 @@ class Container(containers.DeclarativeContainer):
         connection=database_connection,
     )
 
+    telemetry_repository = providers.Singleton(
+        TelemetryRepositoryImpl,
+        connection=database_connection,
+    )
+
+    telemetry_service = providers.Singleton(
+        TelemetryService,
+        repository=telemetry_repository,
+    )
+
     memory_service = providers.Singleton(
         MemoryService,
         repository=observation_repository,
+        telemetry_service=telemetry_service,
     )
 
     scheduler_service = providers.Singleton(
@@ -87,16 +98,6 @@ class Container(containers.DeclarativeContainer):
     tmux_orchestrator = providers.Singleton(
         TmuxOrchestrator,
         safety_mode=False,
-    )
-
-    telemetry_repository = providers.Singleton(
-        TelemetryRepositoryImpl,
-        connection=database_connection,
-    )
-
-    telemetry_service = providers.Singleton(
-        TelemetryService,
-        repository=telemetry_repository,
     )
 
 

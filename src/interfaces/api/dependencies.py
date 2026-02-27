@@ -25,7 +25,9 @@ _promise_repo_lock = Lock()
 
 
 async def verify_api_key(x_api_key: str = Header(...)) -> str:
-    from src.interfaces.api.config import api_settings
+    from src.interfaces.api.config import get_api_settings
+
+    api_settings = get_api_settings()
 
     if not api_settings.api_key:
         raise HTTPException(
