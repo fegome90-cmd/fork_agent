@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import platform
-from datetime import datetime
+import threading
+from datetime import UTC, datetime
 from typing import Any
 
 from src.domain.entities.telemetry_event import (
@@ -38,6 +39,7 @@ class TelemetryService:
         )
         self._session_id: str | None = None
         self._session_start: int | None = None
+        self._lock = threading.RLock()
 
         # Platform info
         self._platform = platform.system().lower()
@@ -63,13 +65,18 @@ class TelemetryService:
         """Check if telemetry is enabled."""
         return self._enabled
 
+    @property
+    def repository(self) -> TelemetryRepository:
+        """Access to the underlying repository for advanced queries."""
+        return self._repository
+
     def start_session(self, session_id: str, workspace_id: str | None = None) -> None:
         """Start a new telemetry session."""
         if not self._enabled:
             return
 
         self._session_id = session_id
-        self._session_start = int(datetime.utcnow().timestamp() * 1000)
+        self._session_start = int(datetime.now(UTC).timestamp() * 1000)
 
         # Create session summary
         summary = SessionSummary(
@@ -100,7 +107,7 @@ class TelemetryService:
         if not self._enabled or not self._session_id:
             return
 
-        now_ms = int(datetime.utcnow().timestamp() * 1000)
+        now_ms = int(datetime.now(UTC).timestamp() * 1000)
         duration_ms = now_ms - self._session_start if self._session_start else 0
 
         # Track session end event
@@ -171,16 +178,17 @@ class TelemetryService:
             timestamp=timestamp,
         )
 
-        # Add to buffer
-        self._buffer.append(event)
+        # Add to buffer and update summary atomically
+        with self._lock:
+            self._buffer.append(event)
 
-        # Flush if buffer is full
-        if len(self._buffer) >= self._buffer_size:
-            self.flush()
+            # Flush if buffer is full
+            if len(self._buffer) >= self._buffer_size:
+                self.flush()
 
-        # Update session summary if we have a session
-        if self._session_id:
-            self._update_session_summary(event)
+            # Update session summary while still holding lock to avoid race
+            if self._session_id:
+                self._update_session_summary(event)
 
         return event.id
 
@@ -209,14 +217,22 @@ class TelemetryService:
                 updates["agents_failed"] = summary.agents_failed + 1
         elif event.event_type == EventType.TMUX_SESSION_CREATE:
             updates["tmux_sessions_created"] = summary.tmux_sessions_created + 1
+        elif event.event_type == EventType.TMUX_SESSION_KILL:
+            updates["tmux_sessions_killed"] = summary.tmux_sessions_killed + 1
         elif event.event_type == EventType.MEMORY_SAVE:
             updates["memory_saves"] = summary.memory_saves + 1
         elif event.event_type == EventType.MEMORY_SEARCH:
             updates["memory_searches"] = summary.memory_searches + 1
+        elif event.event_type == EventType.MEMORY_DELETE:
+            updates["memory_deletes"] = summary.memory_deletes + 1
         elif event.event_type == EventType.WORKFLOW_OUTLINE:
+            updates["workflow_started"] = summary.workflow_started + 1
+        elif event.event_type == EventType.WORKFLOW_EXECUTE:
             updates["workflow_started"] = summary.workflow_started + 1
         elif event.event_type == EventType.WORKFLOW_SHIP:
             updates["workflow_completed"] = summary.workflow_completed + 1
+        elif event.event_type == EventType.WORKFLOW_ABORT:
+            updates["workflow_aborted"] = summary.workflow_aborted + 1
         elif event.event_type == EventType.CLI_COMMAND:
             updates["cli_commands"] = summary.cli_commands + 1
         elif event.event_type == EventType.CLI_ERROR:
@@ -353,6 +369,26 @@ class TelemetryService:
             },
         )
 
+    def track_tmux_session_kill(
+        self,
+        session_name: str,
+        session_type: str,
+        reason: str,
+        duration_ms: int,
+    ) -> str:
+        """Track a tmux session being killed."""
+        return self.track(
+            EventType.TMUX_SESSION_KILL,
+            EventCategory.TMUX,
+            {
+                "session_name": session_name,
+                "session_type": session_type,
+                "reason": reason,
+                "duration_ms": duration_ms,
+            },
+            metrics={"duration_ms": float(duration_ms)},
+        )
+
     def track_memory_save(
         self,
         observation_id: str,
@@ -391,6 +427,21 @@ class TelemetryService:
             metrics={
                 "duration_ms": float(duration_ms),
                 "results_count": float(results_count),
+            },
+        )
+
+    def track_memory_delete(
+        self,
+        observation_id: str,
+        session_id: str | None = None,
+    ) -> str:
+        """Track a memory delete operation."""
+        return self.track(
+            EventType.MEMORY_DELETE,
+            EventCategory.MEMORY,
+            {
+                "observation_id": observation_id,
+                "session_id": session_id,
             },
         )
 
@@ -456,6 +507,23 @@ class TelemetryService:
             metrics={"duration_total_ms": float(duration_total_ms)},
         )
 
+    def track_workflow_abort(
+        self,
+        session_id: str,
+        phase: str,
+        reason: str,
+    ) -> str:
+        """Track a workflow abort."""
+        return self.track(
+            EventType.WORKFLOW_ABORT,
+            EventCategory.WORKFLOW,
+            {
+                "session_id": session_id,
+                "phase": phase,
+                "reason": reason,
+            },
+        )
+
     def track_cli_command(
         self,
         command_name: str,
@@ -499,11 +567,12 @@ class TelemetryService:
 
     def flush(self) -> None:
         """Flush the event buffer to storage."""
-        if not self._buffer:
-            return
+        with self._lock:
+            if not self._buffer:
+                return
 
-        self._repository.save_batch(self._buffer)
-        self._buffer.clear()
+            self._repository.save_batch(self._buffer)
+            self._buffer.clear()
 
     def get_session_summary(self, session_id: str) -> SessionSummary | None:
         """Get summary for a session."""
@@ -539,7 +608,7 @@ class TelemetryService:
             labels: Labels to filter by
             period: Time period (1h, 24h, 7d, 30d)
         """
-        now = int(datetime.utcnow().timestamp())
+        now = int(datetime.now(UTC).timestamp())
 
         period_seconds = {
             "1h": 3600,
@@ -561,7 +630,7 @@ class TelemetryService:
 
     def get_event_counts(self, period: str = "24h") -> dict[str, int]:
         """Get event counts by type for a period."""
-        now = int(datetime.utcnow().timestamp() * 1000)
+        now = int(datetime.now(UTC).timestamp() * 1000)
 
         period_ms = {
             "1h": 3600000,

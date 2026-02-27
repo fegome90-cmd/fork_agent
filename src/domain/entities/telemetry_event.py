@@ -226,10 +226,13 @@ class SessionSummary:
     agents_completed: int = 0
     agents_failed: int = 0
     tmux_sessions_created: int = 0
+    tmux_sessions_killed: int = 0
     memory_saves: int = 0
     memory_searches: int = 0
+    memory_deletes: int = 0
     workflow_started: int = 0
     workflow_completed: int = 0
+    workflow_aborted: int = 0
     cli_commands: int = 0
     cli_errors: int = 0
 
