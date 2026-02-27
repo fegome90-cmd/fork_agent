@@ -481,7 +481,7 @@ class TestExecutePlan:
         assert len(result.spawned_sessions) == 1
         # Verify model was passed to launch_agent
         call_args = mock_tmux.launch_agent.call_args
-        assert call_args[0][2] == "custom-model"
+        assert call_args[0][4] == "custom-model"
 
     def test_execute_plan_memory_persistence(
         self,

@@ -26,6 +26,7 @@ from src.application.services.workflow.state import (
     WorkflowPhase,
 )
 from src.application.services.workspace.workspace_manager import WorkspaceManager
+from src.infrastructure.agent_backends import get_default_backend
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -134,8 +135,22 @@ class WorkflowExecutor:
                 result_session = session_name
 
                 # Launch agent in the session
-                prompt = f"Execute task: {task.description}"
-                self._tmux.launch_agent(session_name, 0, model, prompt)
+                backend = get_default_backend()
+                if backend is None:
+                    errors.append("No available agent backend found (opencode/pi)")
+                    logger.warning("No available backend to launch task %s", task.id)
+                else:
+                    prompt = f"Execute task: {task.description}"
+                    launched = self._tmux.launch_agent(
+                        session_name,
+                        0,
+                        backend,
+                        prompt,
+                        model,
+                    )
+                    if not launched:
+                        errors.append(f"Failed to launch agent in tmux session: {session_name}")
+                        logger.warning("Failed to launch agent in tmux session: %s", session_name)
             else:
                 errors.append(f"Failed to create tmux session: {session_name}")
                 logger.warning("Failed to create tmux session: %s", session_name)
@@ -144,9 +159,17 @@ class WorkflowExecutor:
             logger.error("Error creating tmux session for task %s: %s", task.id, e)
 
         # Step 2: Create worktree
-        worktree_name = f"task-{task.slug[:30]}"
+        base_worktree_name = f"task-{task.slug[:30]}"
+        worktree_name = base_worktree_name
         try:
-            workspace = self._workspace.create_workspace(worktree_name)
+            try:
+                workspace = self._workspace.create_workspace(worktree_name)
+            except Exception as first_error:
+                if "already exists" not in str(first_error).lower():
+                    raise
+                worktree_name = f"{base_worktree_name[:24]}-{uuid.uuid4().hex[:6]}"
+                workspace = self._workspace.create_workspace(worktree_name)
+
             result_worktree_path = str(workspace.path)
             result_worktree_name = worktree_name
             logger.info("Created worktree: %s at %s", worktree_name, result_worktree_path)
@@ -241,7 +264,7 @@ class WorkflowExecutor:
         exec_state = ExecuteState(
             session_id=f"exec-{uuid.uuid4().hex[:8]}",
             status=TASK_STATUS_EXECUTING,
-            phase=WorkflowPhase.EXECUTING,
+            phase=WorkflowPhase.EXECUTED,
             tasks=updated_tasks,
         )
 

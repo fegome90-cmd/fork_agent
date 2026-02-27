@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
+import sys
+import tempfile
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,6 +28,7 @@ from src.application.services.orchestration.hook_service import HookService
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
+    Task,
     VerifyResults,
     VerifyState,
     WorkflowPhase,
@@ -40,6 +45,18 @@ from src.infrastructure.persistence.container import (
 from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook_service
 
 logger = logging.getLogger(__name__)
+
+
+class ShipPreflightError(Exception):
+    """Raised when ship preflight checks fail."""
+
+    def __init__(self, message: str, *, current_branch: str, target_branch: str, dirty_files_count: int, mode: str, reason: str) -> None:
+        super().__init__(message)
+        self.current_branch = current_branch
+        self.target_branch = target_branch
+        self.dirty_files_count = dirty_files_count
+        self.mode = mode
+        self.reason = reason
 
 
 def _get_hook_service() -> HookService:
@@ -71,6 +88,22 @@ def _dispatch_event(event: object, context: str = "") -> None:
 app = typer.Typer(name="workflow", help="Workflow commands: outline, execute, verify, ship")
 
 
+def _slugify_task(text: str) -> str:
+    """Create a safe slug for workflow task identifiers."""
+    normalized = "".join(ch.lower() if ch.isalnum() else "-" for ch in text.strip())
+    collapsed = "-".join(part for part in normalized.split("-") if part)
+    return collapsed[:50] or "task"
+
+
+def _record_ship_event(event_name: str, metadata: dict[str, object]) -> None:
+    """Persist ship lifecycle metadata to memory store (best effort)."""
+    try:
+        memory = get_memory_service()
+        memory.save(content=f"workflow:ship:{event_name}", metadata=metadata)
+    except Exception as e:
+        logger.debug("Failed to save ship event %s: %s", event_name, e)
+
+
 def _check_plan_exists() -> PlanState:
     plan_path = get_plan_state_path()
     plan = PlanState.load(plan_path)
@@ -96,6 +129,154 @@ def _check_verify_exists() -> VerifyState:
         typer.echo("Error: No verification found. Run 'memory workflow verify' first.", err=True)
         raise typer.Exit(1)
     return state
+
+
+def _git_output(args: list[str]) -> str | None:
+    """Run a git command and return stdout, or None on failure."""
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _get_current_branch() -> str | None:
+    """Return current git branch name, or None if unavailable."""
+    return _git_output(["rev-parse", "--abbrev-ref", "HEAD"])
+
+
+def _get_dirty_files() -> list[str]:
+    """Return dirty/untracked files from git status --porcelain."""
+    output = _git_output(["status", "--porcelain"])
+    if not output:
+        return []
+
+    files: list[str] = []
+    for line in output.splitlines():
+        candidate = line[3:].strip() if len(line) >= 4 else line.strip()
+        if " -> " in candidate:
+            candidate = candidate.split(" -> ", 1)[1]
+        if candidate:
+            files.append(candidate)
+    return files
+
+
+def _is_branch_checked_out_in_worktree(target_branch: str) -> bool:
+    """Return True when target branch is already checked out in any worktree."""
+    output = _git_output(["worktree", "list", "--porcelain"])
+    if not output:
+        return False
+
+    target_ref = f"refs/heads/{target_branch}"
+    for line in output.splitlines():
+        if line.startswith("branch ") and line.split(" ", 1)[1] == target_ref:
+            return True
+    return False
+
+
+def _enforce_ship_checkout_preflight(target_branch: str, use_worktree: bool) -> None:
+    """Fail fast when cross-branch shipping prerequisites are not met."""
+    current_branch = _get_current_branch()
+    if current_branch is None or current_branch == target_branch:
+        return
+
+    dirty_files = _get_dirty_files()
+    dirty_count = len(dirty_files)
+
+    if dirty_count > 0 and not use_worktree:
+        typer.echo(
+            f"Error: Cannot ship to '{target_branch}' from '{current_branch}' with local changes.",
+            err=True,
+        )
+        typer.echo(
+            "Git would block checkout because files may be overwritten.",
+            err=True,
+        )
+        typer.echo("Dirty files (showing up to 10):", err=True)
+        for file_path in dirty_files[:10]:
+            typer.echo(f"  - {file_path}", err=True)
+        if dirty_count > 10:
+            typer.echo(f"  ... and {dirty_count - 10} more", err=True)
+        typer.echo("Options:", err=True)
+        typer.echo("  1) Commit/stash your changes", err=True)
+        typer.echo(f"  2) Re-run with --target {current_branch} (or --inplace)", err=True)
+        typer.echo("  3) Re-run with --use-worktree", err=True)
+        raise ShipPreflightError(
+            "dirty_worktree_cross_branch",
+            current_branch=current_branch,
+            target_branch=target_branch,
+            dirty_files_count=dirty_count,
+            mode="no-worktree",
+            reason="dirty_worktree_cross_branch",
+        )
+
+    if use_worktree and _is_branch_checked_out_in_worktree(target_branch):
+        typer.echo(
+            f"Error: Target branch '{target_branch}' is already checked out in another worktree.",
+            err=True,
+        )
+        typer.echo("Close that worktree or re-run with --no-worktree and a clean tree.", err=True)
+        raise ShipPreflightError(
+            "target_branch_checked_out",
+            current_branch=current_branch,
+            target_branch=target_branch,
+            dirty_files_count=dirty_count,
+            mode="worktree",
+            reason="target_branch_checked_out",
+        )
+
+
+def _merge_branch_via_temp_worktree(branch_name: str, target_branch: str) -> None:
+    """Merge branch into target using temporary git worktree."""
+    repo_root = _git_output(["rev-parse", "--show-toplevel"])
+    if repo_root is None:
+        raise RuntimeError("Unable to detect git repository root")
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="workflow-ship-"))
+    try:
+        add_result = subprocess.run(
+            ["git", "-C", repo_root, "worktree", "add", str(temp_dir), target_branch],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        if add_result.returncode != 0:
+            raise RuntimeError(add_result.stderr.strip() or "git worktree add failed")
+
+        merge_result = subprocess.run(
+            ["git", "-C", str(temp_dir), "merge", branch_name, "--no-edit"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if merge_result.returncode != 0:
+            subprocess.run(
+                ["git", "-C", str(temp_dir), "merge", "--abort"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            raise RuntimeError(merge_result.stderr.strip() or "git merge failed")
+    finally:
+        subprocess.run(
+            ["git", "-C", repo_root, "worktree", "remove", str(temp_dir), "--force"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def _validate_phase_transition(
@@ -147,11 +328,17 @@ def outline(
         context="outline_start",
     )
 
+    plan_task = Task(
+        id=f"task-{uuid.uuid4().hex[:8]}",
+        slug=_slugify_task(task_description),
+        description=task_description,
+    )
     plan_state = PlanState(
         session_id=session_id,
         status="outlined",
         phase=WorkflowPhase.OUTLINED,
         plan_file=plan_file,
+        tasks=[plan_task],
     )
     plan_path = get_plan_state_path()
     plan_state.save(plan_path)
@@ -320,37 +507,54 @@ def verify(
 
 @app.command("ship")
 def ship(
-    target_branch: str = typer.Option("main", "--branch", "-b", help="Target branch"),
+    target_branch: str = typer.Option(
+        "main",
+        "--target",
+        "-t",
+        "--branch",
+        "-b",
+        help="Target branch (deprecated alias: --branch)",
+    ),
+    inplace: bool = typer.Option(False, "--inplace", help="Use current branch as target"),
     cleanup: bool = typer.Option(True, "--cleanup/--no-cleanup", help="Cleanup worktrees"),
+    use_worktree: bool = typer.Option(
+        True,
+        "--use-worktree/--no-worktree",
+        help="Use temporary worktree for cross-branch merges",
+    ),
     force: bool = typer.Option(False, "--force", help="Force ship without verification"),
     reason: str = typer.Option("", "--reason", help="Reason for forced ship (required with --force)"),
 ) -> None:
+    argv = sys.argv
+    used_target_flag = any(flag in argv for flag in ("--target", "-t", "--branch", "-b"))
+    used_legacy_branch = any(flag in argv for flag in ("--branch", "-b"))
+
+    if inplace and used_target_flag:
+        typer.echo("Error: --inplace cannot be used with --target/--branch", err=True)
+        raise typer.Exit(1)
+
+    if used_legacy_branch:
+        typer.echo("Warning: --branch is deprecated, use --target", err=True)
+
+    if inplace:
+        current = _get_current_branch()
+        if current is None:
+            typer.echo("Error: Cannot resolve current branch for --inplace", err=True)
+            raise typer.Exit(1)
+        target_branch = current
+
     # Handle --force: skip verification gate
     if force:
         if not reason.strip():
             typer.echo("Error: --force requires --reason", err=True)
             raise typer.Exit(1)
+
         # Create minimal verify_state for forced ship
         verify_state = VerifyState(
             session_id=f"forced-{uuid.uuid4().hex[:8]}",
             phase=WorkflowPhase.VERIFIED,
             unlock_ship=True,
         )
-        # Audit event for forced ship
-        try:
-            memory = get_memory_service()
-            memory.save(
-                content="workflow:ship:forced",
-                metadata={
-                    "session_id": verify_state.session_id,
-                    "reason": reason,
-                    "timestamp": datetime.now(UTC).isoformat(),
-                    "forced_by": "cli",
-                },
-            )
-            typer.echo("Warning: Forced ship executed (audit event logged)")
-        except Exception as e:
-            logger.warning("Failed to log forced ship audit event: %s", e)
     else:
         verify_state = _check_verify_exists()
 
@@ -382,6 +586,60 @@ def ship(
         )
         raise typer.Exit(1)
 
+    # Safety preflight: block cross-branch shipping when local changes are dirty
+    try:
+        _enforce_ship_checkout_preflight(target_branch, use_worktree)
+    except ShipPreflightError as e:
+        _record_ship_event(
+            "preflight_failed",
+            {
+                "session_id": verify_state.session_id,
+                "target_branch": e.target_branch,
+                "current_branch": e.current_branch,
+                "is_dirty": e.dirty_files_count > 0,
+                "dirty_files_count": e.dirty_files_count,
+                "mode": e.mode,
+                "reason": e.reason,
+                "forced": force,
+            },
+        )
+        raise typer.Exit(1)
+
+    current_branch = _get_current_branch() or "unknown"
+    dirty_files_count = len(_get_dirty_files())
+    cross_branch = current_branch != target_branch
+    ship_mode = "worktree" if use_worktree and cross_branch else "inplace"
+
+    if force:
+        _record_ship_event(
+            "forced",
+            {
+                "session_id": verify_state.session_id,
+                "reason": reason,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "forced_by": "cli",
+                "current_branch": current_branch,
+                "target_branch": target_branch,
+                "is_dirty": dirty_files_count > 0,
+                "dirty_files_count": dirty_files_count,
+                "mode": ship_mode,
+            },
+        )
+        typer.echo("Warning: Forced ship executed (audit event logged)")
+
+    _record_ship_event(
+        "started",
+        {
+            "session_id": verify_state.session_id,
+            "target_branch": target_branch,
+            "current_branch": current_branch,
+            "is_dirty": dirty_files_count > 0,
+            "dirty_files_count": dirty_files_count,
+            "mode": ship_mode,
+            "forced": force,
+        },
+    )
+
     # Note: plan check not needed here, verify already validated the workflow
 
     # Dispatch ship start event
@@ -394,6 +652,7 @@ def ship(
     exec_state = ExecuteState.load(exec_path)
 
     # Cleanup worktrees if requested
+    runtime_errors: list[str] = []
     if cleanup and exec_state:
         try:
             workspace_manager = get_workspace_manager()
@@ -407,7 +666,16 @@ def ship(
 
                         # Try to merge first
                         try:
-                            workspace_manager.merge_workspace(worktree_name, delete_branch=False)
+                            current_branch = _get_current_branch()
+                            cross_branch = current_branch is not None and current_branch != target_branch
+                            if use_worktree and cross_branch:
+                                _merge_branch_via_temp_worktree(worktree_name, target_branch)
+                            else:
+                                workspace_manager.merge_workspace(
+                                    worktree_name,
+                                    target_branch=target_branch,
+                                    delete_branch=False,
+                                )
                             logger.info("Merged worktree: %s", worktree_name)
 
                             # Dispatch merge event
@@ -420,6 +688,7 @@ def ship(
                             )
                         except Exception as e:
                             logger.warning("Failed to merge worktree %s: %s", worktree_name, e)
+                            runtime_errors.append(f"merge:{worktree_name}")
 
                         # Remove the worktree
                         try:
@@ -434,15 +703,35 @@ def ship(
                             )
                         except Exception as e:
                             logger.warning("Failed to remove worktree %s: %s", worktree_name, e)
+                            runtime_errors.append(f"remove:{worktree_name}")
 
                     except Exception as e:
                         logger.error("Error cleaning up worktree for task %s: %s", task.id, e)
+                        runtime_errors.append(f"cleanup:{task.id}")
 
             if cleaned_worktrees:
                 typer.echo(f"  Cleaned up worktrees: {', '.join(cleaned_worktrees)}")
 
         except Exception as e:
             logger.error("Error initializing WorkspaceManager for cleanup: %s", e)
+            runtime_errors.append("cleanup:init")
+
+    if runtime_errors:
+        _record_ship_event(
+            "failed_runtime",
+            {
+                "session_id": verify_state.session_id,
+                "target_branch": target_branch,
+                "current_branch": current_branch,
+                "is_dirty": dirty_files_count > 0,
+                "dirty_files_count": dirty_files_count,
+                "mode": ship_mode,
+                "error_count": len(runtime_errors),
+                "forced": force,
+            },
+        )
+        typer.echo("Error: Ship failed during runtime operations", err=True)
+        raise typer.Exit(1)
 
     typer.echo(f"✓ Shipping to {target_branch}")
     typer.echo(f"  Session: {verify_state.session_id}")
@@ -454,19 +743,19 @@ def ship(
         context="ship_complete",
     )
 
-    # Save to memory for history
-    try:
-        memory = get_memory_service()
-        memory.save(
-            content=f"workflow:ship:{verify_state.session_id}:complete",
-            metadata={
-                "phase": "ship",
-                "plan_id": verify_state.session_id,
-                "target_branch": target_branch,
-            },
-        )
-    except Exception as e:
-        logger.debug("Failed to save ship to memory: %s", e)
+    _record_ship_event(
+        "completed",
+        {
+            "phase": "ship",
+            "plan_id": verify_state.session_id,
+            "target_branch": target_branch,
+            "current_branch": current_branch,
+            "is_dirty": dirty_files_count > 0,
+            "dirty_files_count": dirty_files_count,
+            "mode": ship_mode,
+            "forced": force,
+        },
+    )
 
 
 @app.command("status")
