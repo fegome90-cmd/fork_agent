@@ -277,7 +277,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         end_time: int,
     ) -> list[MetricBucket]:
         labels_json = json.dumps(labels)
-        labels_hash = hashlib.md5(labels_json.encode()).hexdigest()
+        NS|        labels_hash = hashlib.md5(labels_json.encode(), usedforsecurity=False).hexdigest()
 
         with self._connection as conn:
             cursor = conn.execute(
@@ -300,7 +300,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         bucket_start = (now // bucket_duration) * bucket_duration
 
         labels_json = json.dumps(labels)
-        labels_hash = hashlib.md5(labels_json.encode()).hexdigest()
+        NS|        labels_hash = hashlib.md5(labels_json.encode(), usedforsecurity=False).hexdigest()
 
         with self._connection as conn:
             # Try to update existing bucket
