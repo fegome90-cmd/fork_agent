@@ -9,7 +9,13 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
+from src.application.services.memory.event_metadata import (
+    EventType,
+    ExecutionMode,
+    create_event_metadata,
+)
 from src.application.services.memory_service import MemoryService
 from src.application.services.orchestration.events import (
     WorkflowExecuteCompleteEvent,
@@ -102,6 +108,7 @@ class WorkflowExecutor:
         task: Task,
         model: str,
         session_name: str | None = None,
+        run_id: str | None = None,
     ) -> TaskExecutionResult:
         """Execute a single task: create tmux session and worktree.
 
@@ -109,6 +116,7 @@ class WorkflowExecutor:
             task: The task to execute.
             model: The agent model to use.
             session_name: Optional session name (auto-generated if None).
+            run_id: Optional run ID for event tracking (auto-generated if None).
 
         Returns:
             TaskExecutionResult with execution details.
@@ -122,10 +130,25 @@ class WorkflowExecutor:
         result_session: str | None = None
         result_worktree_path: str | None = None
         result_worktree_name: str | None = None
+        result_pid: int | None = None
 
-        # Generate session name if not provided
+        # Generate session name and run_id if not provided
         if session_name is None:
             session_name = f"fork-{task.slug[:20]}-{uuid.uuid4().hex[:8]}"
+        if run_id is None:
+            run_id = f"run-{uuid.uuid4().hex[:8]}"
+
+        # Emit task_started event
+        self._emit_event(
+            EventType.TASK_STARTED,
+            content=f"Task started: {task.description[:100]}",
+            run_id=run_id,
+            task_id=task.id,
+            agent_id="pending",
+            session_name=session_name,
+            mode=ExecutionMode.WORKTREE,
+            branch=None,
+        )
 
         # Step 1: Create tmux session
         try:
@@ -151,6 +174,17 @@ class WorkflowExecutor:
                     if not launched:
                         errors.append(f"Failed to launch agent in tmux session: {session_name}")
                         logger.warning("Failed to launch agent in tmux session: %s", session_name)
+                    else:
+                        # Emit agent_spawned event after successful launch
+                        self._emit_event(
+                            EventType.AGENT_SPAWNED,
+                            content=f"Agent spawned in session {session_name}",
+                            run_id=run_id,
+                            task_id=task.id,
+                            agent_id=f"{session_name}:0",
+                            session_name=session_name,
+                            mode=ExecutionMode.WORKTREE,
+                        )
             else:
                 errors.append(f"Failed to create tmux session: {session_name}")
                 logger.warning("Failed to create tmux session: %s", session_name)
@@ -184,6 +218,35 @@ class WorkflowExecutor:
         except Exception as e:
             errors.append(f"Failed to create worktree: {e}")
             logger.warning("Failed to create worktree for task %s: %s", task.id, e)
+
+        # Emit task_completed or task_failed event
+        if errors:
+            self._emit_event(
+                EventType.TASK_FAILED,
+                content=f"Task failed: {task.description[:100]}",
+                run_id=run_id,
+                task_id=task.id,
+                agent_id=result_session or "unknown",
+                session_name=result_session or session_name,
+                mode=ExecutionMode.WORKTREE,
+                branch=result_worktree_name,
+                worktree_path=result_worktree_path,
+                success=False,
+                error_message="; ".join(errors),
+            )
+        else:
+            self._emit_event(
+                EventType.TASK_COMPLETED,
+                content=f"Task completed: {task.description[:100]}",
+                run_id=run_id,
+                task_id=task.id,
+                agent_id=result_session or "unknown",
+                session_name=result_session or session_name,
+                mode=ExecutionMode.WORKTREE,
+                branch=result_worktree_name,
+                worktree_path=result_worktree_path,
+                success=True,
+            )
 
         return TaskExecutionResult(
             task=task,
@@ -302,6 +365,7 @@ class WorkflowExecutor:
         task: Task,
         merge: bool = True,
         target_branch: str = "main",
+        run_id: str | None = None,
     ) -> CleanupResult:
         """Clean up a task's worktree.
 
@@ -309,11 +373,14 @@ class WorkflowExecutor:
             task: The task whose worktree to clean up.
             merge: Whether to merge the worktree branch first.
             target_branch: The target branch for merge.
+            run_id: Optional run ID for event tracking.
 
         Returns:
             CleanupResult with cleanup details.
         """
         worktree_name = task.branch or f"task-{task.slug[:30]}"
+        if run_id is None:
+            run_id = f"ship-{uuid.uuid4().hex[:8]}"
 
         if not task.worktree_path:
             return CleanupResult(
@@ -326,6 +393,20 @@ class WorkflowExecutor:
         merged = False
         removed = False
         errors: list[str] = []
+
+        # Emit ship_started event
+        self._emit_event(
+            EventType.SHIP_STARTED,
+            content=f"Ship started: merging {worktree_name} into {target_branch}",
+            run_id=run_id,
+            task_id=task.id,
+            agent_id=task.session_name or "unknown",
+            session_name=task.session_name or "unknown",
+            mode=ExecutionMode.WORKTREE,
+            branch=worktree_name,
+            target_branch=target_branch,
+            worktree_path=task.worktree_path,
+        )
 
         # Merge if requested
         if merge:
@@ -362,6 +443,37 @@ class WorkflowExecutor:
         except Exception as e:
             logger.warning("Failed to remove worktree %s: %s", worktree_name, e)
             errors.append(f"Remove failed: {e}")
+
+        # Emit ship_completed or ship_failed event
+        if errors:
+            self._emit_event(
+                EventType.SHIP_FAILED_RUNTIME,
+                content=f"Ship failed: {worktree_name}",
+                run_id=run_id,
+                task_id=task.id,
+                agent_id=task.session_name or "unknown",
+                session_name=task.session_name or "unknown",
+                mode=ExecutionMode.WORKTREE,
+                branch=worktree_name,
+                target_branch=target_branch,
+                worktree_path=task.worktree_path,
+                success=False,
+                error_message="; ".join(errors),
+            )
+        else:
+            self._emit_event(
+                EventType.SHIP_COMPLETED,
+                content=f"Ship completed: {worktree_name} merged into {target_branch}",
+                run_id=run_id,
+                task_id=task.id,
+                agent_id=task.session_name or "unknown",
+                session_name=task.session_name or "unknown",
+                mode=ExecutionMode.WORKTREE,
+                branch=worktree_name,
+                target_branch=target_branch,
+                worktree_path=task.worktree_path,
+                success=True,
+            )
 
         return CleanupResult(
             worktree_name=worktree_name,
@@ -445,3 +557,117 @@ class WorkflowExecutor:
             session_name=result.session_name,
             agent_pid=result.task.agent_pid,
         )
+
+    # =========================================================================
+    # Event Spine - FASE 2
+    # =========================================================================
+
+    def _emit_event(
+        self,
+        event_type: EventType,
+        content: str,
+        *,
+        run_id: str,
+        task_id: str,
+        agent_id: str = "unknown",
+        session_name: str = "unknown",
+        mode: ExecutionMode = ExecutionMode.WORKTREE,
+        branch: str | None = None,
+        target_branch: str | None = None,
+        worktree_path: str | None = None,
+        pid: int | None = None,
+        success: bool | None = None,
+        error_message: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> str | None:
+        """Emit a structured event to memory with idempotency guarantee.
+
+        This is the SINGLE point of emission for all workflow events.
+        All events use MemoryEventMetadata contract for consistent querying.
+
+        Args:
+            event_type: Type of event (EventType enum)
+            content: Human-readable event description
+            run_id: Run/session UUID
+            task_id: Task identifier
+            agent_id: Agent identifier (session:window format)
+            session_name: Tmux session name
+            mode: Execution mode
+            branch: Git branch name
+            target_branch: Target branch for merge/ship
+            worktree_path: Path to git worktree
+            pid: Process ID of agent
+            success: Operation success status
+            error_message: Error message if failed
+            extra: Additional metadata fields
+
+        Returns:
+            Observation ID if saved, None if failed
+        """
+        try:
+            import os
+            import re
+
+            # Build extra kwargs for create_event_metadata
+            metadata_kwargs: dict[str, Any] = {}
+
+            if branch is not None:
+                metadata_kwargs["branch"] = branch
+            if target_branch is not None:
+                metadata_kwargs["target_branch"] = target_branch
+            if worktree_path is not None:
+                metadata_kwargs["worktree_path"] = worktree_path
+            if pid is not None:
+                metadata_kwargs["pid"] = pid
+            if success is not None:
+                metadata_kwargs["success"] = success
+            if error_message is not None:
+                # Sanitize error_message unless DEBUG mode
+                debug_mode = os.environ.get("DEBUG", "0") == "1"
+                if not debug_mode:
+                    # Replace full home paths with <redacted>
+                    sanitized = re.sub(
+                        r'/Users/[^/]+/',
+                        '<redacted>/',
+                        error_message
+                    )
+                    sanitized = re.sub(
+                        r'/home/[^/]+/',
+                        '<redacted>/',
+                        sanitized
+                    )
+                    metadata_kwargs["error_message"] = sanitized
+                else:
+                    metadata_kwargs["error_message"] = error_message
+            if extra:
+                metadata_kwargs["extra"] = extra
+
+            # Create metadata using factory
+            metadata = create_event_metadata(
+                event_type=event_type,
+                run_id=run_id,
+                task_id=task_id,
+                agent_id=agent_id,
+                session_name=session_name,
+                mode=mode,
+                **metadata_kwargs,
+            )
+
+            # Save to memory with idempotency
+            obs_id = self._memory.save_event(
+                content=content,
+                metadata=metadata.model_dump(),
+                idempotency_key=metadata.idempotency_key,
+            )
+
+            logger.debug(
+                "Emitted event %s for task %s (obs_id=%s)",
+                event_type.value,
+                task_id,
+                obs_id,
+            )
+            return obs_id
+
+        except Exception as e:
+            logger.error("Failed to emit event %s: %s", event_type.value, e)
+            return None
