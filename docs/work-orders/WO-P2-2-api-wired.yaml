@@ -1,0 +1,83 @@
+id: WO-P2-2
+priority: P2
+title: "Conectar API Routes a Servicios Reales"
+
+objective: |
+  Reemplazar los mocks en API workflow routes con llamadas reales a los servicios
+  (WorkflowExecutor, HookService, etc.). La API debe funcionar como interfaz
+  alternativa a la CLI.
+
+scope: |
+  - `src/interfaces/api/routes/workflow.py`
+  - `src/interfaces/api/routes/agents.py`
+  - Nuevo: `src/application/services/workflow_app_service.py`
+  - Nuevo: `src/application/services/agent_app_service.py`
+
+constraints: |
+  - NO llamar a handlers CLI (workflow.py) - deben llamar a SERVICES
+  - Crear Application Service layer: WorkflowAppService, AgentAppService
+  - CLI y API llaman a los mismos servicios (single source of truth)
+  - **State isolation**: API usa state_dir parameter (default: /tmp/api-state)
+  - No se permite locking en P2 - si hay collision, fallback a error claro
+  - Mantener API contracts existentes (request/response schemas)
+  - No romper backward compatibility de la API
+  - Authentication/authorization se mantiene igual
+
+dod: |
+  - [ ] Crear WorkflowAppService que encapsula PlanState, ExecuteState, VerifyState
+  - [ ] WorkflowAppService.__init__(state_dir: Path) - configurable state dir
+  - [ ] Crear AgentAppService que encapsula AgentManager
+  - [ ] API routes llaman a WorkflowAppService/AgentAppService (NO a handlers)
+  - [ ] POST /workflow/outline → WorkflowAppService.create_plan()
+  - [ ] POST /workflow/{id}/execute → WorkflowAppService.execute_plan()
+  - [ ] POST /workflow/{id}/verify → WorkflowAppService.verify()
+  - [ ] POST /workflow/{id}/ship → WorkflowAppService.ship()
+  - [ ] POST /agents/sessions → AgentAppService.create_session()
+  - [ ] GET /agents/sessions → AgentAppService.list_sessions()
+  - [ ] GET /workflow/{id}/status → lee de state_dir especifico
+  - [ ] API tests pasan
+  - [ ] Test: grep -r "from src.interfaces.cli" src/interfaces/api/ → debe estar vacio
+
+  **State Dir Strategy:**
+  ```
+  # CLI usa: .claude/*-state.json (default)
+  # API usa: /tmp/api-state/*-state.json (default, configurable)
+  # API puede aceptar ?state_dir= en query param
+  ```
+
+validation_commands: |
+  # Verificar que no se importan handlers CLI en API
+  cd /Users/felipe_gonzalez/Developer/tmux_fork
+  grep -r "from src.interfaces.cli" src/interfaces/api/
+  # Debe estar vacio
+
+  # Iniciar API
+  uv run fork-api &
+  sleep 3
+
+  # Test outline real
+  curl -X POST http://localhost:8000/api/v1/workflow/outline \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: test" \
+    -d '{"task":"test from api"}'
+  # Debe crear /tmp/api-state/plan-state.json (no .claude/)
+
+  # Cleanup
+  pkill -f fork-api
+  rm -rf /tmp/api-state
+
+evidence_required: |
+  - API crea archivos en /tmp/api-state/ (no en .claude/)
+  - No hay imports de CLI handlers en API routes
+  - API response incluye datos reales (no mocks)
+
+dependencies: |
+  - WO-P0-1 (Verify runner real) - necesario para verify endpoint
+  - WO-P0-2 (ExitGate) - necesario para ship endpoint
+
+risks: |
+  - State dir collision entre API instances - fallback a error claro
+  - Timeouts pueden ser diferentes entre sync services y async API
+
+related_audit_finding: |
+  - Confirmed: API workflow routes son HEADLESS

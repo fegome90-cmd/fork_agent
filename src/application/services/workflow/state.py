@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import TypedDict
 
 from src.domain.entities.derived_requirement import (
     DerivedRequirement,
@@ -37,6 +38,17 @@ class InvalidStateError(StateError):
 class UnsupportedSchemaError(StateError):
     """Raised when schema version is not supported."""
 
+
+
+
+class VerifyResults(TypedDict, total=False):
+    """Results from test runner execution."""
+    passed: bool
+    exit_code: int
+    test_count: int
+    fail_count: int
+    duration_ms: int
+    error: str | None
 
 class WorkflowPhase(StrEnum):
     PLANNING = "planning"
@@ -385,7 +397,7 @@ class VerifyState:
     unlock_ship: bool = False
     file_hashes: dict[str, str] = field(default_factory=dict)
     evidence: list[str] = field(default_factory=list)
-    test_results: dict[str, bool] = field(default_factory=dict)
+    test_results: VerifyResults = field(default_factory=dict)  # type: ignore[assignment]
     schema_version: int = CURRENT_SCHEMA_VERSION
     migrated_from: int | None = None
 

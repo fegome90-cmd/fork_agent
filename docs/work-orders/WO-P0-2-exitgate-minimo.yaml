@@ -1,0 +1,70 @@
+id: WO-P0-2
+priority: P0
+title: "Implementar ExitGate Mínimo para Ship"
+
+objective: |
+  Bloquear `memory workflow ship` SI y SOLO SI verify no se ejecuto exitosamente.
+  Gate simple y fuerte: sin holes, sin warnings que permiten bypass.
+
+scope: |
+  - `src/interfaces/cli/commands/workflow.py` (ship handler, lineas 307-412)
+
+constraints: |
+  - NO backward compatibility con estados legacy sin verify-state.json
+  - NO permitir ship con --no-tests (policy para P1+)
+  - --force permite bypass pero requiere --reason y LOGGEA la accion (auditable)
+  - El gate debe ser simple: existe + passed = true
+
+dod: |
+  - [ ] ship handler valida: verify-state.json existe
+  - [ ] ship handler valida: test_results["passed"] == True O test_results["exit_code"] == 0
+  - [ ] Si validacion falla, ship muestra mensaje claro y raise typer.Exit(1)
+  - [ ] Flag --force requiere --reason "<text>" (string no vacia)
+  - [ ] --force escribe audit event a memory (ver formato abajo)
+  - [ ] Si verify no corrio (test_results vacio o no existe), ship FALLA (sin excepciones)
+
+  **Audit Event Format (para --force):**
+  ```
+  content: "workflow:ship:forced"
+  metadata:
+    session_id: "<session_id>"
+    reason: "<user-provided reason>"
+    timestamp: "<ISO8601>"
+    forced_by: "cli"
+  ```
+
+validation_commands: |
+  # Test 1: ship sin verify debe fallar
+  rm -f .claude/verify-state.json
+  memory workflow ship
+  # Debe fallar con: "Error: Run 'memory workflow verify' first"
+  # Exit code: 1
+
+  # Test 2: ship con verify que fallo
+  memory workflow outline "test"
+  memory workflow execute
+  memory workflow verify --tests
+  # Asumiendo que exit_code != 0
+  memory workflow ship
+  # Debe fallar con: "Error: Tests failed, cannot ship"
+
+  # Test 3: ship con --force (sin verify)
+  rm -f .claude/verify-state.json
+  memory workflow ship --force --reason "recovery from stuck state"
+  # Debe permitir PERO escribir audit event
+  memory list | grep "workflow:ship:forced"
+  # Debe mostrar entrada con reason
+
+evidence_required: |
+  - Output de comando muestra mensajes de error claros
+  - Audit log tiene entrada "workflow:ship:forced" con reason y timestamp
+
+dependencies: |
+  - WO-P0-1 (Verify runner real) - necesario para que test_results tenga datos reales
+
+risks: |
+  - Puede bloquear usuarios legitimos que necesitan recovery - --force con reason mitiga
+
+related_audit_finding: |
+  - Confirmed: unlock_ship se setea sin evidencia en workflow.py:278
+  - Actualizado: Se REMUEVE la politica de "ship con warning" - eso mata el proposito del gate

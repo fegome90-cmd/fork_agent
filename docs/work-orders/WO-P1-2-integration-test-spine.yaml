@@ -1,0 +1,67 @@
+id: WO-P1-2
+priority: P1
+title: "Crear Integration Test para Spine Real"
+
+objective: |
+  Crear test de integracion que ejecute el workflow completo (outline→execute→verify→ship)
+  con servicios reales para validar el spine CLI end-to-end.
+
+scope: |
+  - Nuevo archivo: `tests/integration/test_workflow_spine.py`
+  - Puede agregar fixtures en `tests/integration/conftest.py`
+
+constraints: |
+  - DUAL MODE: Test debe soportar modo CI (safety) y modo local (real tmux)
+  - Modo CI (default): Usa safety_mode - simula de manera determinista
+  - Modo local: @pytest.mark.real_tmux - crea sesiones tmux reales
+  - Debe limpiar despues de si mismo (cleanup worktrees, sessions)
+  - Timeout: 10 min max
+
+dod: |
+  - [ ] Test ejecuta: outline → execute → verify → ship
+  - [ ] Modo CI (default):
+      - create_session → escribe archivo dummy en tmp (no tmux real)
+      - launch_agent → escribe "agent_report.md" dummy
+      - dispatch hooks → registra en event log
+      - Produce evidencias equivalentes (archivos en tmp, no sesiones)
+  - [ ] Modo local: @pytest.mark.real_tmux - crea sesiones tmux reales
+  - [ ] Test verifica que se crean: plan-state.json, execute-state.json, verify-state.json
+  - [ ] Test verifica que unlock_ship solo se setea despues de verify exitoso
+  - [ ] Test cleanup: remove worktrees creados, kill tmux sessions
+  - [ ] Ambos modos deben pasar en CI
+
+  **Safety Mode Comportamiento Determinista:**
+  ```
+  create_session(name) -> crea /tmp/tmux_{name}/.marker
+  launch_agent(session, pane, model, prompt) -> escribe /tmp/tmux_{session}/agent_report.md
+  dispatch(event) -> append a /tmp/hook_events.log
+  get_sessions() -> lista /tmp/tmux_*/
+  send_message() -> NOOP
+  capture_content() -> lee agent_report.md
+  ```
+
+validation_commands: |
+  # Test modo CI (default)
+  cd /Users/felipe_gonzalez/Developer/tmux_fork
+  uv run pytest tests/integration/test_workflow_spine.py -v -m "not real_tmux"
+  # Debe pasar sin tmux instalado
+
+  # Test modo local (requiere tmux)
+  uv run pytest tests/integration/test_workflow_spine.py -v -m "real_tmux"
+  # Debe pasar si tmux disponible
+
+evidence_required: |
+  - `tests/integration/test_workflow_spine.py` existe y pasa (ambos modos)
+  - Modo CI: evidencias en /tmp/tmux_*/ (archivos dummy)
+  - Modo real: sesiones tmux se crean y limpian
+
+dependencies: |
+  - WO-P0-1 (Verify runner real) - necesario para que verify tenga resultados reales
+  - WO-P0-2 (ExitGate) - necesario para que gate funcione en test
+
+risks: |
+  - Safety mode debe ser determinista - no puede ser "skip everything"
+  - Cleanup puede fallar y dejar residuos - necesita robust error handling
+
+related_audit_finding: |
+  - UNVERIFIED: Integration test para spine no existe

@@ -1,0 +1,50 @@
+id: WO-P1-1
+priority: P1
+title: "Establecer SSOT Explícito para Estado"
+
+objective: |
+  Definir y documentar que JSON files (plan-state.json, execute-state.json, verify-state.json)
+  son la única fuente de verdad para el estado del workflow. MemoryService (SQLite) se usa
+  solo para audit log. Agregar validación que alerte si hay discrepancia.
+
+scope: |
+  - `src/application/services/workflow/state.py`
+  - `src/interfaces/cli/commands/workflow.py`
+  - Documentación en `docs/state-management.md` (nuevo)
+
+constraints: |
+  - Mantener backward compatibility: no romper读取 existente de JSON
+  - No eliminar escritura a MemoryService (para audit log) - soloClarificar uso
+  - Agregar warnings si JSON y memory.db discrepan
+
+dod: |
+  - [ ] Documentar en código (docstrings) que JSON es SSOT
+  - [ ] Crear función `validate_state_consistency()` que compara JSON vs memory
+  - [ ] Agregar warning en CLI si detecta drift (json vs memory discrepancy)
+  - [ ] En ship handler, solo leer de JSON (no de memory para estado)
+  - [ ] Documentar política en `docs/state-management.md`
+
+validation_commands: |
+  # Verificar que workflow lee solo de JSON
+  memory workflow status
+  # Debe mostrar estado basado en JSON files
+
+  # Verificar que audit log sigue funcionando
+  memory list | grep workflow
+  # Debe mostrar entradas de historial
+
+  # Test drift detection (simulado)
+  # Modificar memory.db y verificar que CLI warns
+  echo "state drift test" | memory save
+
+evidence_required: |
+  - `docs/state-management.md` existe y documenta SSOT
+  - output de `memory workflow status` no depende de memory.db
+
+dependencies: []
+risks: |
+  - Usuarios pueden depender de memory para estado -Clarificar uso
+  - Migración de datos legacy puede ser compleja
+
+related_audit_finding: |
+  - Confirmed: State drift - doble persistencia sin sync
