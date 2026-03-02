@@ -1,6 +1,7 @@
 """Modelos Pydantic para la API."""
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -149,7 +150,9 @@ class Observation(BaseModel):
 
     id: str
     content: str
-    created_at: datetime
+    timestamp: int
+    metadata: dict[str, Any] | None = None
+    idempotency_key: str | None = None
 
 
 class ObservationResponse(BaseModel):
@@ -162,6 +165,14 @@ class ObservationListResponse(BaseModel):
     """Response para listar observaciones."""
 
     data: list[Observation]
+    count: int | None = None
+
+
+class QueryResponse(BaseModel):
+    """Response for structured memory query."""
+
+    data: list[dict[str, Any]]
+    count: int
 
 
 class AgentInfo(BaseModel):
@@ -275,6 +286,7 @@ __all__ = [
     "Observation",
     "ObservationResponse",
     "ObservationListResponse",
+    "QueryResponse",
     # System models
     "AgentInfo",
     "HealthResponse",
