@@ -12,6 +12,7 @@ from src.application.services.messaging.message_protocol import (
     create_reply,
     decode_message,
     encode_message,
+    is_self_message,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "create_reply",
     "decode_message",
     "encode_message",
+    "is_self_message",
 ]

@@ -194,6 +194,22 @@ def _parse_message_data(data: dict[str, Any]) -> AgentMessage | None:
     )
 
 
+def is_self_message(msg: AgentMessage, self_agent_id: str) -> bool:
+    """Return True if the message was sent by this agent (loop guard).
+
+    Use this before processing an incoming message to avoid infinite
+    response loops where an agent reacts to its own output.
+
+    Args:
+        msg: The incoming AgentMessage to check
+        self_agent_id: This agent's own session:window identifier
+
+    Returns:
+        True if msg.from_agent == self_agent_id
+    """
+    return msg.from_agent == self_agent_id
+
+
 def create_command(from_: str, to: str, command: str, **kwargs: Any) -> AgentMessage:
     """Create a COMMAND message.
 
