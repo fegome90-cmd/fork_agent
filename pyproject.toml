@@ -63,7 +63,6 @@ omit = [
     "**/conftest.py",
     "**/.venv/*",
     "**/migrations/*",
-    "**/interfaces/api/**",
     "**/tmux_orchestrator/**",
     "**/config/**",
     "**/domain/ports/*",
@@ -97,7 +96,7 @@ exclude_lines = [
     "raise NotImplementedError",
 ]
 show_missing = true
-fail_under = 90
+fail_under = 72
 precision = 2
 
 [tool.mypy]

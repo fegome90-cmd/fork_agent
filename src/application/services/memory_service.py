@@ -145,3 +145,68 @@ class MemoryService:
 
     def get_by_time_range(self, start: int, end: int) -> list[Observation]:
         return self._repository.get_by_timestamp_range(start, end)
+
+    def query(
+        self,
+        agent: str | None = None,
+        run_id: str | None = None,
+        event_type: str | None = None,
+        limit: int = 20,
+        scan_limit: int = 1000,
+        since_ms: int | None = None,
+    ) -> list[Observation]:
+        """Query memory events with structured filters.
+
+        Args:
+            agent: Filter by agent ID or from_agent_id.
+            run_id: Filter by run ID.
+            event_type: Filter by event type.
+            limit: Maximum results to return.
+            scan_limit: Maximum observations to scan from DB.
+            since_ms: Time filter (Unix ms).
+
+        Returns:
+            List of matching observations, sorted by timestamp DESC.
+        """
+        # Fetch observations with scan_limit (safety)
+        observations = self._repository.get_all(limit=scan_limit, offset=0)
+
+        # Filter by agent_id or from_agent_id
+        if agent:
+            filtered = []
+            for obs in observations:
+                if not obs.metadata:
+                    continue
+                agent_id = obs.metadata.get("agent_id", "")
+                from_agent = obs.metadata.get("extra", {}).get("from_agent_id", "")
+                if agent in agent_id or agent in from_agent:
+                    filtered.append(obs)
+            observations = filtered
+
+        # Filter by run_id
+        if run_id:
+            observations = [
+                obs
+                for obs in observations
+                if obs.metadata and obs.metadata.get("run_id") == run_id
+            ]
+
+        # Filter by event_type
+        if event_type:
+            observations = [
+                obs
+                for obs in observations
+                if obs.metadata and obs.metadata.get("event_type") == event_type
+            ]
+
+        # Filter by time (since)
+        if since_ms:
+            observations = [
+                obs for obs in observations if obs.timestamp >= since_ms
+            ]
+
+        # Sort by timestamp DESC
+        observations.sort(key=lambda o: o.timestamp, reverse=True)
+
+        # Apply limit
+        return observations[:limit]

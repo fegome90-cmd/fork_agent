@@ -10,7 +10,6 @@ from src.application.services.cleanup_service import CleanupService
 from src.application.services.memory_service import MemoryService
 from src.application.services.scheduler_service import SchedulerService
 from src.application.services.telemetry.telemetry_service import TelemetryService
-
 from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
@@ -25,7 +24,6 @@ from src.infrastructure.persistence.repositories.scheduled_task_repository impor
 from src.infrastructure.persistence.repositories.telemetry_repository import (
     TelemetryRepositoryImpl,
 )
-
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 

@@ -18,8 +18,15 @@ class APISettings(BaseSettings):
     database_url: str = "./data/memory.db"
     rate_limit: int = 100
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:8080"]
+    branch_review_token: str = ""
+    branch_review_url: str = "http://localhost:3001"
 
-    model_config = {"frozen": True}
+    model_config = {
+        "frozen": True,
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
     def validate_api_key(self) -> None:
         if not self.api_key:
