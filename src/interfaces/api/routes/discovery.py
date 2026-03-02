@@ -12,6 +12,7 @@ import logging
 from fastapi import APIRouter, Depends
 
 from src.infrastructure.agent_backends import get_available_backends, list_all_backends
+from src.interfaces.api.config import get_api_settings
 from src.interfaces.api.dependencies import verify_api_key
 from src.interfaces.api.models.discovery import (
     AgentBackendInfo,
@@ -30,8 +31,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
-# Base URL for the API
-BASE_URL = "http://localhost:8080"
+
+def _get_base_url() -> str:
+    """Get base URL from settings."""
+    settings = get_api_settings()
+    return f"http://{settings.host}:{settings.port}"
 
 
 def _build_auth_info() -> AuthInfo:
@@ -46,13 +50,14 @@ def _build_auth_info() -> AuthInfo:
 
 def _build_endpoint_summaries() -> list[EndpointSummary]:
     """Build list of endpoint summaries with curl examples."""
+    base_url = _get_base_url()
     return [
         # Health endpoint (no auth)
         EndpointSummary(
             path="/api/v1/health",
             method="GET",
             auth_required=False,
-            curl_example=f"curl {BASE_URL}/api/v1/health",
+            curl_example=f"curl {base_url}/api/v1/health",
             description="Check API health and available agent backends",
         ),
         # Agent sessions
@@ -61,7 +66,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             method="POST",
             auth_required=True,
             request_body='{"agent_type": "opencode", "task": "implement X"}',
-            curl_example=f"curl -X POST {BASE_URL}/api/v1/agents/sessions "
+            curl_example=f"curl -X POST {base_url}/api/v1/agents/sessions "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
             f"-d '{{\"agent_type\": \"opencode\", \"task\": \"your task\"}}'",
@@ -71,21 +76,21 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             path="/api/v1/agents/sessions",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/agents/sessions",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/agents/sessions",
             description="List all agent sessions",
         ),
         EndpointSummary(
             path="/api/v1/agents/sessions/{{session_id}}",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/agents/sessions/{{session_id}}",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/agents/sessions/{{session_id}}",
             description="Get session details by ID",
         ),
         EndpointSummary(
             path="/api/v1/agents/sessions/{{session_id}}",
             method="DELETE",
             auth_required=True,
-            curl_example=f"curl -X DELETE -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/agents/sessions/{{session_id}}",
+            curl_example=f"curl -X DELETE -H 'X-API-Key: $API_KEY' {base_url}/api/v1/agents/sessions/{{session_id}}",
             description="Delete an agent session",
         ),
         # Workflow endpoints
@@ -94,7 +99,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             method="POST",
             auth_required=True,
             request_body='{"task": "implement feature X"}',
-            curl_example=f"curl -X POST {BASE_URL}/api/v1/workflow/outline "
+            curl_example=f"curl -X POST {base_url}/api/v1/workflow/outline "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
             f"-d '{{\"task\": \"your task\"}}'",
@@ -104,14 +109,14 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             path="/api/v1/workflow/execute/{{plan_id}}",
             method="POST",
             auth_required=True,
-            curl_example=f"curl -X POST -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/workflow/execute/{{plan_id}}",
+            curl_example=f"curl -X POST -H 'X-API-Key: $API_KEY' {base_url}/api/v1/workflow/execute/{{plan_id}}",
             description="Execute a development plan",
         ),
         EndpointSummary(
             path="/api/v1/workflow/verify/{{execute_id}}",
             method="POST",
             auth_required=True,
-            curl_example=f"curl -X POST -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/workflow/verify/{{execute_id}}",
+            curl_example=f"curl -X POST -H 'X-API-Key: $API_KEY' {base_url}/api/v1/workflow/verify/{{execute_id}}",
             description="Run tests and verify implementation",
         ),
         EndpointSummary(
@@ -119,7 +124,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             method="POST",
             auth_required=True,
             request_body='{"branch": "feature/x", "commit_message": "Add X"}',
-            curl_example=f"curl -X POST {BASE_URL}/api/v1/workflow/ship/{{verify_id}} "
+            curl_example=f"curl -X POST {base_url}/api/v1/workflow/ship/{{verify_id}} "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
             f"-d '{{\"branch\": \"feature/x\", \"commit_message\": \"Add X\"}}'",
@@ -129,7 +134,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             path="/api/v1/workflow/status",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/workflow/status",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/workflow/status",
             description="Get current workflow status",
         ),
         # Memory endpoints
@@ -138,7 +143,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             method="POST",
             auth_required=True,
             request_body='{"content": "observation text"}',
-            curl_example=f"curl -X POST {BASE_URL}/api/v1/memory "
+            curl_example=f"curl -X POST {base_url}/api/v1/memory "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
             f"-d '{{\"content\": \"your observation\"}}'",
@@ -148,29 +153,77 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             path="/api/v1/memory/search",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' '{BASE_URL}/api/v1/memory/search?q=query'",
-            description="Search memory observations",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' '{base_url}/api/v1/memory/search?q=query'",
+            description="Search memory observations using FTS5",
+        ),
+        EndpointSummary(
+            path="/api/v1/memory/query",
+            method="GET",
+            auth_required=True,
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' '{base_url}/api/v1/memory/query?run=run-123&event-type=task_completed'",
+            description="Query memory events with structured filters (agent, run, event-type, since)",
+        ),
+        EndpointSummary(
+            path="/api/v1/memory/timeline/{{run_id}}",
+            method="GET",
+            auth_required=True,
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/memory/timeline/{{run_id}}",
+            description="Get chronological timeline of events for a specific run",
+        ),
+        # Integration endpoints
+        EndpointSummary(
+            path="/api/v1/integrations/branch-review/info",
+            method="GET",
+            auth_required=True,
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/integrations/branch-review/info",
+            description="Get metadata from the branch-review integration",
+        ),
+        EndpointSummary(
+            path="/api/v1/integrations/branch-review/workflow",
+            method="POST",
+            auth_required=True,
+            request_body='{"agents": ["code-reviewer"]}',
+            curl_example=f"curl -X POST {base_url}/api/v1/integrations/branch-review/workflow "
+            f"-H 'X-API-Key: $API_KEY' "
+            f"-H 'Content-Type: application/json' "
+            f"-d '{{\"agents\": [\"code-reviewer\"]}}'",
+            description="Run a complete branch-review workflow via external service",
+        ),
+        # Process management endpoints
+        EndpointSummary(
+            path="/api/v1/processes",
+            method="GET",
+            auth_required=True,
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/processes",
+            description="List all background processes managed by PM2",
+        ),
+        EndpointSummary(
+            path="/api/v1/processes/{{pm_id}}/restart",
+            method="POST",
+            auth_required=True,
+            curl_example=f"curl -X POST -H 'X-API-Key: $API_KEY' {base_url}/api/v1/processes/{{pm_id}}/restart",
+            description="Restart a background process",
         ),
         # Discovery endpoints
         EndpointSummary(
             path="/api/v1/discovery",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/discovery",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/discovery",
             description="Get API overview card",
         ),
         EndpointSummary(
             path="/api/v1/discovery/workflows",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/discovery/workflows",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/discovery/workflows",
             description="Get available workflow recipes",
         ),
         EndpointSummary(
             path="/api/v1/discovery/errors/{{status_code}}",
             method="GET",
             auth_required=True,
-            curl_example=f"curl -H 'X-API-Key: $API_KEY' {BASE_URL}/api/v1/discovery/errors/401",
+            curl_example=f"curl -H 'X-API-Key: $API_KEY' {base_url}/api/v1/discovery/errors/401",
             description="Get error recovery guidance",
         ),
     ]
@@ -232,7 +285,7 @@ _ERROR_GUIDANCE: dict[int, ErrorGuidance] = {
             "Check that the API key has the required permissions",
             "Request a new API key if the current one is invalid",
         ],
-        example_curl=f"curl -H 'X-API-Key: your-api-key' {BASE_URL}/api/v1/agents/sessions",
+        example_curl=f"curl -H 'X-API-Key: your-api-key' {{base_url}}/api/v1/agents/sessions",
     ),
     404: ErrorGuidance(
         status_code=404,
@@ -288,7 +341,7 @@ _ERROR_GUIDANCE: dict[int, ErrorGuidance] = {
             "Verify agent backends are installed (for agent endpoints)",
             "Contact administrator if issue persists",
         ],
-        example_curl=f"curl {BASE_URL}/api/v1/health",
+        example_curl=f"curl {{base_url}}/api/v1/health",
     ),
 }
 
@@ -309,10 +362,14 @@ _DEFAULT_ERROR_GUIDANCE = ErrorGuidance(
 
 def _build_error_guidance(status_code: int) -> ErrorGuidance:
     """Get error guidance for a specific status code."""
+    base_url = _get_base_url()
     if status_code in _ERROR_GUIDANCE:
         guidance = _ERROR_GUIDANCE[status_code].model_copy()
         # Update status_code to match requested
         guidance.status_code = status_code
+        # Format examples with actual base_url
+        if guidance.example_curl:
+            guidance.example_curl = guidance.example_curl.format(base_url=base_url)
         return guidance
 
     # Return generic guidance with the actual status code
@@ -409,6 +466,32 @@ _WORKFLOW_RECIPES: list[WorkflowCardData] = [
             ),
         ],
     ),
+    WorkflowCardData(
+        workflow_id="automated-branch-review",
+        name="Automated Branch Review",
+        description="Integrate with external branch-review service to audit code changes.",
+        steps=[
+            WorkflowStep(
+                step_number=1,
+                action="check-info",
+                endpoint="GET /api/v1/integrations/branch-review/info",
+                description="Verify branch-review service availability and agents",
+            ),
+            WorkflowStep(
+                step_number=2,
+                action="run-review",
+                endpoint="POST /api/v1/integrations/branch-review/workflow",
+                description="Trigger a full review workflow",
+                request_body='{"agents": ["code-reviewer", "code-simplifier"]}',
+            ),
+            WorkflowStep(
+                step_number=3,
+                action="get-status",
+                endpoint="GET /api/v1/integrations/branch-review/run",
+                description="Check current review status and findings",
+            ),
+        ],
+    ),
 ]
 
 
@@ -427,11 +510,12 @@ async def get_discovery_overview(
     including authentication, available endpoints, and agent backends.
     """
     logger.info("Discovery overview requested")
+    base_url = _get_base_url()
 
     overview_data = OverviewCardData(
         api_name="Fork Agent API",
         version="1.0.0",
-        base_url=BASE_URL,
+        base_url=base_url,
         auth=_build_auth_info(),
         endpoints=_build_endpoint_summaries(),
         available_agents=_build_agent_backend_info(),
