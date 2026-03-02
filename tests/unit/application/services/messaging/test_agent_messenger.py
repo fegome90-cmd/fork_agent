@@ -137,33 +137,33 @@ class TestAgentMessengerBroadcast:
     """Tests for broadcast method."""
 
     def test_broadcast_to_all_sessions(self, tmp_path: Path) -> None:
-        """Should send to all active sessions."""
+        """Should send to all active managed sessions (fork-/agent- prefix)."""
         mock_orchestrator = MagicMock()
         mock_orchestrator.send_message.return_value = True
         mock_orchestrator.get_sessions.return_value = [
             TmuxSession(
-                name="agent1",
+                name="fork-agent1",
                 windows=(
                     TmuxWindow(
-                        session_name="agent1", window_index=0, window_name="main", active=True
+                        session_name="fork-agent1", window_index=0, window_name="main", active=True
                     ),
                 ),
                 attached=False,
             ),
             TmuxSession(
-                name="agent2",
+                name="agent-worker2",
                 windows=(
                     TmuxWindow(
-                        session_name="agent2", window_index=0, window_name="main", active=True
+                        session_name="agent-worker2", window_index=0, window_name="main", active=True
                     ),
                 ),
                 attached=False,
             ),
             TmuxSession(
-                name="agent3",
+                name="fork-agent3",
                 windows=(
                     TmuxWindow(
-                        session_name="agent3", window_index=0, window_name="main", active=True
+                        session_name="fork-agent3", window_index=0, window_name="main", active=True
                     ),
                 ),
                 attached=False,
@@ -172,7 +172,7 @@ class TestAgentMessengerBroadcast:
         store = MessageStore(db_path=tmp_path / "test.db")
         messenger = AgentMessenger(orchestrator=mock_orchestrator, store=store)
 
-        count = messenger.broadcast(from_agent="leader:0", payload="status update")
+        count = messenger.broadcast(from_agent="fork-leader:0", payload="status update")
 
         assert count == 3
         assert mock_orchestrator.send_message.call_count == 3
@@ -184,20 +184,20 @@ class TestAgentMessengerBroadcast:
         mock_orchestrator = MagicMock()
         mock_orchestrator.send_message.return_value = True
 
-        # Create proper TmuxWindow and TmuxSession objects
-        window = TmuxWindow(session_name="agent1", window_index=0, window_name="main", active=True)
-        session = TmuxSession(name="agent1", windows=(window,), attached=False)
+        # Use fork- prefix so it passes the allowlist
+        window = TmuxWindow(session_name="fork-agent1", window_index=0, window_name="main", active=True)
+        session = TmuxSession(name="fork-agent1", windows=(window,), attached=False)
         mock_orchestrator.get_sessions.return_value = [session]
 
         store = MessageStore(db_path=tmp_path / "test.db")
         messenger = AgentMessenger(orchestrator=mock_orchestrator, store=store)
 
-        messenger.broadcast(from_agent="leader:0", payload="update")
+        messenger.broadcast(from_agent="fork-leader:0", payload="update")
 
         # Check stored message - broadcast creates messages with actual targets
-        stored = store.get_for_agent("agent1:0")
+        stored = store.get_for_agent("fork-agent1:0")
         assert len(stored) == 1
-        assert stored[0].to_agent == "agent1:0"
+        assert stored[0].to_agent == "fork-agent1:0"
 
     def test_broadcast_returns_count_of_successful_sends(self, tmp_path: Path) -> None:
         """Should return count of successful sends."""
