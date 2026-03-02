@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from src.application.services.messaging.agent_messenger import AgentMessenger
-from src.application.services.messaging.message_protocol import FORK_MSG_PREFIX
+from src.application.services.messaging.message_protocol import FORK_MSG_SHORT_PREFIX
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxSession, TmuxWindow
@@ -130,7 +130,7 @@ class TestAgentMessengerSend:
 
         call_args = mock_orchestrator.send_message.call_args
         message_content = call_args[0][2]  # Third arg is the message
-        assert message_content.startswith(FORK_MSG_PREFIX)
+        assert message_content.startswith(FORK_MSG_SHORT_PREFIX)
 
 
 class TestAgentMessengerBroadcast:

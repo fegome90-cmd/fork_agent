@@ -3,28 +3,106 @@
 This module defines the encoding/decoding protocol for messages sent
 between tmux sessions. Messages are encoded as JSON with a special prefix
 for detection in capture-pane output.
+
+Protocol v2 (Opción C): Ultra-short reference + temp file to minimize tokens.
 """
 
 from __future__ import annotations
 
+import glob
 import json
+import os
+import time
+from pathlib import Path
 from typing import Any
 
 from src.domain.entities.message import AgentMessage, MessageType
 
-# Protocol prefix for detection in capture-pane output
-# Prefixed with "# " so shells (fish/zsh/bash) treat it as a comment
+# Protocol v1: Full JSON inline (deprecated, kept for backward compatibility)
 FORK_MSG_PREFIX = "# FORK_MSG:"
+
+# Protocol v2: Ultra-short reference to temp file
+FORK_MSG_SHORT_PREFIX = "# F:"
+FORK_MSG_TEMP_DIR = Path(os.getenv("FORK_MSG_TEMP_DIR", "/tmp"))
+FORK_MSG_TTL_SECONDS = int(os.getenv("FORK_MSG_TTL", "300"))  # 5 min default
+
+
+def _get_temp_file_path(msg_id: str) -> Path:
+    """Get temp file path for a message ID.
+
+    Uses first 8 chars of ID for filename to keep terminal output short.
+    """
+    id_short = msg_id[:8] if len(msg_id) >= 8 else msg_id
+    return FORK_MSG_TEMP_DIR / f"fork_msg_{id_short}.json"
+
+
+def _write_temp_file(msg: AgentMessage, data: dict[str, Any]) -> None:
+    """Write message data to temp file.
+
+    Args:
+        msg: The message being encoded
+        data: The full JSON data to write
+    """
+    temp_path = _get_temp_file_path(msg.id)
+    temp_path.write_text(json.dumps(data))
+
+
+def _read_temp_file(msg_id_short: str) -> dict[str, Any] | None:
+    """Read message data from temp file.
+
+    Args:
+        msg_id_short: First 8 chars of message ID
+
+    Returns:
+        Parsed JSON data or None if file not found/invalid
+    """
+    # Glob to find file (in case ID was truncated)
+    pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg_id_short}*.json")
+    matches = glob.glob(pattern)
+
+    if not matches:
+        return None
+
+    try:
+        # Use first match
+        data: dict[str, Any] = json.loads(Path(matches[0]).read_text())
+        return data
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def cleanup_temp_files(max_age_seconds: int | None = None) -> int:
+    """Remove temp files older than TTL.
+
+    Args:
+        max_age_seconds: Override default TTL (for testing)
+
+    Returns:
+        Number of files removed
+    """
+    ttl = max_age_seconds or FORK_MSG_TTL_SECONDS
+    cutoff = time.time() - ttl
+    removed = 0
+
+    for path in FORK_MSG_TEMP_DIR.glob("fork_msg_*.json"):
+        if path.stat().st_mtime < cutoff:
+            path.unlink()
+            removed += 1
+
+    return removed
 
 
 def encode_message(msg: AgentMessage) -> str:
-    """Encode message as FORK_MSG:<json> for tmux send-keys.
+    """Encode message as ultra-short reference to temp file.
+
+    Protocol v2: Write full JSON to temp file, return short reference.
+    This minimizes tokens consumed by LLM when processing terminal output.
 
     Args:
         msg: The message to encode
 
     Returns:
-        String in format "FORK_MSG:{...json...}"
+        String in format "# F:{id_short}" (~15 chars, ~3 tokens)
     """
     data: dict[str, Any] = {
         "id": msg.id,
@@ -35,11 +113,21 @@ def encode_message(msg: AgentMessage) -> str:
         "created_at": msg.created_at,
         "correlation_id": msg.correlation_id,
     }
-    return f"{FORK_MSG_PREFIX}{json.dumps(data)}"
+
+    # Write full JSON to temp file
+    _write_temp_file(msg, data)
+
+    # Return ultra-short reference
+    id_short = msg.id[:8] if len(msg.id) >= 8 else msg.id
+    return f"{FORK_MSG_SHORT_PREFIX}{id_short}"
 
 
 def decode_message(raw: str) -> AgentMessage | None:
-    """Parse FORK_MSG:... from capture-pane output.
+    """Parse FORK_MSG from capture-pane output.
+
+    Supports both protocols:
+    - v2: "# F:{id_short}" -> reads from temp file
+    - v1: "# FORK_MSG:{json}" -> parses inline (backward compatibility)
 
     Args:
         raw: Raw string that may contain a FORK_MSG
@@ -47,7 +135,15 @@ def decode_message(raw: str) -> AgentMessage | None:
     Returns:
         AgentMessage if valid, None if invalid or malformed
     """
-    # Find the start of FORK_MSG prefix in the raw string
+    # Try v2 protocol first (ultra-short reference)
+    short_index = raw.find(FORK_MSG_SHORT_PREFIX)
+    if short_index != -1:
+        id_short = raw[short_index + len(FORK_MSG_SHORT_PREFIX) :].strip()[:8]
+        data = _read_temp_file(id_short)
+        if data:
+            return _parse_message_data(data)
+
+    # Fall back to v1 protocol (inline JSON)
     start_index = raw.find(FORK_MSG_PREFIX)
     if start_index == -1:
         return None
@@ -58,6 +154,18 @@ def decode_message(raw: str) -> AgentMessage | None:
     except (json.JSONDecodeError, TypeError):
         return None
 
+    return _parse_message_data(data)
+
+
+def _parse_message_data(data: dict[str, Any]) -> AgentMessage | None:
+    """Parse AgentMessage from decoded JSON data.
+
+    Args:
+        data: Parsed JSON dictionary
+
+    Returns:
+        AgentMessage if valid, None if required fields missing
+    """
     # Validate required fields
     required_fields = [
         "id",

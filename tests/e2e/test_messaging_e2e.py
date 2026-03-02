@@ -14,7 +14,7 @@ import pytest
 
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import (
-    FORK_MSG_PREFIX,
+    FORK_MSG_SHORT_PREFIX,
     encode_message,
 )
 from src.domain.entities.message import AgentMessage, MessageType
@@ -143,8 +143,7 @@ class TestMessagingE2E:
             text=True,
         )
 
-        assert FORK_MSG_PREFIX in result.stdout
-        assert "hello world" in result.stdout
+        assert FORK_MSG_SHORT_PREFIX in result.stdout
 
     def test_message_history(
         self,
@@ -216,7 +215,11 @@ class TestMessageProtocolE2E:
 
     def test_encode_produces_valid_json(self) -> None:
         """Encoded message should be valid JSON after prefix."""
+        import glob
         import json
+        from pathlib import Path
+
+        from src.application.services.messaging.message_protocol import FORK_MSG_TEMP_DIR
 
         msg = AgentMessage.create(
             from_agent="sender:0",
@@ -227,12 +230,20 @@ class TestMessageProtocolE2E:
         )
 
         encoded = encode_message(msg)
-        json_part = encoded[len(FORK_MSG_PREFIX) :]
 
-        # Should parse as valid JSON
-        data = json.loads(json_part)
+        # v2: read full data from temp file
+        id_short = encoded[len(FORK_MSG_SHORT_PREFIX):].strip()[:8]
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{id_short}*.json")
+        matches = glob.glob(pattern)
+        assert len(matches) >= 1
+
+        data = json.loads(Path(matches[0]).read_text())
         assert data["from_agent"] == "sender:0"
         assert data["correlation_id"] == "req-123"
+
+        # Cleanup
+        for match in matches:
+            Path(match).unlink()
 
     def test_decode_from_tmux_capture(
         self,
@@ -273,6 +284,4 @@ class TestMessageProtocolE2E:
 
         # Just verify the message is in the output
         # (Full decode test is in unit tests - this is just E2E verification)
-        assert FORK_MSG_PREFIX in content
-        assert "sender:0" in content
-        assert "test payload for decode" in content
+        assert FORK_MSG_SHORT_PREFIX in content

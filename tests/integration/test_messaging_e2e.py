@@ -15,7 +15,7 @@ import pytest
 
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import (
-    FORK_MSG_PREFIX,
+    FORK_MSG_SHORT_PREFIX,
     decode_message,
 )
 from src.domain.entities.message import AgentMessage, MessageType
@@ -23,9 +23,16 @@ from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
-# Check if tmux is available
+# Check if tmux is available and functional
 def tmux_available() -> bool:
-    """Check if tmux is installed and available."""
+    """Check if tmux is installed, available, and can create sessions."""
+    import os
+
+    # If inside a tmux session, assume it works
+    if "TMUX" in os.environ:
+        return True
+
+    # Check if tmux binary exists
     try:
         result = subprocess.run(
             ["tmux", "-V"],
@@ -33,9 +40,30 @@ def tmux_available() -> bool:
             text=True,
             timeout=5,
         )
-        return result.returncode == 0
+        if result.returncode != 0:
+            return False
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
+
+    # Try to create a test session to verify tmux actually works
+    try:
+        result = subprocess.run(
+            ["tmux", "new-session", "-d", "-s", "_pytest_check_e2e"],
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            # Cleanup test session
+            subprocess.run(
+                ["tmux", "kill-session", "-t", "_pytest_check_e2e"],
+                capture_output=True,
+                timeout=5,
+            )
+            return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+
+    return False
 
 
 # Skip all tests in this module if tmux is not available
@@ -119,7 +147,9 @@ class TestTmuxSessionLifecycle:
 class TestMessageSendAndCapture:
     """Tests for sending messages and capturing them."""
 
-    def test_send_message_to_session(self, tmux_cleanup, temp_db: Path) -> None:
+    def test_send_message_to_session(
+        self, tmux_cleanup, temp_db: Path, skip_if_no_tmux
+    ) -> None:
         """Should send a message to a tmux session and store it."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -199,13 +229,15 @@ class TestMessageSendAndCapture:
         # The encoded message should be in the pane (normalize newlines for robustness)
         # Terminal width may split the message across lines
         normalized_content = content.replace("\n", "")
-        assert FORK_MSG_PREFIX in normalized_content, f"Message not found in pane. Content: {content[:200]}"
+        assert FORK_MSG_SHORT_PREFIX in normalized_content, f"Message not found in pane. Content: {content[:200]}"
 
 
 class TestMessageBroadcast:
     """Tests for broadcasting messages to all sessions."""
 
-    def test_broadcast_includes_created_sessions(self, tmux_cleanup, temp_db: Path) -> None:
+    def test_broadcast_includes_created_sessions(
+        self, tmux_cleanup, temp_db: Path, skip_if_no_tmux
+    ) -> None:
         """Should broadcast a message to our test sessions."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
         store = MessageStore(db_path=temp_db)
@@ -315,9 +347,9 @@ class TestMessageProtocolE2E:
         # Find the FORK_MSG line
         found = False
         for line in content.split("\n"):
-            if FORK_MSG_PREFIX in line:
-                # Extract the JSON part
-                start = line.find(FORK_MSG_PREFIX)
+            if FORK_MSG_SHORT_PREFIX in line:
+                # Extract the short ID and decode via temp file
+                start = line.find(FORK_MSG_SHORT_PREFIX)
                 msg_line = line[start:].strip()
                 decoded = decode_message(msg_line)
                 if decoded is not None:
