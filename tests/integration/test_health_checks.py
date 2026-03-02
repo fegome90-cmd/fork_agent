@@ -10,14 +10,6 @@ This is a known limitation - the container needs to be extended for this depende
 
 import pytest
 
-from tests.fixtures.subsystem_fixtures import (
-    mock_memory_service,
-    mock_promise_repository,
-    mock_tmux_orchestrator,
-    mock_workspace_manager,
-)
-
-
 pytestmark = pytest.mark.integration
 
 

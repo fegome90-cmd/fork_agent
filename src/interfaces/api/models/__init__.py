@@ -248,6 +248,18 @@ class WebhookListResponse(BaseModel):
     data: list[WebhookSafe]
 
 
+class GcStatusResponse(BaseModel):
+    """Response for GC status endpoint."""
+
+    last_run_at: datetime | None = None
+    cleaned_count: int = 0
+    failed_count: int = 0
+    last_duration_ms: int = 0
+    gc_interval_seconds: int = 0
+    gc_min_age_seconds: int = 0
+    status: str = "never_run"
+
+
 # Discovery card models
 from src.interfaces.api.models.discovery import (
     AgentBackendInfo,
@@ -298,6 +310,7 @@ __all__ = [
     "WebhookSafe",
     "WebhookResponse",
     "WebhookListResponse",
+    "GcStatusResponse",
     # Discovery models
     "CardType",
     "AuthInfo",

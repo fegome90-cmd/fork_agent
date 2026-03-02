@@ -1,6 +1,7 @@
 """Tests for tmux-control sidecar API."""
 
 import os
+
 import pytest
 
 pytestmark = pytest.mark.unit
@@ -12,8 +13,9 @@ class TestTmuxControlSecurity:
     def test_api_key_required_without_key(self):
         """Test that API key is required."""
         os.environ["TMUX_CONTROL_API_KEY"] = ""
-        from src.interfaces.tmux_control.main import verify_api_key
         from fastapi import HTTPException
+
+        from src.interfaces.tmux_control.main import verify_api_key
 
         with pytest.raises(HTTPException) as exc_info:
             verify_api_key("")
@@ -22,11 +24,11 @@ class TestTmuxControlSecurity:
     def test_api_key_rejects_invalid_key(self):
         """Test that invalid API key is rejected."""
         os.environ["TMUX_CONTROL_API_KEY"] = "test-key"
-        from src.interfaces.tmux_control.main import verify_api_key
-        from fastapi import HTTPException
-
         # Reload the module to pick up new env var
         import importlib
+
+        from fastapi import HTTPException
+
         import src.interfaces.tmux_control.main as tmux_main
 
         importlib.reload(tmux_main)

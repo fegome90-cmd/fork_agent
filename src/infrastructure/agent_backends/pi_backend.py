@@ -22,7 +22,7 @@ class PiBackend:
         """Check if pi CLI is installed."""
         return shutil.which("pi") is not None
 
-    def get_launch_command(self, task: str, model: str) -> str:
+    def get_launch_command(self, task: str, _model: str) -> str:
         """Build pi launch command.
 
         Note: pi.dev doesn't use a model parameter in its CLI.

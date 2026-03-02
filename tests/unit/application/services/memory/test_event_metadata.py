@@ -208,7 +208,7 @@ class TestCreateEventMetadata:
         assert metadata.run_id == "run-123"
         assert metadata.mode == "worktree"
         assert metadata.timestamp_ms > 0
-        assert "run-123:task-456:agent_spawned:0" == metadata.idempotency_key
+        assert metadata.idempotency_key == "run-123:task-456:agent_spawned:0"
 
     def test_create_with_string_types(self) -> None:
         """Test creating metadata with string types."""

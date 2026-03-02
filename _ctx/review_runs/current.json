@@ -1,0 +1,10 @@
+{
+  "run_id": "run_20260227_360bb3ff",
+  "branch": "review/main-cf401c1f",
+  "base_branch": "main",
+  "created_at": "2026-02-27T21:39:17.605Z",
+  "status": "completed",
+  "plan_status": "FOUND",
+  "plan_path": "docs/plans/code_review_completo.md",
+  "warnings_total": 4
+}

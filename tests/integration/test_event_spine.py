@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.application.services.memory.event_metadata import EventType, ExecutionMode
+from src.application.services.memory.event_metadata import EventType
 from src.application.services.memory_service import MemoryService
 from src.application.services.orchestration.hook_service import HookService
 from src.application.services.workflow.executor import WorkflowExecutor
@@ -51,8 +51,9 @@ def mock_tmux():
 @pytest.fixture
 def mock_workspace_manager():
     """Mock WorkspaceManager."""
-    from src.application.services.workspace.entities import Workspace, WorkspaceConfig
     from pathlib import Path as PathLib
+
+    from src.application.services.workspace.entities import Workspace
 
     mock = MagicMock(spec=WorkspaceManager)
 

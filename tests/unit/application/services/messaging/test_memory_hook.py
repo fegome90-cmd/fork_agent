@@ -14,17 +14,16 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
+from src.application.services.memory_service import MemoryService
 from src.application.services.messaging.memory_hook import MemoryHook
 from src.application.services.messaging.memory_hook_config import (
-    MemoryHookConfig,
     HookPolicy,
+    MemoryHookConfig,
 )
 from src.application.services.messaging.rate_limiter import RateLimiter
-from src.application.services.memory_service import MemoryService
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.container import create_container
 
@@ -394,7 +393,7 @@ class TestDedup:
         observations = memory_service.get_recent(limit=10)
         message_observations = [
             o for o in observations
-            if o.metadata and o.metadata.get("event_type") == "message_sent"
+            if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_observations) == 1, f"Expected 1 observation, got {len(message_observations)}"
 
@@ -431,6 +430,6 @@ class TestDedup:
         observations = memory_service.get_recent(limit=10)
         message_observations = [
             o for o in observations
-            if o.metadata and o.metadata.get("event_type") == "message_sent"
+            if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_observations) == 2

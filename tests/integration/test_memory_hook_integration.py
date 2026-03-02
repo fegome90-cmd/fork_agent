@@ -16,8 +16,8 @@ import pytest
 
 from src.application.services.messaging.memory_hook import MemoryHook
 from src.application.services.messaging.memory_hook_config import (
-    MemoryHookConfig,
     HookPolicy,
+    MemoryHookConfig,
 )
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.container import create_container
@@ -68,7 +68,7 @@ class TestMemoryHookIntegration:
         observations = memory.get_recent(limit=10)
         message_obs = [
             o for o in observations
-            if o.metadata and o.metadata.get("event_type") == "message_sent"
+            if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 0, "Toggle OFF should not capture any messages"
 
@@ -102,7 +102,7 @@ class TestMemoryHookIntegration:
         observations = memory.get_recent(limit=10)
         message_obs = [
             o for o in observations
-            if o.metadata and o.metadata.get("event_type") == "message_sent"
+            if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 1, "Should capture exactly 1 message"
 
@@ -112,7 +112,7 @@ class TestMemoryHookIntegration:
         assert obs.metadata.get("task_id") == "task-integration-1"
         assert obs.metadata.get("agent_id") == "agent1:0"
         assert obs.metadata.get("session_name") == "agent1"
-        assert obs.metadata.get("event_type") == "message_sent"
+        assert obs.metadata.get("event_type") == "agent_message"
 
         # Verify message-specific metadata in extra
         extra = obs.metadata.get("extra", {})
@@ -153,7 +153,7 @@ class TestMemoryHookIntegration:
         observations = memory.get_recent(limit=10)
         message_obs = [
             o for o in observations
-            if o.metadata and o.metadata.get("event_type") == "message_sent"
+            if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 1, "Retry should not create duplicate"
 
@@ -184,7 +184,7 @@ class TestMemoryHookIntegration:
         observations = memory.get_recent(limit=10)
         message_obs = [
             o for o in observations
-            if o.metadata and o.metadata.get("event_type") == "message_sent"
+            if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 1
 

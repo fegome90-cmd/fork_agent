@@ -1,0 +1,107 @@
+{
+  "run_id": "run_20260227_360bb3ff",
+  "branch": "review/main-cf401c1f",
+  "target_branch": "review/main-cf401c1f",
+  "base_branch": "main",
+  "timestamp": "2026-02-27T22:03:33.974Z",
+  "verdict": "FAIL",
+  "statistics": {
+    "p0_total": 0,
+    "p1_total": 3,
+    "p2_total": 6,
+    "warnings_total": 4,
+    "files_changed": 78,
+    "lines_added": 10217,
+    "lines_removed": 167
+  },
+  "agents": {
+    "silent-failure-hunter": {
+      "p0": 0,
+      "p1": 0,
+      "p2": 1,
+      "status": "done"
+    },
+    "code-reviewer": {
+      "p0": 0,
+      "p1": 3,
+      "p2": 3,
+      "status": "done"
+    },
+    "code-simplifier": {
+      "p0": 0,
+      "p1": 0,
+      "p2": 2,
+      "status": "done"
+    }
+  },
+  "statics": {
+    "coderabbit": {
+      "issues": 0,
+      "status": "SKIP"
+    },
+    "biome": {
+      "issues": 0,
+      "status": "SKIP"
+    },
+    "ruff": {
+      "issues": 2,
+      "status": "UNKNOWN"
+    },
+    "pytest": {
+      "issues": 0,
+      "status": "FAIL"
+    },
+    "pyrefly": {
+      "issues": 0,
+      "status": "PENDING"
+    }
+  },
+  "warnings_by_agent": {
+    "silent-failure-hunter": 2,
+    "code-reviewer": 0,
+    "code-simplifier": 2
+  },
+  "static_gate": {
+    "required": [
+      {
+        "tool": "ruff",
+        "status": "UNKNOWN",
+        "reason": "Could not determine Ruff result conclusively"
+      },
+      {
+        "tool": "pytest",
+        "status": "FAIL",
+        "reason": "Pytest output indicates failing tests"
+      }
+    ],
+    "blocking": [
+      {
+        "tool": "ruff",
+        "status": "UNKNOWN",
+        "reason": "Could not determine Ruff result conclusively"
+      },
+      {
+        "tool": "pytest",
+        "status": "FAIL",
+        "reason": "Pytest output indicates failing tests"
+      }
+    ],
+    "passed": 0,
+    "total": 2
+  },
+  "drift": {
+    "status": "UNKNOWN",
+    "plan_source": "docs/plans/code_review_completo.md",
+    "override_used": false
+  },
+  "artifacts": {
+    "context": "explore/context.md",
+    "diff": "explore/diff.md",
+    "reports": [
+      "_ctx/review_runs/run_20260227_360bb3ff/reports/reviewer_silent-failure-hunter.md",
+      "_ctx/review_runs/run_20260227_360bb3ff/reports/reviewer_code-reviewer.md",
+      "_ctx/review_runs/run_20260227_360bb3ff/reports/reviewer_code-simplifier.md"
+    ],
+    "final_json": "_ctx/review_runs/run_20260227_360bb3ff/final.json"
+  }
+}

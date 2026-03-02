@@ -94,10 +94,9 @@ class MemoryHook:
             return False
 
         # Gate 2: Policy - important check (if policy requires it)
-        if self._config.policy.value == "important_only":
-            if not self._is_important(msg):
-                logger.debug("Message %s is not marked as important", msg.id[:8])
-                return False
+        if self._config.policy.value == "important_only" and not self._is_important(msg):
+            logger.debug("Message %s is not marked as important", msg.id[:8])
+            return False
 
         # Gate 3: Rate limit
         if self._config.rate_limit_enabled:

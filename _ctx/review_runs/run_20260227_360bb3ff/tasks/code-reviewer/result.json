@@ -1,0 +1,108 @@
+{
+  "run_id": "run_20260227_360bb3ff",
+  "agent": "code-reviewer",
+  "timestamp": "2026-02-27T21:51:43.450Z",
+  "findings": [
+    {
+      "id": "P1-1",
+      "priority": "P1",
+      "title": "Nested if statements (SIM102)",
+      "location": {
+        "file": "Unknown"
+      },
+      "description": "Extracted from report",
+      "evidence": {
+        "snippet": "See full report"
+      }
+    },
+    {
+      "id": "P1-2",
+      "priority": "P1",
+      "title": "raise from None missing (B904)",
+      "location": {
+        "file": "Unknown"
+      },
+      "description": "Extracted from report",
+      "evidence": {
+        "snippet": "See full report"
+      }
+    },
+    {
+      "id": "P1-3",
+      "priority": "P1",
+      "title": "Unused method arguments (ARG002)",
+      "location": {
+        "file": "Unknown"
+      },
+      "description": "Extracted from report",
+      "evidence": {
+        "snippet": "See full report"
+      }
+    },
+    {
+      "id": "P2-1",
+      "priority": "P2",
+      "title": "Module level import not at top (E402)",
+      "location": {
+        "file": "Unknown"
+      },
+      "description": "Extracted from report",
+      "evidence": {
+        "snippet": "See full report"
+      }
+    },
+    {
+      "id": "P2-2",
+      "priority": "P2",
+      "title": "Use contextlib.suppress (SIM105)",
+      "location": {
+        "file": "Unknown"
+      },
+      "description": "Extracted from report",
+      "evidence": {
+        "snippet": "See full report"
+      }
+    },
+    {
+      "id": "P2-3",
+      "priority": "P2",
+      "title": "dict.keys() comparison (SIM118)",
+      "location": {
+        "file": "Unknown"
+      },
+      "description": "Extracted from report",
+      "evidence": {
+        "snippet": "See full report"
+      }
+    }
+  ],
+  "statistics": {
+    "p0_count": 0,
+    "p1_count": 3,
+    "p2_count": 3
+  },
+  "verdict": {
+    "result": "PASS",
+    "justification": "Parsed from ingested report"
+  },
+  "validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": [],
+    "lineCount": 81,
+    "sections": {
+      "summary": true,
+      "findings_p0": false,
+      "findings_p1": true,
+      "findings_p2": true,
+      "test_plan": true,
+      "confidence": true,
+      "verdict": true
+    },
+    "statistics": {
+      "p0_count": 0,
+      "p1_count": 3,
+      "p2_count": 3
+    }
+  }
+}

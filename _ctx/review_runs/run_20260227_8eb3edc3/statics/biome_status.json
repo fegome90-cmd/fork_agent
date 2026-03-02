@@ -1,0 +1,6 @@
+{
+  "tool": "biome",
+  "status": "SKIP",
+  "required": false,
+  "reason": "biome.json not found"
+}

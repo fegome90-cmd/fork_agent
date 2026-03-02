@@ -13,9 +13,6 @@ import pytest
 from src.application.services.memory_service import MemoryService
 from src.application.services.telemetry.telemetry_service import TelemetryService
 from src.infrastructure.persistence.container import create_container
-from src.infrastructure.persistence.repositories.observation_repository import (
-    ObservationRepository,
-)
 from src.infrastructure.persistence.repositories.telemetry_repository import (
     TelemetryRepositoryImpl,
 )
