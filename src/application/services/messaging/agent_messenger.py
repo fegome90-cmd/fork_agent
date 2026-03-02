@@ -6,6 +6,7 @@ via SQLite. It acts as the application layer interface for messaging.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from src.application.services.messaging.message_protocol import encode_message
@@ -14,6 +15,17 @@ from src.domain.entities.message import AgentMessage, MessageType
 if TYPE_CHECKING:
     from src.infrastructure.persistence.message_store import MessageStore
     from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
+
+logger = logging.getLogger(__name__)
+
+# Security: only sessions with these prefixes are valid broadcast targets.
+# Prevents sending to personal terminals, editors, or other unmanaged sessions.
+ALLOWED_SESSION_PREFIXES: tuple[str, ...] = ("fork-", "agent-")
+
+
+def _is_allowed_target(session_name: str) -> bool:
+    """Return True if session_name is a managed agent session."""
+    return any(session_name.startswith(p) for p in ALLOWED_SESSION_PREFIXES)
 
 
 class AgentMessenger:
@@ -82,14 +94,15 @@ class AgentMessenger:
         return success
 
     def broadcast(self, from_agent: str, payload: str) -> int:
-        """Broadcast a message to all active sessions.
+        """Broadcast a message to all active managed sessions.
 
-        Creates a COMMAND message with to_agent='*' and sends it to
-        all active tmux sessions.
+        Only sends to sessions whose names start with an allowed prefix
+        (fork- or agent-). Skips unmanaged sessions (personal terminals,
+        editors, etc.) and logs a WARNING for each skipped session.
 
         Args:
             from_agent: Source session:window
-            payload: Message payload (will be JSON-encoded if not already)
+            payload: Message payload
 
         Returns:
             Number of successful sends
@@ -98,6 +111,17 @@ class AgentMessenger:
         success_count = 0
 
         for session in sessions:
+            if not _is_allowed_target(session.name):
+                logger.warning(
+                    "broadcast skip: session not in allowlist",
+                    extra={
+                        "session": session.name,
+                        "reason": "not_allowlisted",
+                        "allowed_prefixes": list(ALLOWED_SESSION_PREFIXES),
+                    },
+                )
+                continue
+
             for window in session.windows:
                 # Create broadcast message for this target
                 msg = AgentMessage.create(
