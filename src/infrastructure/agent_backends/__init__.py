@@ -23,6 +23,14 @@ _BACKENDS: dict[str, type[Any]] = {
 _backend_instances: dict[str, AgentBackend] = {}
 
 
+def clear_backend_cache() -> None:
+    """Clear backend instance cache.
+
+    Useful for tests that need registry isolation.
+    """
+    _backend_instances.clear()
+
+
 def get_backend(name: str) -> AgentBackend | None:
     """Get a backend instance by name.
 
@@ -85,6 +93,7 @@ def list_all_backends() -> list[str]:
 __all__ = [
     "OpencodeBackend",
     "PiBackend",
+    "clear_backend_cache",
     "get_backend",
     "get_available_backends",
     "get_default_backend",

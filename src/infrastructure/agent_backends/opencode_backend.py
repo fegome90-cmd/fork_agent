@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shlex
 import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class OpencodeBackend:
@@ -75,10 +78,19 @@ class OpencodeBackend:
         Returns:
             Shell command string with proper escaping.
         """
-        executable = self.resolve_executable() or "opencode"
+        executable = self.resolve_executable()
+        if executable is None:
+            logger.warning(
+                "opencode executable not resolved; falling back to PATH lookup for launch command"
+            )
+            executable = "opencode"
+
         quoted_executable = shlex.quote(executable)
         primary_model = model
         fallback_model = os.getenv("OPENCODE_FALLBACK_MODEL", "opencode/minimax-m2.5")
+        fallback_message = shlex.quote(
+            f"[fork-agent] primary model failed, retrying fallback model: {fallback_model}"
+        )
 
         primary_cmd = (
             f"{quoted_executable} run -m {shlex.quote(primary_model)} {shlex.quote(task)}"
@@ -93,7 +105,7 @@ class OpencodeBackend:
         script = (
             f"{primary_cmd}; rc=$?; "
             f"if [ $rc -ne 0 ]; then "
-            f"echo '[fork-agent] primary model failed, retrying fallback model: {fallback_model}' >&2; "
+            f"echo {fallback_message} >&2; "
             f"{fallback_cmd}; "
             "fi"
         )

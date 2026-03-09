@@ -8,6 +8,7 @@ from unittest.mock import patch
 from src.infrastructure.agent_backends import (
     OpencodeBackend,
     PiBackend,
+    clear_backend_cache,
     get_available_backends,
     get_backend,
     get_default_backend,
@@ -30,7 +31,10 @@ class TestOpencodeBackend:
         backend = OpencodeBackend()
         with (
             patch.dict("os.environ", {}, clear=True),
-            patch("shutil.which", return_value="/usr/bin/opencode"),
+            patch(
+                "src.infrastructure.agent_backends.opencode_backend.shutil.which",
+                return_value="/usr/bin/opencode",
+            ),
             patch.object(backend, "_is_executable", return_value=True),
         ):
             assert backend.is_available() is True
@@ -39,7 +43,7 @@ class TestOpencodeBackend:
         backend = OpencodeBackend()
         with (
             patch.dict("os.environ", {"OPENCODE_BIN": "/custom/opencode"}, clear=True),
-            patch("shutil.which", return_value=None),
+            patch("src.infrastructure.agent_backends.opencode_backend.shutil.which", return_value=None),
             patch.object(
                 backend,
                 "_is_executable",
@@ -53,7 +57,7 @@ class TestOpencodeBackend:
         fallback = "/Users/test/.opencode/bin/opencode"
         with (
             patch.dict("os.environ", {}, clear=True),
-            patch("shutil.which", return_value=None),
+            patch("src.infrastructure.agent_backends.opencode_backend.shutil.which", return_value=None),
             patch("pathlib.Path.home", return_value=Path("/Users/test")),
             patch.object(backend, "_is_executable", side_effect=lambda path: path == fallback),
         ):
@@ -63,7 +67,7 @@ class TestOpencodeBackend:
         backend = OpencodeBackend()
         with (
             patch.dict("os.environ", {}, clear=True),
-            patch("shutil.which", return_value=None),
+            patch("src.infrastructure.agent_backends.opencode_backend.shutil.which", return_value=None),
             patch.object(backend, "_is_executable", return_value=False),
         ):
             assert backend.is_available() is False
@@ -82,6 +86,16 @@ class TestOpencodeBackend:
             cmd = backend.get_launch_command("test task", "opencode-go/minimax-m2.5")
         assert "/custom/opencode run -m opencode-go/minimax-m2.5" in cmd
 
+    def test_get_launch_command_logs_warning_when_resolution_fails(self) -> None:
+        backend = OpencodeBackend()
+        with (
+            patch.object(backend, "resolve_executable", return_value=None),
+            patch("src.infrastructure.agent_backends.opencode_backend.logger.warning") as warning,
+        ):
+            cmd = backend.get_launch_command("test task", "opencode/minimax-m2.5-free")
+        warning.assert_called_once()
+        assert "opencode run -m" in cmd
+
     def test_get_launch_command_escapes_special_chars(self) -> None:
         backend = OpencodeBackend()
         # Test various shell metacharacters
@@ -98,8 +112,9 @@ class TestOpencodeBackend:
         assert "rm -rf" in cmd  # Present but escaped as part of model
 
     def test_get_default_model(self) -> None:
-        backend = OpencodeBackend()
-        assert backend.get_default_model() == "opencode/minimax-m2.5-free"
+        with patch.dict("os.environ", {}, clear=True):
+            backend = OpencodeBackend()
+            assert backend.get_default_model() == "opencode/minimax-m2.5-free"
 
 
 class TestPiBackend:
@@ -115,12 +130,12 @@ class TestPiBackend:
 
     def test_is_available_returns_true_when_installed(self) -> None:
         backend = PiBackend()
-        with patch("shutil.which", return_value="/usr/bin/pi"):
+        with patch("src.infrastructure.agent_backends.pi_backend.shutil.which", return_value="/usr/bin/pi"):
             assert backend.is_available() is True
 
     def test_is_available_returns_false_when_not_installed(self) -> None:
         backend = PiBackend()
-        with patch("shutil.which", return_value=None):
+        with patch("src.infrastructure.agent_backends.pi_backend.shutil.which", return_value=None):
             assert backend.is_available() is False
 
     def test_get_launch_command_basic(self) -> None:
@@ -152,30 +167,36 @@ class TestBackendRegistry:
     """Tests for backend registry functions."""
 
     def test_list_all_backends(self) -> None:
+        clear_backend_cache()
         backends = list_all_backends()
         assert "opencode" in backends
         assert "pi" in backends
 
     def test_get_backend_returns_opencode(self) -> None:
+        clear_backend_cache()
         backend = get_backend("opencode")
         assert backend is not None
         assert isinstance(backend, OpencodeBackend)
 
     def test_get_backend_returns_pi(self) -> None:
+        clear_backend_cache()
         backend = get_backend("pi")
         assert backend is not None
         assert isinstance(backend, PiBackend)
 
     def test_get_backend_returns_none_for_unknown(self) -> None:
+        clear_backend_cache()
         backend = get_backend("unknown")
         assert backend is None
 
     def test_get_backend_caches_instances(self) -> None:
+        clear_backend_cache()
         backend1 = get_backend("opencode")
         backend2 = get_backend("opencode")
         assert backend1 is backend2
 
     def test_get_available_backends_filters_by_availability(self) -> None:
+        clear_backend_cache()
         with (
             patch.object(OpencodeBackend, "is_available", return_value=True),
             patch.object(PiBackend, "is_available", return_value=False),
@@ -186,6 +207,7 @@ class TestBackendRegistry:
             assert "pi" not in names
 
     def test_get_default_backend_prefers_opencode(self) -> None:
+        clear_backend_cache()
         with (
             patch.object(OpencodeBackend, "is_available", return_value=True),
             patch.object(PiBackend, "is_available", return_value=True),
@@ -195,6 +217,7 @@ class TestBackendRegistry:
             assert default.name == "opencode"
 
     def test_get_default_backend_falls_back_to_pi(self) -> None:
+        clear_backend_cache()
         with (
             patch.object(OpencodeBackend, "is_available", return_value=False),
             patch.object(PiBackend, "is_available", return_value=True),
@@ -204,6 +227,7 @@ class TestBackendRegistry:
             assert default.name == "pi"
 
     def test_get_default_backend_returns_none_when_none_available(self) -> None:
+        clear_backend_cache()
         with (
             patch.object(OpencodeBackend, "is_available", return_value=False),
             patch.object(PiBackend, "is_available", return_value=False),
