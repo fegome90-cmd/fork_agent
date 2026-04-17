@@ -28,7 +28,7 @@ class TestSaveCommand:
 
         assert result.exit_code == 0
         assert "Saved:" in result.stdout
-        mock_memory.save.assert_called_once_with(content="test content", metadata=None)
+        mock_memory.save.assert_called_once_with(content="test content", metadata=None, topic_key=None, project=None, type=None)
 
     def test_save_with_metadata_json(self) -> None:
         from src.interfaces.cli.commands.save import app
@@ -47,7 +47,7 @@ class TestSaveCommand:
         )
 
         assert result.exit_code == 0
-        mock_memory.save.assert_called_once_with(content="test content", metadata={"key": "value"})
+        mock_memory.save.assert_called_once_with(content="test content", metadata={"key": "value"}, topic_key=None, project=None, type=None)
 
     def test_save_invalid_metadata_json(self) -> None:
         from src.interfaces.cli.commands.save import app

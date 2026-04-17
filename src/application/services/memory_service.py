@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import dataclasses
 import time
 import uuid
+
+_UNSET = object()
 from typing import TYPE_CHECKING, Any
 
 from src.domain.entities.observation import Observation
@@ -32,16 +35,24 @@ class MemoryService:
         self,
         content: str,
         metadata: dict[str, Any] | None = None,
+        topic_key: str | None = None,
+        project: str | None = None,
+        type: str | None = None,
     ) -> Observation:
+        if topic_key:
+            self._repository.get_by_topic_key(topic_key, project=project or "")
+
         observation = Observation(
             id=str(uuid.uuid4()),
             timestamp=int(time.time() * 1000),
             content=content,
             metadata=metadata,
+            topic_key=topic_key,
+            project=project,
+            type=type,
         )
         self._repository.create(observation)
 
-        # Track telemetry if available
         if self._telemetry:
             self._telemetry.track_memory_save(
                 observation_id=observation.id,
@@ -50,6 +61,33 @@ class MemoryService:
             )
 
         return observation
+
+    def update(
+        self,
+        observation_id: str,
+        content: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        type: str | None = None,
+        topic_key: str | None = None,
+        project: str | None = None,
+    ) -> Observation:
+        existing = self._repository.get_by_id(observation_id)
+
+        updates: dict[str, Any] = {"revision_count": existing.revision_count + 1}
+        if content is not None:
+            updates["content"] = content
+        if metadata is not None:
+            updates["metadata"] = metadata
+        if type is not None:
+            updates["type"] = type
+        if topic_key is not None:
+            updates["topic_key"] = topic_key
+        if project is not None:
+            updates["project"] = project
+
+        updated = dataclasses.replace(existing, **updates)
+        self._repository.update(updated)
+        return updated
 
     def save_event(
         self,
@@ -113,12 +151,15 @@ class MemoryService:
 
         return results
 
-    def get_recent(self, limit: int = 10, offset: int = 0) -> list[Observation]:
+    def get_recent(
+        self, limit: int = 10, offset: int = 0, type: str | None = None
+    ) -> list[Observation]:
         """Get recent observations with pagination.
 
         Args:
             limit: Maximum number of observations to return. Must be >= 0.
             offset: Number of observations to skip. Must be >= 0.
+            type: Optional type filter to narrow results.
 
         Returns:
             List of observations.
@@ -131,7 +172,7 @@ class MemoryService:
         if offset < 0:
             raise ValueError(f"offset must be >= 0, got {offset}")
 
-        return self._repository.get_all(limit=limit, offset=offset)
+        return self._repository.get_all(limit=limit, offset=offset, type=type)
 
     def get_by_id(self, observation_id: str) -> Observation:
         return self._repository.get_by_id(observation_id)
@@ -186,9 +227,7 @@ class MemoryService:
         # Filter by run_id
         if run_id:
             observations = [
-                obs
-                for obs in observations
-                if obs.metadata and obs.metadata.get("run_id") == run_id
+                obs for obs in observations if obs.metadata and obs.metadata.get("run_id") == run_id
             ]
 
         # Filter by event_type
@@ -201,9 +240,7 @@ class MemoryService:
 
         # Filter by time (since)
         if since_ms:
-            observations = [
-                obs for obs in observations if obs.timestamp >= since_ms
-            ]
+            observations = [obs for obs in observations if obs.timestamp >= since_ms]
 
         # Sort by timestamp DESC
         observations.sort(key=lambda o: o.timestamp, reverse=True)

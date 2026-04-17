@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+from datetime import datetime
 from pathlib import Path
 
 from dependency_injector import containers, providers
@@ -24,6 +26,11 @@ from src.infrastructure.persistence.repositories.scheduled_task_repository impor
 from src.infrastructure.persistence.repositories.telemetry_repository import (
     TelemetryRepositoryImpl,
 )
+from src.infrastructure.persistence.repositories.session_repository import (
+    SessionRepositoryImpl,
+)
+from src.application.services.session_service import SessionService
+
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
@@ -70,6 +77,16 @@ class Container(containers.DeclarativeContainer):
         TelemetryService,
         repository=telemetry_repository,
     )
+    session_repository = providers.Singleton(
+        SessionRepositoryImpl,
+        connection=database_connection,
+    )
+
+    session_service = providers.Singleton(
+        SessionService,
+        repository=session_repository,
+    )
+
 
     memory_service = providers.Singleton(
         MemoryService,
@@ -105,8 +122,38 @@ def create_container(db_path: Path | None = None) -> Container:
     db_path_value = db_path or DEFAULT_DB_PATH
     container.config.db_path.from_value(db_path_value)
     container.config.migrations_dir.from_value(DEFAULT_MIGRATIONS_DIR)
+    _auto_backup(db_path_value)
     _run_migrations_on_init(db_path_value, DEFAULT_MIGRATIONS_DIR)
     return container
+
+
+def _auto_backup(db_path: Path) -> None:
+    """Auto-backup DB before container init if DB exists and has data.
+
+    Keeps at most 3 backups. Prevents catastrophic data loss from
+    agent-triggered DB recreation (see P2 in subagent-failure-patterns.md).
+    """
+    if not db_path.exists():
+        return
+    try:
+        import sqlite3
+
+        conn = sqlite3.connect(str(db_path))
+        count = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        conn.close()
+        if count == 0:
+            return
+        backup_dir = db_path.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = backup_dir / f"memory_{timestamp}.db"
+        shutil.copy2(db_path, backup_path)
+        # Rotate: keep only last 3
+        backups = sorted(backup_dir.glob("memory_*.db"))
+        for old in backups[:-3]:
+            old.unlink()
+    except Exception:
+        pass  # Backup failure must never block container init
 
 
 def _run_migrations_on_init(db_path: Path, migrations_dir: Path) -> None:
@@ -181,6 +228,22 @@ def get_workspace_manager() -> WorkspaceManager:
         _workspace_manager = WorkspaceManager(git_executor, config)
     return _workspace_manager
 
+
+
+
+def get_session_service(db_path: Path | None = None) -> SessionService:
+    """Get a SessionService instance.
+
+    Args:
+        db_path: Optional database path. If None, uses default path.
+
+    Returns:
+        SessionService: The session service instance.
+    """
+    if db_path is not None:
+        container = create_container(db_path)
+        return container.session_service()  # type: ignore[no-any-return]
+    return _get_global_container().session_service()  # type: ignore[no-any-return]
 
 def detect_memory_db_path() -> Path:
     """Detect the appropriate memory DB path based on current workspace.

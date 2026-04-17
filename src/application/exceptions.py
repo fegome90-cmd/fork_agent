@@ -21,6 +21,17 @@ class ServiceError(MemoryError):
     pass
 
 
+class SessionNotFoundError(MemoryError):
+    """Raised when a session is not found."""
+
+    def __init__(
+        self,
+        message: str = "Session not found.",
+        original_exception: Exception | None = None,
+    ):
+        super().__init__(message, original_exception)
+
+
 class ObservationNotFoundError(MemoryError):
     """Raised when a specific observation is not found."""
 
