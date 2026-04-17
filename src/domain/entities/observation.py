@@ -39,6 +39,11 @@ class Observation:
             "file_read",
             "search",
             "session-summary",
+            "learning-batch",
+            "workflow-event",
+            "security",
+            "performance",
+            "preference",
         }
     )
 

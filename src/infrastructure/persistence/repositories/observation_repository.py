@@ -36,7 +36,8 @@ class ObservationRepository:
     def _normalize_project(project: str | None) -> str | None:
         if project is None:
             return None
-        return project.lower().strip()
+        normalized = project.lower().strip()
+        return normalized if normalized else None
 
     def create(self, observation: Observation) -> None:
         """Store a new observation in the database.
@@ -348,10 +349,10 @@ class ObservationRepository:
         sql = f"""
             UPDATE observations SET
                 content = ?,
-                metadata = COALESCE(?, metadata),
+                metadata = ?,
                 timestamp = ?,
-                type = COALESCE(?, type),
-                session_id = COALESCE(?, session_id),
+                type = ?,
+                session_id = ?,
                 revision_count = revision_count + 1
             WHERE topic_key = ? AND project = ?
             RETURNING {_SELECT_COLUMNS}
@@ -380,21 +381,21 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to upsert topic_key: {e}", e) from e
 
-    def get_by_topic_key(self, topic_key: str, project: str) -> Observation | None:
+    def get_by_topic_key(self, topic_key: str, project: str | None) -> Observation | None:
         """Get an observation by topic_key and project.
 
         Args:
             topic_key: The topic key to search for.
-            project: The project scope.
+            project: The project scope (None for cross-project lookup).
 
         Returns:
             Observation if found, None otherwise.
         """
-        project = self._normalize_project(project) or project
+        normalized_project = self._normalize_project(project)
         sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE topic_key = ? AND project = ?"
         try:
             with self._connection as conn:
-                cursor = conn.execute(sql, (topic_key, project))
+                cursor = conn.execute(sql, (topic_key, normalized_project))
                 row = cursor.fetchone()
                 return self._row_to_observation(row) if row else None
         except sqlite3.Error as e:
