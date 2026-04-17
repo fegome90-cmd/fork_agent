@@ -11,6 +11,15 @@ from src.application.exceptions import ObservationNotFoundError, RepositoryError
 from src.domain.entities.observation import Observation
 from src.infrastructure.persistence.database import DatabaseConnection
 
+_SELECT_COLUMNS = (
+    "id, timestamp, content, metadata, idempotency_key, "
+    "topic_key, project, type, revision_count, session_id"
+)
+_SELECT_COLUMNS_PREFIXED = (
+    "o.id, o.timestamp, o.content, o.metadata, o.idempotency_key, "
+    "o.topic_key, o.project, o.type, o.revision_count, o.session_id"
+)
+
 
 class ObservationRepository:
     """Repository for persisting and retrieving Observation entities.
@@ -23,6 +32,12 @@ class ObservationRepository:
     def __init__(self, connection: DatabaseConnection) -> None:
         self._connection = connection
 
+    @staticmethod
+    def _normalize_project(project: str | None) -> str | None:
+        if project is None:
+            return None
+        return project.lower().strip()
+
     def create(self, observation: Observation) -> None:
         """Store a new observation in the database.
 
@@ -33,18 +48,24 @@ class ObservationRepository:
             RepositoryError: If the observation ID already exists or database error occurs.
         """
         metadata_json = self._serialize_metadata(observation.metadata)
+        project = self._normalize_project(observation.project)
 
         try:
             with self._connection as conn:
                 conn.execute(
-                    """INSERT INTO observations (id, timestamp, content, metadata, idempotency_key)
-                       VALUES (?, ?, ?, ?, ?)""",
+                    f"""INSERT INTO observations ({_SELECT_COLUMNS})
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         observation.id,
                         observation.timestamp,
                         observation.content,
                         metadata_json,
                         observation.idempotency_key,
+                        observation.topic_key,
+                        project,
+                        observation.type,
+                        observation.revision_count,
+                        observation.session_id,
                     ),
                 )
         except sqlite3.IntegrityError as e:
@@ -115,8 +136,7 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 cursor = conn.execute(
-                    "SELECT id, timestamp, content, metadata, idempotency_key "
-                    "FROM observations WHERE idempotency_key = ?",
+                    f"SELECT {_SELECT_COLUMNS} FROM observations WHERE idempotency_key = ?",
                     (idempotency_key,),
                 )
                 row = cursor.fetchone()
@@ -141,7 +161,7 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 cursor = conn.execute(
-                    "SELECT id, timestamp, content, metadata, idempotency_key FROM observations WHERE id = ?",
+                    f"SELECT {_SELECT_COLUMNS} FROM observations WHERE id = ?",
                     (observation_id,),
                 )
                 row = cursor.fetchone()
@@ -155,28 +175,36 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observation: {e}", e) from e
 
-    def get_all(self, limit: int | None = None, offset: int | None = None) -> list[Observation]:
+    def get_all(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        type: str | None = None,
+    ) -> list[Observation]:
         """Retrieve observations ordered by timestamp descending with optional pagination.
 
         Args:
             limit: Optional maximum number of observations to return. If None, no limit is applied.
-            offset: Optional number of observations to skip before starting to return results. Requires limit to be set for predictable pagination.
+            offset: Optional number of observations to skip before starting to return results.
+            type: Optional type filter to narrow results.
 
         Returns:
             List of observation entities.
         """
         try:
-            sql = (
-                "SELECT id, timestamp, content, metadata, idempotency_key FROM observations ORDER BY timestamp DESC"
-            )
-            params: list[str | int] = []
+            if type is not None:
+                sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE type = ? ORDER BY timestamp DESC"
+                params: list[str | int] = [type]
+            else:
+                sql = f"SELECT {_SELECT_COLUMNS} FROM observations ORDER BY timestamp DESC"
+                params = []
 
-            if limit is not None and offset is not None:
-                sql += " LIMIT ? OFFSET ?"
-                params.extend([limit, offset])
-            elif limit is not None:
+            if limit is not None:
                 sql += " LIMIT ?"
                 params.append(limit)
+            if offset is not None:
+                sql += " OFFSET ?"
+                params.append(offset)
 
             with self._connection as conn:
                 cursor = conn.execute(sql, params)
@@ -187,24 +215,28 @@ class ObservationRepository:
             raise RepositoryError(f"Failed to get observations: {e}", e) from e
 
     def update(self, observation: Observation) -> None:
-        """Update an existing observation.
-
-        Args:
-            observation: The observation entity with updated values.
-
-        Raises:
-            ObservationNotFoundError: If no observation exists with the given ID.
-            RepositoryError: If a database error occurs.
-        """
         metadata_json = self._serialize_metadata(observation.metadata)
+        project = self._normalize_project(observation.project)
 
         try:
             with self._connection as conn:
                 cursor = conn.execute(
                     """UPDATE observations
-                       SET timestamp = ?, content = ?, metadata = ?
+                       SET timestamp = ?, content = ?, metadata = ?, topic_key = ?,
+                           project = ?, type = ?, revision_count = ?,
+                           session_id = ?
                        WHERE id = ?""",
-                    (observation.timestamp, observation.content, metadata_json, observation.id),
+                    (
+                        observation.timestamp,
+                        observation.content,
+                        metadata_json,
+                        observation.topic_key,
+                        project,
+                        observation.type,
+                        observation.revision_count,
+                        observation.session_id,
+                        observation.id,
+                    ),
                 )
 
                 if cursor.rowcount == 0:
@@ -252,8 +284,8 @@ class ObservationRepository:
             sanitized_query = self._sanitize_fts_query(query)
             if not sanitized_query:
                 return []
-            sql = """
-                SELECT o.id, o.timestamp, o.content, o.metadata, o.idempotency_key
+            sql = f"""
+                SELECT {_SELECT_COLUMNS_PREFIXED}
                 FROM observations o
                 JOIN observations_fts fts ON o.rowid = fts.rowid
                 WHERE observations_fts MATCH ?
@@ -286,7 +318,7 @@ class ObservationRepository:
         try:
             with self._connection as conn:
                 cursor = conn.execute(
-                    """SELECT id, timestamp, content, metadata, idempotency_key
+                    f"""SELECT {_SELECT_COLUMNS}
                        FROM observations
                        WHERE timestamp >= ? AND timestamp <= ?
                        ORDER BY timestamp DESC""",
@@ -298,21 +330,101 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observations by range: {e}", e) from e
 
+    def upsert_topic_key(self, observation: Observation) -> Observation:
+        """Update an existing observation matched by topic_key+project.
+
+        The caller (service) must verify the record exists before calling this.
+        Uses UPDATE directly since partial unique indexes don't support ON CONFLICT.
+
+        Args:
+            observation: The observation with updated fields.
+
+        Returns:
+            The updated observation with incremented revision_count.
+        """
+        project = self._normalize_project(observation.project)
+        metadata_json = json.dumps(observation.metadata) if observation.metadata else "{}"
+
+        sql = f"""
+            UPDATE observations SET
+                content = ?,
+                metadata = COALESCE(?, metadata),
+                timestamp = ?,
+                type = COALESCE(?, type),
+                session_id = COALESCE(?, session_id),
+                revision_count = revision_count + 1
+            WHERE topic_key = ? AND project = ?
+            RETURNING {_SELECT_COLUMNS}
+        """
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    sql,
+                    (
+                        observation.content,
+                        metadata_json,
+                        observation.timestamp,
+                        observation.type,
+                        observation.session_id,
+                        observation.topic_key,
+                        project,
+                    ),
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    raise RepositoryError(
+                        f"No observation found for topic_key={observation.topic_key} "
+                        f"project={project}"
+                    )
+                return self._row_to_observation(row)
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to upsert topic_key: {e}", e) from e
+
+    def get_by_topic_key(self, topic_key: str, project: str) -> Observation | None:
+        """Get an observation by topic_key and project.
+
+        Args:
+            topic_key: The topic key to search for.
+            project: The project scope.
+
+        Returns:
+            Observation if found, None otherwise.
+        """
+        project = self._normalize_project(project) or project
+        sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE topic_key = ? AND project = ?"
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(sql, (topic_key, project))
+                row = cursor.fetchone()
+                return self._row_to_observation(row) if row else None
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to get observation by topic_key: {e}", e) from e
+
     def _row_to_observation(self, row: sqlite3.Row) -> Observation:
         """Convert a database row to an Observation entity."""
-        metadata = self._deserialize_metadata(row["metadata"])
-        # Handle idempotency_key which may not exist in older migrations
-        idempotency_key = None
-        try:
-            idempotency_key = row["idempotency_key"] if "idempotency_key" in row.keys() else None
-        except (KeyError, IndexError):
-            pass
+        metadata_dict = json.loads(row["metadata"]) if row["metadata"] else {}
+
+        # New fields with backward compat — try DB column, fall back to metadata
+        column_names = row.keys()
+        topic_key = row["topic_key"] if "topic_key" in column_names else None
+        project = (row["project"] if "project" in column_names else None) or metadata_dict.get(
+            "project"
+        )
+        type_ = (row["type"] if "type" in column_names else None) or metadata_dict.get("type")
+        revision_count = (row["revision_count"] if "revision_count" in column_names else None) or 1
+        session_id = row["session_id"] if "session_id" in column_names else None
+
         return Observation(
             id=row["id"],
             timestamp=row["timestamp"],
             content=row["content"],
-            metadata=metadata,
-            idempotency_key=idempotency_key,
+            metadata=metadata_dict,
+            idempotency_key=row["idempotency_key"] if "idempotency_key" in column_names else None,
+            project=project,
+            type=type_,
+            topic_key=topic_key,
+            revision_count=revision_count,
+            session_id=session_id,
         )
 
     def _serialize_metadata(self, metadata: dict[str, Any] | None) -> str | None:

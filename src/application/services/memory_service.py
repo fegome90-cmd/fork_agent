@@ -5,8 +5,6 @@ from __future__ import annotations
 import dataclasses
 import time
 import uuid
-
-_UNSET = object()
 from typing import TYPE_CHECKING, Any
 
 from src.domain.entities.observation import Observation
@@ -39,8 +37,9 @@ class MemoryService:
         project: str | None = None,
         type: str | None = None,
     ) -> Observation:
+        existing_for_topic = None
         if topic_key:
-            self._repository.get_by_topic_key(topic_key, project=project or "")
+            existing_for_topic = self._repository.get_by_topic_key(topic_key, project=project or "")
 
         observation = Observation(
             id=str(uuid.uuid4()),
@@ -51,7 +50,11 @@ class MemoryService:
             project=project,
             type=type,
         )
-        self._repository.create(observation)
+
+        if existing_for_topic is not None:
+            observation = self._repository.upsert_topic_key(observation)
+        else:
+            self._repository.create(observation)
 
         if self._telemetry:
             self._telemetry.track_memory_save(

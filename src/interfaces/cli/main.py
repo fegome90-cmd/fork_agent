@@ -9,13 +9,14 @@ from pathlib import Path
 import typer
 
 from src.application.services.orchestration.events import SessionStartEvent
-from src.interfaces.cli.commands import context, delete, get, list, save, search, stats, update
+from src.interfaces.cli.commands import context, delete, get, list, save, search, stats, sync, update
 from src.interfaces.cli.commands.cleanup import cleanup
 from src.interfaces.cli.commands.compact import app as compact_app
 from src.interfaces.cli.commands.health import health
 from src.interfaces.cli.commands.query import app as query_app
 from src.interfaces.cli.commands.schedule import app as schedule_app
 from src.interfaces.cli.commands.session import app as session_app
+from src.interfaces.cli.commands.sync import app as sync_app
 from src.interfaces.cli.commands.telemetry import app as telemetry_app
 from src.interfaces.cli.dependencies import (
     get_hook_service,
@@ -47,6 +48,7 @@ app.add_typer(schedule_app, name="schedule")
 app.add_typer(telemetry_app, name="telemetry")
 app.add_typer(query_app, name="query")
 app.add_typer(session_app, name="session")
+app.add_typer(sync_app, name="sync")
 app.add_typer(compact_app, name="compact")
 
 app.command(name="stats")(stats.stats)

@@ -1,6 +1,5 @@
 """Messaging services for inter-agent communication."""
 
-from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
     FORK_MSG_SHORT_PREFIX,
@@ -16,7 +15,6 @@ from src.application.services.messaging.message_protocol import (
 )
 
 __all__ = [
-    "AgentMessenger",
     "FORK_MSG_PREFIX",
     "FORK_MSG_SHORT_PREFIX",
     "FORK_MSG_TEMP_DIR",
