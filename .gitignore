@@ -101,9 +101,16 @@ _ctx/telemetry/daemon.status
 .fork/
 .opencode/
 .pi/
+.kilocodemodes
+.tmux-orchestrator/
+skills/
 
 # Local context
 _ctx/
+
+# Review and session artifacts
+artifacts/
+explore/
 
 # External apps
 apps/

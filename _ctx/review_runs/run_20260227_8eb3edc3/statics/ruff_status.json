@@ -1,8 +1,0 @@
-{
-  "tool": "ruff",
-  "status": "PENDING",
-  "required": true,
-  "reason": "Python linter and formatter",
-  "requested_at": "2026-02-27T20:42:29.294Z",
-  "command": "bun run lint:ruff"
-}

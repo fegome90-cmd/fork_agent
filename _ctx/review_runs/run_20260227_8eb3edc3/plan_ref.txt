@@ -1,1 +1,0 @@
-docs/plans/code_review_completo.md

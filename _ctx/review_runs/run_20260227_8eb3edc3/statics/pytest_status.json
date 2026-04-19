@@ -1,8 +1,0 @@
-{
-  "tool": "pytest",
-  "status": "PENDING",
-  "required": true,
-  "reason": "Python test execution gate",
-  "requested_at": "2026-02-27T20:42:29.294Z",
-  "command": "pytest -q"
-}
