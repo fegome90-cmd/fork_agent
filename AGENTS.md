@@ -86,6 +86,12 @@ class DatabaseConfig(BaseModel):
 - Funciones: `snake_case`
 - Constantes: `UPPER_SNAKE_CASE`
 
+### Scope Convention
+Observaciones tienen `scope`: `project` (default) o `personal`.
+Usar `scope: project` para notas específicas del proyecto.
+Usar `scope: personal` para notas que trascienden proyectos.
+Engram-compatible: ver docs/engram-vs-ours-memory-diff-2026-04-17.md
+
 ---
 
 ## ANTI-PATTERNS (ESTE PROYECTO)
