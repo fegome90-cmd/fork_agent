@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -27,6 +28,7 @@ def delete(
     ctx: typer.Context,
     observation_id: str = typer.Argument(..., help="Full ID or prefix of the observation"),
     force: bool = typer.Option(False, "--force", "-f"),
+    project: str | None = typer.Option(None, "--project", "-p", help="Verify observation belongs to project"),
 ) -> None:
     memory_service = ctx.obj
     if not force and not typer.confirm(f"Delete observation {observation_id}?"):
@@ -41,6 +43,16 @@ def delete(
         raise typer.Exit(1)
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+    # Verify project ownership if --project given or auto-detected
+    effective_project = project if project is not None else Path(os.getcwd()).name
+    if resolved.project and resolved.project != effective_project and not force:
+        typer.echo(
+            f"Error: Observation belongs to project '{resolved.project}', "
+            f"not '{effective_project}'. Use --force to override.",
+            err=True,
+        )
         raise typer.Exit(1)
 
     try:

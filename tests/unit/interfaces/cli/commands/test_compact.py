@@ -199,6 +199,66 @@ class TestRecover:
         assert "Artifacts Index" in result.stdout
         assert "plan.md" in result.stdout
 
+    def test_recover_finds_bridge_saved_summaries(self) -> None:
+        """Bridge-saved entries have type=None but content starts with compact/session-summary."""
+        from src.interfaces.cli.commands.compact import app
+
+        bridge_obs = FakeObservation(
+            id="bridge-001",
+            timestamp=1000000,
+            content="compact/session-summary: some summary",
+            type=None,
+            topic_key=None,
+            metadata={
+                "topic_key": "compact/session-summary",
+                "type": "session-summary",
+            },
+        )
+        mock_memory = _make_memory_service(
+            recent_return=[],
+            search_return=[bridge_obs],
+        )
+
+        result = runner.invoke(
+            app,
+            ["recover"],
+            obj=mock_memory,
+        )
+
+        assert result.exit_code == 0
+        assert "Session Summaries" in result.stdout
+        assert "bridge-001"[:8] in result.stdout
+
+    def test_recover_displays_top_level_metadata(self) -> None:
+        """Population 1 has goal/next_steps at top-level metadata, not nested in structured."""
+        from src.interfaces.cli.commands.compact import app
+
+        summary_obs = FakeObservation(
+            id="top-001",
+            timestamp=1000000,
+            content="Session Summary",
+            type="session-summary",
+            topic_key="compact/session-summary",
+            metadata={
+                "goal": "Fix stuff",
+                "next_steps": ["step1", "step2"],
+            },
+        )
+        mock_memory = _make_memory_service(
+            recent_return=[],
+            search_return=[summary_obs],
+        )
+
+        result = runner.invoke(
+            app,
+            ["recover"],
+            obj=mock_memory,
+        )
+
+        assert result.exit_code == 0
+        assert "Fix stuff" in result.stdout
+        assert "step1" in result.stdout
+
     def test_recover_empty_no_crash(self) -> None:
         from src.interfaces.cli.commands.compact import app
 
@@ -255,6 +315,8 @@ class TestRecover:
         assert "Fix db" not in result.stdout
 
     def test_recover_no_project_shows_all(self) -> None:
+        from unittest.mock import patch
+
         from src.interfaces.cli.commands.compact import app
 
         summary_proj_a = FakeObservation(
@@ -284,15 +346,18 @@ class TestRecover:
             search_return=[summary_proj_a, summary_proj_b],
         )
 
-        result = runner.invoke(
-            app,
-            ["recover"],
-            obj=mock_memory,
-        )
+        # Auto-detects from CWD — patch to return a known project
+        # that matches neither summary, so nothing shows
+        with patch("src.interfaces.cli.commands.compact.os.getcwd", return_value="/tmp/no-match"):
+            result = runner.invoke(
+                app,
+                ["recover"],
+                obj=mock_memory,
+            )
 
         assert result.exit_code == 0
-        assert "Fix auth" in result.stdout
-        assert "Fix db" in result.stdout
+        # With auto-detect from /tmp/no-match, no summaries match
+        assert "No session summaries found" in result.stdout
 
 
 class TestFileOps:

@@ -59,13 +59,10 @@ def end(
 
     service = _get_session_service()
 
-    proj = project
+    # Auto-detect project from CWD when not explicitly provided (same as list/context)
+    proj = project or Path(os.getcwd()).name
 
-    # Find active session: explicit project > any active > error
-    if proj:
-        active = service.get_active(proj)
-    else:
-        active = service.get_active_any()
+    active = service.get_active(proj)
     if active is None:
         typer.echo(f"No active session found" + (f" for project: {proj}" if proj else ""), err=True)
         raise typer.Exit(1)

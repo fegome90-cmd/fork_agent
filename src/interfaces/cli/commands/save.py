@@ -141,15 +141,19 @@ def save(
     if structured_fields:
         meta_dict["structured"] = structured_fields
 
-    observation = memory_service.save(
-        content=content,
-        metadata=meta_dict if meta_dict else None,
-        topic_key=topic_key,
-        project=project,
-        type=obs_type.value if obs_type else None,
-        title=title,
-    )
-    typer.echo(f"Saved: {observation.id}")
+    try:
+        observation = memory_service.save(
+            content=content,
+            metadata=meta_dict if meta_dict else None,
+            topic_key=topic_key,
+            project=project,
+            type=obs_type.value if obs_type else None,
+            title=title,
+        )
+        typer.echo(f"Saved: {observation.id}")
+    except (ValueError, TypeError) as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
 
     # Flush telemetry to ensure events are persisted
     db_path = _get_db_path_from_context(ctx)

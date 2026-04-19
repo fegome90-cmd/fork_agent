@@ -111,7 +111,7 @@ def push_cmd(
 ) -> None:
     """Incremental export + git push."""
     sync_service = _make_sync_service(ctx)
-    paths = sync_service.export_incremental(chunk_size=chunk_size)
+    paths = sync_service.export_incremental(chunk_size=chunk_size, commit_watermark=False)
     if not paths:
         typer.echo("No new mutations to push")
         return
@@ -122,6 +122,7 @@ def push_cmd(
     git.init_repo()
     ok = git.push(paths)
     if ok:
+        sync_service.commit_export_watermark()
         typer.echo("Push successful")
     else:
         typer.echo("Push failed (see logs)", err=True)

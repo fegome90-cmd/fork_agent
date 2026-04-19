@@ -333,3 +333,53 @@ class TestSaveGitAutoDetection:
         assert meta is None or "type" not in meta
         assert meta is None or "topic_key" not in meta
         assert meta is None or "project" not in meta
+
+
+class TestSaveDomainErrorHandling:
+    """L1: Domain exceptions caught with clean error messages."""
+
+    def test_save_topic_key_too_long_shows_clean_error(self) -> None:
+        from src.interfaces.cli.commands.save import app
+
+        mock_memory = MagicMock()
+        mock_memory.save.side_effect = ValueError(
+            "topic_key must not exceed 128 characters (got 129)"
+        )
+
+        result = runner.invoke(
+            app, ["test content", "-k", "a" * 129], obj=mock_memory
+        )
+
+        assert result.exit_code == 1
+        assert "topic_key must not exceed 128" in result.output
+        assert "Traceback" not in result.output
+
+    def test_save_topic_key_with_spaces_shows_clean_error(self) -> None:
+        from src.interfaces.cli.commands.save import app
+
+        mock_memory = MagicMock()
+        mock_memory.save.side_effect = ValueError(
+            "topic_key must not contain spaces"
+        )
+
+        result = runner.invoke(
+            app, ["test content", "-k", "has spaces"], obj=mock_memory
+        )
+
+        assert result.exit_code == 1
+        assert "topic_key must not contain spaces" in result.output
+        assert "Traceback" not in result.output
+
+    def test_save_type_error_shows_clean_message(self) -> None:
+        from src.interfaces.cli.commands.save import app
+
+        mock_memory = MagicMock()
+        mock_memory.save.side_effect = TypeError("topic_key must be a string or None")
+
+        result = runner.invoke(
+            app, ["test content", "-k", "123"], obj=mock_memory
+        )
+
+        assert result.exit_code == 1
+        assert "topic_key must be a string" in result.output
+        assert "Traceback" not in result.output

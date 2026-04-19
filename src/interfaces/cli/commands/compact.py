@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -103,8 +104,14 @@ def save_summary(
 
     content = "\n".join(content_parts)
 
-    # Save as observation
-    observation = memory_service.save(content=content, metadata=metadata)
+    # Save as observation with entity-level fields (not just metadata)
+    observation = memory_service.save(
+        content=content,
+        metadata=metadata,
+        topic_key="compact/session-summary",
+        project=proj,
+        type="session-summary",
+    )
 
     typer.echo(f"Session summary saved: {observation.id}")
     typer.echo(f"  Project: {proj}")
@@ -136,14 +143,17 @@ def recover(
     after compaction or session restart.
     """
     memory_service = ctx.obj
-    proj = _get_project_filter(project)
+    proj = _get_project_name(project)
 
     # Use search for deterministic retrieval regardless of observation count
     summaries_raw = memory_service.search("compact/session-summary", limit=summary_limit + 5)
     summaries = [
         obs
         for obs in summaries_raw
-        if obs.type == "session-summary"
+        if (
+            obs.type == "session-summary"
+            or obs.content.startswith("compact/session-summary")
+        )
         and (
             obs.topic_key == "compact/session-summary"
             or obs.content.startswith("compact/session-summary")
@@ -162,9 +172,12 @@ def recover(
     ]
 
     # Get recent observations (excluding session summaries)
-    all_observations = memory_service.get_recent(limit=observation_limit, offset=0)
+    all_observations = memory_service.get_recent(limit=observation_limit + 20, offset=0)
     summary_ids = {s.id for s in summaries}
     observations = [obs for obs in all_observations if obs.id not in summary_ids]
+    if proj:
+        observations = [obs for obs in observations if obs.project in (proj, None)]
+    observations = observations[:observation_limit]
 
     # Display session summaries
     if summaries:
@@ -175,16 +188,21 @@ def recover(
             ts = datetime.fromtimestamp(summary.timestamp / 1000)
             meta = summary.metadata or {}
             structured = meta.get("structured", {})
+            # Fallback: some summaries have fields at top-level metadata
+            goal = structured.get("goal") or meta.get("goal")
+            accomplished = structured.get("accomplished") or meta.get("accomplished")
+            next_steps = structured.get("next_steps") or meta.get("next_steps")
+            files = structured.get("files") or meta.get("files") or meta.get("relevant_files")
 
             typer.echo(f"[{i}] {summary.id[:8]}... ({ts.strftime('%Y-%m-%d %H:%M')})")
-            if "goal" in structured:
-                typer.echo(f"    Goal: {structured['goal']}")
-            if "accomplished" in structured:
-                typer.echo(f"    Done: {structured['accomplished']}")
-            if "next_steps" in structured:
-                typer.echo(f"    Next: {', '.join(structured['next_steps'])}")
-            if "files" in structured:
-                typer.echo(f"    Files: {', '.join(structured['files'][:5])}")
+            if goal:
+                typer.echo(f"    Goal: {goal}")
+            if accomplished:
+                typer.echo(f"    Done: {accomplished}")
+            if next_steps:
+                typer.echo(f"    Next: {', '.join(next_steps)}")
+            if files:
+                typer.echo(f"    Files: {', '.join(files[:5])}")
             typer.echo()
     else:
         typer.echo(f"\nNo session summaries found for project: {proj}")
@@ -273,8 +291,14 @@ def file_ops(
 
     content = "\n".join(content_parts)
 
-    # Save as observation
-    observation = memory_service.save(content=content, metadata=metadata)
+    # Save as observation with entity-level fields (not just metadata)
+    observation = memory_service.save(
+        content=content,
+        metadata=metadata,
+        topic_key="compact/file-ops",
+        project=proj,
+        type="file_ops",
+    )
 
     typer.echo(f"File operations saved: {observation.id}")
     typer.echo(f"  Project: {proj}")

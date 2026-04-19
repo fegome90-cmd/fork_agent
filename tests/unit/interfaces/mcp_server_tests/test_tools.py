@@ -1179,106 +1179,64 @@ class TestAuditFixes:
 # register_tools smoke test
 
 
-class TestMemorySaveRedaction:
-    """Verify PII redaction is applied in memory_save."""
+class TestMemorySavePassthrough:
+    """Verify MCP layer passes data through to service (redaction is in service layer)."""
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_api_key_in_content_gets_redacted(self, mock_get: MagicMock) -> None:
+    def test_content_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save
 
         obs = _make_observation(id="redact-1")
         mock_get.return_value.save.return_value = obs
 
-        memory_save(content="Use api_key=abcdefghijklmnopqrstuvwxyz for auth")
+        raw = "Use api_key=abcdefghijklmnopqrstuvwxyz for auth"
+        memory_save(content=raw)
 
         call_args = mock_get.return_value.save.call_args
-        assert "[REDACTED]" in call_args.kwargs["content"]
-        assert "abcdefghijklmnopqrstuvwxyz" not in call_args.kwargs["content"]
+        assert call_args.kwargs["content"] == raw
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_private_tag_in_content_gets_redacted(self, mock_get: MagicMock) -> None:
-        from src.interfaces.mcp.tools import memory_save
-
-        obs = _make_observation(id="redact-2")
-        mock_get.return_value.save.return_value = obs
-
-        memory_save(content="The config is <private>super_secret_value</private> here")
-
-        call_args = mock_get.return_value.save.call_args
-        assert "[REDACTED]" in call_args.kwargs["content"]
-        assert "super_secret_value" not in call_args.kwargs["content"]
-
-    @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_metadata_with_password_key_gets_redacted(self, mock_get: MagicMock) -> None:
+    def test_metadata_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save
 
         obs = _make_observation(id="redact-3")
         mock_get.return_value.save.return_value = obs
 
-        memory_save(
-            content="config note",
-            metadata={"password": "my_s3cret_p@ss"},
-        )
+        meta = {"password": "my_s3cret_p@ss"}
+        memory_save(content="config note", metadata=meta)
 
         call_args = mock_get.return_value.save.call_args
-        assert call_args.kwargs["metadata"]["password"] == "[REDACTED]"
+        assert call_args.kwargs["metadata"] == meta
+
+
+class TestMemoryUpdatePassthrough:
+    """Verify MCP layer passes update data through to service (redaction is in service layer)."""
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_clean_content_passes_through_unchanged(self, mock_get: MagicMock) -> None:
-        from src.interfaces.mcp.tools import memory_save
-
-        obs = _make_observation(id="clean-1")
-        mock_get.return_value.save.return_value = obs
-
-        original = "This is a normal observation about Python patterns"
-        memory_save(content=original)
-
-        call_args = mock_get.return_value.save.call_args
-        assert call_args.kwargs["content"] == original
-
-
-class TestMemoryUpdateRedaction:
-    """Verify PII redaction is applied in memory_update."""
-
-    @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_secret_in_content_gets_redacted(self, mock_get: MagicMock) -> None:
+    def test_content_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_update
 
         obs = _make_observation(id="upd-redact-1", content="updated")
         mock_get.return_value.update.return_value = obs
 
-        memory_update(id="upd-redact-1", content="secret=abc12345678901234567890")
+        raw = "secret=abc12345678901234567890"
+        memory_update(id="upd-redact-1", content=raw)
 
         call_args = mock_get.return_value.update.call_args
-        assert "[REDACTED]" in call_args.kwargs["content"]
+        assert call_args.kwargs["content"] == raw
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_clean_update_passes_through(self, mock_get: MagicMock) -> None:
-        from src.interfaces.mcp.tools import memory_update
-
-        obs = _make_observation(id="upd-clean-1")
-        mock_get.return_value.update.return_value = obs
-
-        original = "Updated with clean content"
-        memory_update(id="upd-clean-1", content=original)
-
-        call_args = mock_get.return_value.update.call_args
-        assert call_args.kwargs["content"] == original
-
-    @patch("src.interfaces.mcp.tools._get_memory_service")
-    def test_metadata_token_gets_redacted(self, mock_get: MagicMock) -> None:
+    def test_metadata_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_update
 
         obs = _make_observation(id="upd-meta-1")
         mock_get.return_value.update.return_value = obs
 
-        memory_update(
-            id="upd-meta-1",
-            metadata={"token": "ghp_ABCDEFGHIJKLMNOPQRST"},
-        )
+        meta = {"token": "ghp_ABCDEFGHIJKLMNOPQRST"}
+        memory_update(id="upd-meta-1", metadata=meta)
 
         call_args = mock_get.return_value.update.call_args
-        assert call_args.kwargs["metadata"]["token"] == "[REDACTED]"
+        assert call_args.kwargs["metadata"] == meta
 
 
 class TestRegisterTools:

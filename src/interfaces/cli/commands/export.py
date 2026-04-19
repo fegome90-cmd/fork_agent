@@ -25,8 +25,9 @@ def obsidian(
     from src.application.services.export.obsidian_export_service import ObsidianExportService
 
     service = ctx.obj
-    observations = service.get_recent(limit=limit or 1000)
+    observations = service.get_recent(limit=limit or 1000, project=project)
 
+    # CLI-level safety net: exclude observations without matching project
     if project:
         observations = [o for o in observations if o.project == project]
     if type_:
