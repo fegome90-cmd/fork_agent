@@ -24,3 +24,14 @@ repos:
     rev: v0.42.0  # Usa la última versión estable
     hooks:
       - id: pyrefly-check-types
+
+  # Trifecta context pack auto-sync
+  - repo: local
+    hooks:
+      - id: trifecta-sync
+        name: trifecta-sync
+        entry: scripts/trifecta-sync.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

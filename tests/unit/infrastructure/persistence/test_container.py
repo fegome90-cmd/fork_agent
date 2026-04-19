@@ -81,45 +81,19 @@ class TestGetWorkspaceManager:
     """Tests for get_workspace_manager factory function."""
 
     def test_returns_workspace_manager_instance(self) -> None:
-        """Should return a WorkspaceManager instance."""
-        with (
-            patch("src.infrastructure.persistence.container.WorkspaceManager") as MockWM,
-            patch("src.infrastructure.persistence.container.GitCommandExecutor") as MockGit,
-        ):
-            mock_git = MagicMock()
-            MockGit.return_value = mock_git
+        """Should return a WorkspaceManager instance via container."""
+        from src.application.services.workspace.workspace_manager import WorkspaceManager
 
-            mock_wm = MagicMock()
-            MockWM.return_value = mock_wm
+        db = Path("/tmp/test_wm.db")
+        result = get_workspace_manager(db)
+        assert isinstance(result, WorkspaceManager)
 
-            # Reset global to test fresh creation
-            import src.infrastructure.persistence.container as container_module
-
-            original = container_module._workspace_manager
-            container_module._workspace_manager = None
-
-            try:
-                result = get_workspace_manager()
-
-                assert result is mock_wm
-                MockWM.assert_called_once()
-            finally:
-                container_module._workspace_manager = original
-
-    def test_returns_singleton_instance(self) -> None:
-        """Should return the same instance on subsequent calls."""
-        import src.infrastructure.persistence.container as container_module
-
-        original = container_module._workspace_manager
-
-        mock_manager = MagicMock()
-        container_module._workspace_manager = mock_manager
-
-        try:
-            result = get_workspace_manager()
-            assert result is mock_manager
-        finally:
-            container_module._workspace_manager = original
+    def test_returns_container_singleton(self) -> None:
+        """Should return the same instance for same db_path."""
+        db = Path("/tmp/test_wm_singleton.db")
+        result1 = get_workspace_manager(db)
+        result2 = get_workspace_manager(db)
+        assert result1 is result2
 
 
 class TestDetectMemoryDbPath:

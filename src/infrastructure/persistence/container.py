@@ -187,6 +187,22 @@ class Container(containers.DeclarativeContainer):
         store=message_repository,
     )
 
+    # Workspace infrastructure
+    git_executor = providers.Singleton(GitCommandExecutor)
+
+    workspace_config = providers.Singleton(
+        WorkspaceConfig,
+        default_layout=LayoutType.NESTED,
+        auto_cleanup=True,
+        hooks_dir=None,
+    )
+
+    workspace_manager = providers.Singleton(
+        WorkspaceManager,
+        git_executor=git_executor,
+        config=workspace_config,
+    )
+
 
 
 def create_container(
@@ -261,7 +277,6 @@ _container_cache: dict[str, Container] = {}
 _container_lock = Lock()
 
 # Global singleton instances for non-container services
-_workspace_manager: WorkspaceManager | None = None
 _hook_service: HookService | None = None
 _workflow_executor: WorkflowExecutor | None = None
 
@@ -327,18 +342,9 @@ def get_promise_repository(db_path: Path | None = None) -> PromiseContractReposi
     return get_container(db_path).promise_contract_repository()  # type: ignore[no-any-return]
 
 
-def get_workspace_manager() -> WorkspaceManager:
-    """Get the singleton WorkspaceManager instance."""
-    global _workspace_manager
-    if _workspace_manager is None:
-        git_executor = GitCommandExecutor()
-        config = WorkspaceConfig(
-            default_layout=LayoutType.NESTED,
-            auto_cleanup=True,
-            hooks_dir=None,
-        )
-        _workspace_manager = WorkspaceManager(git_executor, config)
-    return _workspace_manager
+def get_workspace_manager(db_path: Path | None = None) -> WorkspaceManager:
+    """Get the WorkspaceManager instance via DI container."""
+    return get_container(db_path).workspace_manager()  # type: ignore[no-any-return]
 
 
 def get_workflow_executor() -> WorkflowExecutor:
