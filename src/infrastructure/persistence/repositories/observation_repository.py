@@ -478,12 +478,26 @@ class ObservationRepository:
         project = self._normalize_project(observation.project)
         metadata_json = json.dumps(observation.metadata) if observation.metadata else "{}"
 
-        # Use a subquery to pick exactly ONE row to update, avoiding
-        # UNIQUE constraint violations when multiple rows share the same
-        # topic_key with different projects.
-        # Match by topic_key alone — project is mutable (can change on upsert).
-        where_clause = "id = (SELECT id FROM observations WHERE LOWER(topic_key) = ? ORDER BY revision_count DESC LIMIT 1)"
-        where_params: tuple[str, ...] = (normalized_key,)
+        # Use a subquery to pick exactly ONE row to update.
+        # Strategy: prefer same-project match, then fall back to project-agnostic (NULL).
+        # This handles both:
+        #   - scoped upsert: match by (topic_key, project) when project provided
+        #   - global upsert: match by topic_key alone when project is None
+        if project:
+            where_clause = """id = (
+                SELECT id FROM observations
+                WHERE LOWER(topic_key) = ?
+                ORDER BY project = ? DESC, project IS NULL DESC, revision_count DESC
+                LIMIT 1
+            )"""
+            where_params: tuple[str, ...] = (normalized_key, project)
+        else:
+            where_clause = """id = (
+                SELECT id FROM observations
+                WHERE LOWER(topic_key) = ? AND project IS NULL
+                LIMIT 1
+            )"""
+            where_params: tuple[str, ...] = (normalized_key,)
 
         sql = f"""
             UPDATE observations SET

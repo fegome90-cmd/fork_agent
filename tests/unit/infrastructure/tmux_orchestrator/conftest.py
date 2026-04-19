@@ -5,9 +5,11 @@ the full test suite to hang. Skip until the module is properly wired.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-_THIS_DIR = __file__.rstrip("conftest.py")
+_THIS_DIR = str(Path(__file__).parent) + "/"
 
 
 def pytest_collection_modifyitems(items: list) -> None:

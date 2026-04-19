@@ -39,7 +39,7 @@ class TestGetCommand:
         mock_memory.get_by_id.side_effect = __import__(
             "src.application.exceptions", fromlist=["ObservationNotFoundError"]
         ).ObservationNotFoundError("Not found")
-        mock_memory._repository.get_all.return_value = [
+        mock_memory.get_by_id_prefix.return_value = [
             Observation(id=full_id, timestamp=1000, content="found by short id"),
         ]
 

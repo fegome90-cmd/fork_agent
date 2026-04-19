@@ -34,7 +34,7 @@ def mock_env(tmp_path, monkeypatch):
         "status_file": tmp_path / "_ctx" / "telemetry" / "daemon.status"
     }
 
-def test_daemon_healthy(mock_env, _monkeypatch):
+def test_daemon_healthy(mock_env):  # noqa: ARG001
     """Scenario: Daemon is running and healthy."""
     pid = "12345"
     mock_env["pid_file"].write_text(pid)

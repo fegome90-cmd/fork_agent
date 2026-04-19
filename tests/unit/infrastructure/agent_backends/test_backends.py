@@ -32,7 +32,10 @@ class TestOpencodeBackend:
 
     def test_is_available_returns_false_when_not_installed(self) -> None:
         backend = OpencodeBackend()
-        with patch("shutil.which", return_value=None):
+        with (
+            patch("shutil.which", return_value=None),
+            patch.object(backend, "_is_executable", return_value=False),
+        ):
             assert backend.is_available() is False
 
     def test_get_launch_command_basic(self) -> None:
@@ -58,7 +61,7 @@ class TestOpencodeBackend:
 
     def test_get_default_model(self) -> None:
         backend = OpencodeBackend()
-        assert backend.get_default_model() == "opencode/glm-5-free"
+        assert backend.get_default_model() == "opencode/minimax-m2.5-free"
 
 
 class TestPiBackend:

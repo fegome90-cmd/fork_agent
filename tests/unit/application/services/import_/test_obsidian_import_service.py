@@ -173,7 +173,7 @@ class TestImportProjectOverride:
     def test_project_override(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_project: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(content: str, **kwargs: object) -> str:  # noqa: ARG001 -> str:
             nonlocal saved_project
             saved_project = kwargs.get("project")  # type: ignore[assignment]
             return "fake-id"
@@ -223,7 +223,7 @@ class TestImportDerivesTopicKeyFromPath:
     def test_derives_from_path(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_topic: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(content: str, **kwargs: object) -> str:  # noqa: ARG001 -> str:
             nonlocal saved_topic
             saved_topic = kwargs.get("topic_key")  # type: ignore[assignment]
             return "fake-id"
@@ -251,7 +251,7 @@ class TestImportStripsH1Title:
     def test_strips_h1_from_content(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_content: str | None = None
 
-        def capture_save(content: str, **_kwargs: object) -> str:
+        def capture_save(content: str, **_kwargs: object) -> str:  # noqa: ARG001
             nonlocal saved_content
             saved_content = content
             return "fake-id"
@@ -300,7 +300,7 @@ class TestImportMissingTypeDefaults:
     def test_default_type(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_type: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(content: str, **kwargs: object) -> str:  # noqa: ARG001 -> str:
             nonlocal saved_type
             saved_type = kwargs.get("type")  # type: ignore[assignment]
             return "fake-id"
@@ -354,5 +354,5 @@ class TestImportEmptyDir:
 # --- Helpers ---
 
 
-def _fake_save(content: str, **_kwargs: object) -> str:
+def _fake_save(content: str, **_kwargs: object) -> str:  # noqa: ARG001 -> str:
     return "fake-id"

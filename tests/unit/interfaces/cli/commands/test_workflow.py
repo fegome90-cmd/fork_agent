@@ -181,7 +181,11 @@ class TestWorkflowVerify:
             ),
             patch(
                 "src.interfaces.cli.commands.workflow._dispatch_event",
-                side_effect=lambda event, _context="": dispatched.append(event),
+                side_effect=lambda event, _context="", **_kwargs: dispatched.append(event),
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.verify_runner.run",
+                return_value={"passed": True, "exit_code": 0, "test_count": 1, "fail_count": 0, "duration_ms": 100},
             ),
         ):
             result = runner.invoke(get_app(), ["verify"])
@@ -258,7 +262,7 @@ class TestWorkflowShip:
             ),
             patch(
                 "src.interfaces.cli.commands.workflow._dispatch_event",
-                side_effect=lambda event, _context="": dispatched.append(event),
+                side_effect=lambda event, _context="", **_kwargs: dispatched.append(event),
             ),
         ):
             result = runner.invoke(get_app(), ["ship"])

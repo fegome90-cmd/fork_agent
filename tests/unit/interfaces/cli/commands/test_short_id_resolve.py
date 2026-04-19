@@ -21,7 +21,7 @@ class TestBug19UpdateShortId:
         full_id = "abc12345-def6-7890-abcd-ef1234567890"
         mock_memory = MagicMock()
         mock_memory.get_by_id.side_effect = ObservationNotFoundError("not found")
-        mock_memory._repository.get_all.return_value = [
+        mock_memory.get_by_id_prefix.return_value = [
             Observation(id=full_id, timestamp=1000, content="original")
         ]
         mock_memory.update.return_value = Observation(
@@ -46,7 +46,7 @@ class TestBug19UpdateShortId:
 
         mock_memory = MagicMock()
         mock_memory.get_by_id.side_effect = ObservationNotFoundError("not found")
-        mock_memory._repository.get_all.return_value = [
+        mock_memory.get_by_id_prefix.return_value = [
             Observation(id="abc12345-def6-7890-abcd-ef1234567890", timestamp=1000, content="a"),
             Observation(id="abc12345-aaaa-7890-abcd-ef1234567890", timestamp=1000, content="b"),
         ]
@@ -65,7 +65,7 @@ class TestBug19UpdateShortId:
 
         mock_memory = MagicMock()
         mock_memory.get_by_id.side_effect = ObservationNotFoundError("not found")
-        mock_memory._repository.get_all.return_value = []
+        mock_memory.get_by_id_prefix.return_value = []
 
         result = runner.invoke(
             app,
@@ -86,7 +86,7 @@ class TestBug19DeleteShortId:
         full_id = "abc12345-def6-7890-abcd-ef1234567890"
         mock_memory = MagicMock()
         mock_memory.get_by_id.side_effect = ObservationNotFoundError("not found")
-        mock_memory._repository.get_all.return_value = [
+        mock_memory.get_by_id_prefix.return_value = [
             Observation(id=full_id, timestamp=1000, content="to delete")
         ]
         mock_memory.delete.return_value = None
@@ -106,7 +106,7 @@ class TestBug19DeleteShortId:
 
         mock_memory = MagicMock()
         mock_memory.get_by_id.side_effect = ObservationNotFoundError("not found")
-        mock_memory._repository.get_all.return_value = [
+        mock_memory.get_by_id_prefix.return_value = [
             Observation(id="abc12345-def6-7890-abcd-ef1234567890", timestamp=1000, content="a"),
             Observation(id="abc12345-aaaa-7890-abcd-ef1234567890", timestamp=1000, content="b"),
         ]
