@@ -141,6 +141,10 @@ class TestWorkflowVerify:
                 "src.interfaces.cli.commands.workflow.get_verify_state_path",
                 return_value=tmp_path / "verify-state.json",
             ),
+            patch(
+                "src.interfaces.cli.commands.workflow.verify_runner.run",
+                return_value={"passed": True, "exit_code": 0, "test_count": 1, "fail_count": 0, "duration_ms": 100},
+            ),
         ):
             result = runner.invoke(get_app(), ["verify"])
 

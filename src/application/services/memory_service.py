@@ -42,7 +42,7 @@ class MemoryService:
 
         existing_for_topic = None
         if topic_key:
-            existing_for_topic = self._repository.get_by_topic_key(topic_key, project=project)
+            existing_for_topic = self._repository.get_by_topic_key(topic_key, project=None)
 
         observation = Observation(
             id=str(uuid.uuid4()),
@@ -203,6 +203,10 @@ class MemoryService:
 
     def get_by_id(self, observation_id: str) -> Observation:
         return self._repository.get_by_id(observation_id)
+
+    def get_by_id_prefix(self, prefix: str) -> list[Observation]:
+        """Get observations that match the given ID prefix."""
+        return self._repository.get_by_id_prefix(prefix)
 
     def delete(self, observation_id: str) -> None:
         self._repository.delete(observation_id)

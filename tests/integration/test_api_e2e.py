@@ -130,7 +130,7 @@ def test_create_observation_missing_content(client: TestClient):
 
 
 def test_create_observation_stores_sensitive_data(client: TestClient):
-    """Verify that content is stored as-is (redaction is export-only, not storage)."""
+    """Verify that PII is redacted at storage (service layer redaction)."""
     response = client.post(
         "/api/v1/memory",
         json={"content": "my API key is api_key=sk-1234567890abcdef1234567890 and password=supersecret123"},
@@ -138,9 +138,10 @@ def test_create_observation_stores_sensitive_data(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     content = data["data"]["content"]
-    # Redaction is export-only; storage preserves original content
-    assert "sk-1234567890abcdef1234567890" in content
-    assert "supersecret123" in content
+    # PII redaction wired at service layer (all 4 entrypoints)
+    assert "[REDACTED]" in content
+    assert "sk-1234567890abcdef1234567890" not in content
+    assert "supersecret123" not in content
 
 
 # --- Memory: List observations ---

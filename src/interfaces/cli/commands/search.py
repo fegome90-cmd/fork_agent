@@ -17,6 +17,18 @@ def _auto_detect_project() -> str | None:
     return Path(os.getcwd()).name
 
 
+def _should_auto_detect(ctx: typer.Context) -> bool:
+    """Skip auto-detect when --db is explicitly provided (test/isolated DB)."""
+    db_path = None
+    parent = getattr(ctx, "parent", None)
+    if parent and hasattr(parent, "params"):
+        db_path = parent.params.get("db_path")
+    if db_path is None:
+        db_path = ctx.params.get("db_path")
+    default_db = str(Path(os.getcwd()) / "data" / "memory.db")
+    return db_path is None or str(db_path) == default_db
+
+
 def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     """Get database path from CLI context."""
     current = ctx
@@ -35,7 +47,7 @@ def search(
     project: str | None = typer.Option(None, "--project", "-p", help="Filter by project (auto-detected from CWD)"),
 ) -> None:
     memory_service = ctx.obj
-    effective_project = project if project is not None else _auto_detect_project()
+    effective_project = project if project is not None else (_auto_detect_project() if _should_auto_detect(ctx) else None)
     results = memory_service.search(query=query, limit=limit, project=effective_project)
 
     if not results:

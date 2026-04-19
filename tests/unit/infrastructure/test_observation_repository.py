@@ -546,3 +546,104 @@ class TestObservationRepositoryErrorHandling:
 
         with pytest.raises(RepositoryError):
             repo.get_by_timestamp_range(1000, 2000)
+
+
+class TestObservationRepositoryUpsertTopicKey:
+    """Tests for ObservationRepository.upsert_topic_key operation."""
+
+    @pytest.fixture
+    def db_connection(self, tmp_path: Path) -> DatabaseConnection:
+        db_path = tmp_path / "test.db"
+        config = DatabaseConfig(db_path=db_path)
+        migrations_dir = (
+            Path(__file__).parent.parent.parent.parent / "src/infrastructure/persistence/migrations"
+        )
+        run_migrations(config, migrations_dir)
+        return DatabaseConnection(config)
+
+    def test_upsert_topic_key_updates_existing(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        obs1 = Observation(
+            id="obs-001",
+            timestamp=1000,
+            content="Original",
+            topic_key="my-topic",
+        )
+        repo.create(obs1)
+
+        updated = Observation(
+            id="obs-new-id",  # ID should be ignored during upsert
+            timestamp=2000,
+            content="Updated",
+            topic_key="my-topic",
+        )
+        result = repo.upsert_topic_key(updated)
+
+        assert result.id == "obs-001"
+        assert result.content == "Updated"
+        assert result.revision_count == 2
+
+    def test_upsert_topic_key_with_project_scoping(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        obs_global = Observation(id="global", timestamp=1000, content="G", topic_key="t")
+        obs_proj = Observation(id="p1", timestamp=1000, content="P1", topic_key="t", project="proj1")
+        repo.create(obs_global)
+        repo.create(obs_proj)
+
+        # Update global specifically
+        upd_global = Observation(id="any", timestamp=2000, content="G-upd", topic_key="t")
+        res_g = repo.upsert_topic_key(upd_global)
+        assert res_g.id == "global"
+
+        # Update proj1 specifically
+        upd_proj = Observation(id="any", timestamp=2000, content="P1-upd", topic_key="t", project="proj1")
+        res_p = repo.upsert_topic_key(upd_proj)
+        assert res_p.id == "p1"
+
+
+class TestObservationRepositoryGetByIdPrefix:
+    """Tests for ObservationRepository.get_by_id_prefix operation."""
+
+    @pytest.fixture
+    def db_connection(self, tmp_path: Path) -> DatabaseConnection:
+        db_path = tmp_path / "test.db"
+        config = DatabaseConfig(db_path=db_path)
+        migrations_dir = (
+            Path(__file__).parent.parent.parent.parent / "src/infrastructure/persistence/migrations"
+        )
+        run_migrations(config, migrations_dir)
+        return DatabaseConnection(config)
+
+    def test_get_by_id_prefix_returns_matches(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(Observation(id="abcdef123", timestamp=1000, content="C1"))
+        repo.create(Observation(id="abcxyz789", timestamp=1000, content="C2"))
+        repo.create(Observation(id="def123456", timestamp=1000, content="C3"))
+
+        matches = repo.get_by_id_prefix("abc")
+        assert len(matches) == 2
+        ids = {m.id for m in matches}
+        assert "abcdef123" in ids
+        assert "abcxyz789" in ids
+
+    def test_get_by_id_prefix_no_match(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(Observation(id="123", timestamp=1000, content="C"))
+
+        assert repo.get_by_id_prefix("999") == []

@@ -206,6 +206,27 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observation: {e}", e) from e
 
+    def get_by_id_prefix(self, prefix: str) -> list[Observation]:
+        """Retrieve observations that start with the given ID prefix.
+
+        Args:
+            prefix: The ID prefix to search for.
+
+        Returns:
+            List of matching observation entities.
+        """
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    f"SELECT {_SELECT_COLUMNS} FROM observations WHERE id LIKE ?",
+                    (f"{prefix}%",),
+                )
+                rows = cursor.fetchall()
+
+            return [self._row_to_observation(row) for row in rows]
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to get observations by prefix: {e}", e) from e
+
     def get_all(
         self,
         limit: int | None = None,
@@ -460,18 +481,9 @@ class ObservationRepository:
         # Use a subquery to pick exactly ONE row to update, avoiding
         # UNIQUE constraint violations when multiple rows share the same
         # topic_key with different projects.
-        # Prefer same-project match, fall back to project=NULL.
-        if project:
-            where_clause = """id = (
-                SELECT id FROM observations
-                WHERE LOWER(topic_key) = ? AND (project = ? OR project IS NULL)
-                ORDER BY project = ? DESC
-                LIMIT 1
-            )"""
-            where_params: tuple[str, ...] = (normalized_key, project, project)
-        else:
-            where_clause = "LOWER(topic_key) = ?"
-            where_params = (normalized_key,)
+        # Match by topic_key alone — project is mutable (can change on upsert).
+        where_clause = "id = (SELECT id FROM observations WHERE LOWER(topic_key) = ? ORDER BY revision_count DESC LIMIT 1)"
+        where_params: tuple[str, ...] = (normalized_key,)
 
         sql = f"""
             UPDATE observations SET
