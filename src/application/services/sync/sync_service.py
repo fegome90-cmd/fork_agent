@@ -1,0 +1,649 @@
+"""Sync service for export/import operations with mutation tracking."""
+from __future__ import annotations
+
+import gzip
+import hashlib
+import json
+import logging
+import time
+from pathlib import Path
+from typing import Any, Protocol
+
+from src.domain.entities.observation import Observation
+from src.domain.entities.sync import SyncChunk, SyncMutation, SyncStatus
+
+logger = logging.getLogger(__name__)
+
+
+class ObservationRepositoryProtocol(Protocol):
+    """Protocol for observation repository dependencies."""
+
+    def get_all(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        type: str | None = None,
+    ) -> list[Observation]:
+        ...
+
+    def create(self, observation: Observation) -> None:
+        ...
+
+    def get_by_id(self, observation_id: str) -> Observation:
+        ...
+
+    def delete(self, observation_id: str) -> None:
+        ...
+
+    def update(self, observation: Observation) -> None:
+        ...
+
+
+class SyncRepositoryProtocol(Protocol):
+    """Protocol for sync repository dependencies."""
+
+    def record_chunk(self, chunk: SyncChunk) -> None:
+        ...
+
+    def get_chunk_by_id(self, chunk_id: str) -> SyncChunk | None:
+        ...
+
+    def list_chunks(self, source: str | None = None) -> list[SyncChunk]:
+        ...
+
+    def record_mutation(
+        self,
+        entity: str,
+        entity_key: str,
+        op: str,
+        payload: str,
+        source: str,
+        project: str,
+    ) -> int:
+        ...
+
+    def get_mutations_since(self, seq: int, limit: int | None = None) -> list[SyncMutation]:
+        ...
+
+    def get_latest_seq(self) -> int:
+        ...
+
+    def get_status(self) -> SyncStatus:
+        ...
+
+    def update_status(
+        self,
+        last_export_at: int | None = None,
+        last_import_at: int | None = None,
+        last_export_seq: int | None = None,
+        mutation_count: int | None = None,
+    ) -> None:
+        ...
+
+
+class SyncService:
+    """Service for sync operations: export, import, and mutation tracking."""
+
+    def __init__(
+        self,
+        observation_repo: ObservationRepositoryProtocol,
+        sync_repo: SyncRepositoryProtocol,
+        export_dir: Path = Path("~/.local/share/fork/sync").expanduser(),
+        export_version: int = 1,
+    ) -> None:
+        """Initialize the sync service.
+
+        Args:
+            observation_repo: Repository for observation operations
+            sync_repo: Repository for sync tracking
+            export_dir: Directory for export files
+            export_version: Export format version
+        """
+        self._observation_repo = observation_repo
+        self._sync_repo = sync_repo
+        self._export_dir = export_dir
+        self._export_version = export_version
+
+    def export_observations(
+        self,
+        project: str | None = None,
+        chunk_size: int = 100,
+    ) -> list[Path]:
+        """Export observations to chunked JSONL files.
+
+        Args:
+            project: Optional project filter
+            chunk_size: Number of observations per chunk
+
+        Returns:
+            List of chunk file paths created
+        """
+        self._export_dir.mkdir(parents=True, exist_ok=True)
+
+        observations = self._observation_repo.get_all()
+
+        if project:
+            observations = [o for o in observations if o.project == project]
+
+        if not observations:
+            logger.info("No observations to export")
+            return []
+
+        observations.sort(key=lambda o: o.timestamp)
+
+        chunk_paths: list[Path] = []
+        total_observations = len(observations)
+        chunk_count = (total_observations + chunk_size - 1) // chunk_size
+        timestamp = int(time.time() * 1000)
+
+        for i in range(chunk_count):
+            start_idx = i * chunk_size
+            end_idx = min((i + 1) * chunk_size, total_observations)
+            chunk_obs = observations[start_idx:end_idx]
+
+            chunk_path = self._write_chunk(chunk_obs, i, timestamp)
+            chunk_paths.append(chunk_path)
+
+        self._write_manifest(chunk_paths, total_observations, timestamp)
+
+        latest_seq = self._sync_repo.get_latest_seq()
+        self._sync_repo.update_status(
+            last_export_at=timestamp,
+            last_export_seq=latest_seq,
+        )
+
+        logger.info(
+            "Exported %d observations in %d chunks to %s",
+            total_observations,
+            len(chunk_paths),
+            self._export_dir,
+        )
+
+        return chunk_paths
+
+    def _write_chunk(self, observations: list[Observation], index: int, timestamp: int) -> Path:
+        """Write a single chunk to a gzipped JSONL file."""
+        chunk_id = f"sync_{timestamp}_{index:03d}"
+        chunk_path = self._export_dir / f"{chunk_id}.jsonl.gz"
+
+        lines: list[str] = []
+        for obs in observations:
+            obs_dict: dict[str, Any] = {
+                "id": obs.id,
+                "timestamp": obs.timestamp,
+                "content": obs.content,
+                "metadata": obs.metadata,
+                "idempotency_key": obs.idempotency_key,
+                "project": obs.project,
+                "type": obs.type,
+                "topic_key": obs.topic_key,
+                "revision_count": obs.revision_count,
+                "session_id": obs.session_id,
+            }
+            lines.append(json.dumps(obs_dict, separators=(",", ":")))
+
+        content = "\n".join(lines).encode("utf-8")
+
+        with gzip.open(chunk_path, "wb") as f:
+            f.write(content)
+
+        return chunk_path
+
+    def _write_manifest(
+        self,
+        chunk_paths: list[Path],
+        total_observations: int,
+        timestamp: int,
+    ) -> None:
+        """Write the export manifest file."""
+        hasher = hashlib.sha256()
+        for chunk_path in chunk_paths:
+            with open(chunk_path, "rb") as f:
+                hasher.update(f.read())
+        checksum = f"sha256:{hasher.hexdigest()}"
+
+        manifest: dict[str, Any] = {
+            "chunk_count": len(chunk_paths),
+            "total_observations": total_observations,
+            "checksum": checksum,
+            "created_at": timestamp,
+            "export_version": self._export_version,
+        }
+
+        manifest_path = self._export_dir / f"manifest_{timestamp}.json"
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f, indent=2)
+
+    def _validate_manifest(
+        self,
+        chunk_paths: list[Path],
+        manifest_path: Path | None = None,
+    ) -> bool:
+        """Verify SHA256 checksum of chunks matches manifest.
+
+        Args:
+            chunk_paths: List of chunk files to verify.
+            manifest_path: Optional manifest file. If None, skips validation.
+
+        Returns:
+            True if valid or no manifest to check.
+
+        Raises:
+            ValueError: If checksum mismatch detected.
+        """
+        if manifest_path is None or not manifest_path.exists():
+            return True
+
+        try:
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            raise ValueError(f"Invalid manifest file: {e}") from e
+
+        expected = manifest.get("checksum", "")
+        if not expected or not expected.startswith("sha256:"):
+            return True  # Legacy manifest without checksum
+
+        hasher = hashlib.sha256()
+        for chunk_path in sorted(chunk_paths):
+            if chunk_path.exists():
+                with open(chunk_path, "rb") as f:
+                    hasher.update(f.read())
+
+        actual = f"sha256:{hasher.hexdigest()}"
+        if actual != expected:
+            raise ValueError(
+                f"Manifest checksum mismatch: expected {expected}, got {actual}"
+            )
+        return True
+
+    def import_observations(
+        self,
+        chunk_paths: list[Path],
+        source: str = "import",
+        manifest_path: Path | None = None,
+    ) -> int:
+        """Import observations from JSONL chunks.
+
+        Args:
+            chunk_paths: List of chunk file paths to import
+            source: Source identifier for the import
+            manifest_path: Optional manifest file for checksum validation.
+
+        Returns:
+            Number of observations imported
+        """
+        self._validate_manifest(chunk_paths, manifest_path)
+
+        imported_count = 0
+        timestamp = int(time.time() * 1000)
+
+        # Suppress mutation recording during import to avoid ghost mutations
+        self._disable_obs_mutation_recording()
+        try:
+            for chunk_path in chunk_paths:
+                if not chunk_path.exists():
+                    logger.warning("Chunk file not found: %s", chunk_path)
+                    continue
+
+                chunk_id = chunk_path.stem.replace(".jsonl", "")
+                if self._sync_repo.get_chunk_by_id(chunk_id):
+                    logger.info("Chunk %s already imported, skipping", chunk_id)
+                    continue
+
+                obs_count = self._import_single_chunk(chunk_path, source)
+                imported_count += obs_count
+
+                # Record chunk
+                checksum = self._calculate_checksum(chunk_path)
+                chunk = SyncChunk(
+                    chunk_id=chunk_id,
+                    source=source,
+                    imported_at=timestamp,
+                    observation_count=obs_count,
+                    checksum=checksum,
+                )
+                self._sync_repo.record_chunk(chunk)
+        finally:
+            self._enable_obs_mutation_recording()
+
+        if imported_count > 0:
+            self._sync_repo.update_status(last_import_at=timestamp)
+
+        logger.info(
+            "Imported %d observations from %s chunks",
+            imported_count,
+            len(chunk_paths),
+        )
+
+        return imported_count
+
+    def _import_single_chunk(self, chunk_path: Path, _source: str) -> int:
+        """Import observations from a single chunk file.
+
+        Args:
+            chunk_path: Path to the chunk file
+            source: Source identifier
+
+        Returns:
+            Number of observations imported from this chunk
+        """
+        imported = 0
+
+        with gzip.open(chunk_path, "rt", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    obs_dict = json.loads(line)
+                    # Validate type against allowed values
+                    obs_type = obs_dict.get("type")
+                    if obs_type is not None:
+                        from src.domain.entities.observation import Observation as _Obs
+                        if obs_type not in _Obs._ALLOWED_TYPES:
+                            logger.warning("Skipping obs %s with invalid type: %s", obs_dict.get("id", "?"), obs_type)
+                            obs_type = None
+                    observation = Observation(
+                        id=obs_dict["id"],
+                        timestamp=obs_dict["timestamp"],
+                        content=obs_dict["content"],
+                        metadata=obs_dict.get("metadata"),
+                        idempotency_key=obs_dict.get("idempotency_key"),
+                        project=obs_dict.get("project"),
+                        type=obs_type,
+                        topic_key=obs_dict.get("topic_key"),
+                        revision_count=obs_dict.get("revision_count", 1),
+                        session_id=obs_dict.get("session_id"),
+                    )
+
+                    # Try to create; if duplicate ID, skip silently
+                    try:
+                        self._observation_repo.create(observation)
+                        imported += 1
+                    except Exception as e:
+                        if "already exists" in str(e).lower():
+                            logger.debug("Skipping duplicate observation: %s", observation.id)
+                        else:
+                            raise
+
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning("Failed to parse observation: %s", e)
+                    continue
+
+        return imported
+
+    def _calculate_checksum(self, file_path: Path) -> str:
+        """Calculate SHA256 checksum of a file."""
+        hasher = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            hasher.update(f.read())
+        return f"sha256:{hasher.hexdigest()}"
+
+    def get_status(self) -> dict[str, Any]:
+        """Get sync status: total obs, last sync, mutation count.
+
+        Returns:
+            Dictionary with sync status information
+        """
+        status = self._sync_repo.get_status()
+        latest_seq = self._sync_repo.get_latest_seq()
+
+        # Count total observations
+        all_obs = self._observation_repo.get_all()
+        total_obs = len(all_obs)
+
+        return {
+            "total_observations": total_obs,
+            "last_export_at": status.last_export_at,
+            "last_import_at": status.last_import_at,
+            "last_export_seq": status.last_export_seq,
+            "latest_seq": latest_seq,
+            "mutation_count": status.mutation_count,
+        }
+
+    def get_mutations_since(self, seq: int) -> list[SyncMutation]:
+        """Get mutations since given sequence number.
+
+        Args:
+            seq: The sequence number to start from (exclusive)
+
+        Returns:
+            List of mutations ordered by sequence number
+        """
+        return self._sync_repo.get_mutations_since(seq)
+
+    def _disable_obs_mutation_recording(self) -> None:
+        """Disable mutation recording on the observation repo (for imports)."""
+        repo = self._observation_repo
+        if hasattr(repo, "disable_mutation_recording"):
+            repo.disable_mutation_recording()
+
+    def _enable_obs_mutation_recording(self) -> None:
+        """Re-enable mutation recording on the observation repo."""
+        repo = self._observation_repo
+        if hasattr(repo, "enable_mutation_recording"):
+            repo.enable_mutation_recording()
+
+    def record_mutation(
+        self,
+        entity: str,
+        entity_key: str,
+        op: str,
+        payload: str,
+        source: str = "local",
+        project: str = "",
+    ) -> None:
+        """Record a mutation in the journal.
+
+        Note: This method is not called externally. Mutation recording is
+        handled automatically by ObservationRepository when sync_repo is
+        configured. Prefer relying on repository-level mutation tracking
+        rather than calling this method directly.
+
+        Args:
+            entity: Entity type (e.g., "observation")
+            entity_key: Unique key for the entity
+            op: Operation type (insert, update, delete)
+            payload: JSON string containing mutation data
+            source: Source of the mutation
+            project: Project scope
+        """
+        self._sync_repo.record_mutation(
+            entity=entity,
+            entity_key=entity_key,
+            op=op,
+            payload=payload,
+            source=source,
+            project=project,
+        )
+
+    # ------------------------------------------------------------------
+    # Incremental sync (mutations-based)
+    # ------------------------------------------------------------------
+
+    def export_incremental(
+        self,
+        _project: str | None = None,
+        chunk_size: int = 100,
+    ) -> list[Path]:
+        """Export only mutations since last export.
+
+        Writes mutations as JSONL.gz chunks. Each line is a mutation with
+        its payload (full observation data for insert/update, id-only for delete).
+
+        Returns:
+            List of chunk file paths.
+        """
+        status = self._sync_repo.get_status()
+        last_seq = status.last_export_seq or 0
+        mutations = self._sync_repo.get_mutations_since(last_seq)
+
+        if not mutations:
+            return []
+
+        self._export_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = int(time.time() * 1000)
+        paths: list[Path] = []
+
+        max_seq = last_seq
+        for i in range(0, len(mutations), chunk_size):
+            batch = mutations[i : i + chunk_size]
+            chunk_path = self._write_mutation_chunk(batch, i // chunk_size, timestamp)
+            paths.append(chunk_path)
+            max_seq = max(m.seq for m in batch)
+
+        # Write manifest
+        self._write_manifest(paths, len(mutations), timestamp)
+
+        # Update status
+        self._sync_repo.update_status(
+            last_export_at=timestamp,
+            last_export_seq=max_seq,
+        )
+
+        logger.info(
+            "Exported %d mutations (seq %d-%d) to %d chunks",
+            len(mutations),
+            last_seq + 1,
+            max_seq,
+            len(paths),
+        )
+        return paths
+
+    def _write_mutation_chunk(
+        self,
+        mutations: list[SyncMutation],
+        index: int,
+        timestamp: int,
+    ) -> Path:
+        """Write a list of mutations to a gzipped JSONL chunk."""
+        chunk_id = f"mutation_{timestamp}_{index:03d}"
+        chunk_path = self._export_dir / f"{chunk_id}.jsonl.gz"
+
+        with gzip.open(chunk_path, "wt", encoding="utf-8") as f:
+            for m in mutations:
+                line = json.dumps(
+                    {
+                        "seq": m.seq,
+                        "entity": m.entity,
+                        "entity_key": m.entity_key,
+                        "op": m.op,
+                        "payload": m.payload,
+                        "source": m.source,
+                        "project": m.project,
+                        "created_at": m.created_at,
+                    },
+                    ensure_ascii=False,
+                )
+                f.write(line + "\n")
+
+        return chunk_path
+
+    def import_mutations(
+        self,
+        chunk_paths: list[Path],
+        source: str = "pull",
+        manifest_path: Path | None = None,
+    ) -> dict[str, int]:
+        """Import mutations from incremental chunks.
+
+        Applies each mutation in order:
+        - insert: INSERT OR IGNORE
+        - update: upsert (insert if missing, update if exists)
+        - delete: DELETE if exists
+
+        Returns:
+            Dictionary with counts: {"inserted": N, "updated": N, "deleted": N, "skipped": N}
+        """
+        self._validate_manifest(chunk_paths, manifest_path)
+
+        counts: dict[str, int] = {"inserted": 0, "updated": 0, "deleted": 0, "skipped": 0}
+        timestamp = int(time.time() * 1000)
+
+        # Suppress mutation recording during import to avoid ghost mutations
+        self._disable_obs_mutation_recording()
+        try:
+            for chunk_path in chunk_paths:
+                chunk_id = chunk_path.stem
+                if self._sync_repo.get_chunk_by_id(chunk_id) is not None:
+                    logger.debug("Skipping already-imported chunk: %s", chunk_id)
+                    continue
+
+                obs_count = 0
+                with gzip.open(chunk_path, "rt", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            mutation = json.loads(line)
+                            applied = self._apply_mutation(mutation)
+                            counts[applied] += 1
+                            if applied != "skipped":
+                                obs_count += 1
+                        except (json.JSONDecodeError, KeyError) as e:
+                            logger.warning("Failed to parse mutation: %s", e)
+                            counts["skipped"] += 1
+
+                checksum = self._calculate_checksum(chunk_path)
+                self._sync_repo.record_chunk(
+                    SyncChunk(
+                        chunk_id=chunk_id,
+                        source=source,
+                        imported_at=timestamp,
+                        observation_count=obs_count,
+                        checksum=checksum,
+                    )
+                )
+        finally:
+            self._enable_obs_mutation_recording()
+
+        self._sync_repo.update_status(last_import_at=timestamp)
+        return counts
+
+    def _apply_mutation(self, mutation: dict[str, Any]) -> str:
+        """Apply a single mutation. Returns the count key."""
+        op = mutation["op"]
+        payload = json.loads(mutation["payload"]) if isinstance(mutation["payload"], str) else mutation["payload"]
+
+        if op == "delete":
+            try:
+                self._observation_repo.delete(payload["id"])
+                return "deleted"
+            except Exception:
+                return "skipped"
+
+        if op in ("insert", "update"):
+            observation = Observation(
+                id=payload.get("id", mutation["entity_key"]),
+                timestamp=payload.get("timestamp", mutation.get("created_at", 0)),
+                content=payload.get("content", ""),
+                metadata=payload.get("metadata"),
+                idempotency_key=payload.get("idempotency_key"),
+                project=payload.get("project"),
+                type=payload.get("type"),
+                topic_key=payload.get("topic_key"),
+                revision_count=payload.get("revision_count", 1),
+                session_id=payload.get("session_id"),
+            )
+            if op == "insert":
+                try:
+                    self._observation_repo.create(observation)
+                    return "inserted"
+                except Exception:
+                    return "skipped"  # duplicate
+            else:
+                try:
+                    self._observation_repo.update(observation)
+                    return "updated"
+                except Exception:
+                    # If update fails (not found), try insert
+                    try:
+                        self._observation_repo.create(observation)
+                        return "inserted"
+                    except Exception:
+                        return "skipped"
+
+        return "skipped"
