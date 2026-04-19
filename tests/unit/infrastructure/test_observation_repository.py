@@ -346,6 +346,53 @@ class TestObservationRepositorySearch:
 
         assert result == []
 
+    def test_search_prefix_matching(self, db_connection: DatabaseConnection) -> None:
+        """FTS5 prefix matching: 'FastAP' should match 'FastAPI'."""
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(
+            Observation(id="fts-prefix-001", timestamp=1700000000000, content="FastAPI is great")
+        )
+        repo.create(
+            Observation(id="fts-prefix-002", timestamp=1700000001000, content="Fast food is bad")
+        )
+
+        result = repo.search("FastAP")
+        contents = [r.content for r in result]
+        assert "FastAPI is great" in contents
+
+    def test_search_multi_word_prefix(self, db_connection: DatabaseConnection) -> None:
+        """Multi-word prefix query should work."""
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(
+            Observation(id="fts-multi-001", timestamp=1700000000000, content="React component pattern")
+        )
+
+        result = repo.search("React comp")
+        assert len(result) >= 1
+
+    def test_search_special_chars_stripped(self, db_connection: DatabaseConnection) -> None:
+        """Special FTS5 characters are stripped but prefix still works."""
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(
+            Observation(id="fts-special-001", timestamp=1700000000000, content="FastAPI framework")
+        )
+
+        result = repo.search("FastAP*")
+        contents = [r.content for r in result]
+        assert "FastAPI framework" in contents
+
 
 class TestObservationRepositoryTimestampRange:
     """Tests for ObservationRepository.get_by_timestamp_range operation."""

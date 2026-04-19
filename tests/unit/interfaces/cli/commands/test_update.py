@@ -18,6 +18,7 @@ class TestUpdateCommand:
         from src.interfaces.cli.commands.update import app
 
         mock_memory = MagicMock()
+        mock_memory.get_by_id.return_value = MagicMock(id="test-id-123")
         mock_memory.update.return_value = Observation(
             id="test-id-123",
             timestamp=1000,
@@ -44,6 +45,7 @@ class TestUpdateCommand:
         from src.interfaces.cli.commands.update import app
 
         mock_memory = MagicMock()
+        mock_memory.get_by_id.return_value = MagicMock(id="test-id-123")
         mock_memory.update.return_value = Observation(
             id="test-id-123",
             timestamp=1000,
@@ -62,6 +64,7 @@ class TestUpdateCommand:
         from src.interfaces.cli.commands.update import app
 
         mock_memory = MagicMock()
+        mock_memory.get_by_id.return_value = MagicMock(id="test-id-123")
         mock_memory.update.return_value = Observation(
             id="test-id-123",
             timestamp=1000,
@@ -80,6 +83,7 @@ class TestUpdateCommand:
         from src.interfaces.cli.commands.update import app
 
         mock_memory = MagicMock()
+        mock_memory.get_by_id.return_value = MagicMock(id="test-id-123")
         mock_memory.update.return_value = Observation(
             id="test-id-123",
             timestamp=1000,

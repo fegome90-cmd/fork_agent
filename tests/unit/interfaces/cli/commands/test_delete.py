@@ -6,6 +6,8 @@ from unittest.mock import MagicMock
 
 from typer.testing import CliRunner
 
+from src.application.exceptions import ObservationNotFoundError
+
 runner = CliRunner()
 
 
@@ -16,6 +18,7 @@ class TestDeleteCommand:
         from src.interfaces.cli.commands.delete import app
 
         mock_memory = MagicMock()
+        mock_memory.get_by_id.return_value = MagicMock(id="test-id-123")
         mock_memory.delete.return_value = None
 
         result = runner.invoke(app, ["test-id-123", "--force"], obj=mock_memory)
@@ -28,7 +31,8 @@ class TestDeleteCommand:
         from src.interfaces.cli.commands.delete import app
 
         mock_memory = MagicMock()
-        mock_memory.delete.side_effect = Exception("Not found")
+        mock_memory.get_by_id.side_effect = ObservationNotFoundError("Not found")
+        mock_memory._repository.get_all.return_value = []
 
         result = runner.invoke(app, ["nonexistent-id", "--force"], obj=mock_memory)
 

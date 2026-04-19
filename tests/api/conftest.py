@@ -17,9 +17,9 @@ config = DatabaseConfig(db_path="data/memory.db")
 db = DatabaseConnection(config=config)
 promise_repo = PromiseContractRepository(connection=db)
 
-# Patch the dependency
-from src.interfaces.api import dependencies
-dependencies._promise_repository = promise_repo
+# Inject via canonical container path
+from src.infrastructure.persistence import container as _container
+_container._container_cache.clear()
 
 from src.interfaces.api.main import app
 from src.interfaces.api.config import set_test_mode, clear_api_settings_cache

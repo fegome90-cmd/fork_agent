@@ -10,38 +10,18 @@ from src.domain.ports.observation_repository import ObservationRepository
 
 
 class TestUpdateMethod:
-    """Protocol must define update() method."""
+    """Protocol must define update() method accepting an Observation entity."""
 
     def test_has_update_method(self) -> None:
         assert hasattr(ObservationRepository, "update")
 
-    def test_update_signature_has_observation_id(self) -> None:
+    def test_update_signature_has_observation_param(self) -> None:
         sig = inspect.signature(ObservationRepository.update)
-        assert "observation_id" in sig.parameters
+        assert "observation" in sig.parameters
 
-    def test_update_signature_has_content(self) -> None:
+    def test_update_returns_none(self) -> None:
         sig = inspect.signature(ObservationRepository.update)
-        assert "content" in sig.parameters
-
-    def test_update_signature_has_metadata(self) -> None:
-        sig = inspect.signature(ObservationRepository.update)
-        assert "metadata" in sig.parameters
-
-    def test_update_signature_has_type(self) -> None:
-        sig = inspect.signature(ObservationRepository.update)
-        assert "type" in sig.parameters
-
-    def test_update_signature_has_topic_key(self) -> None:
-        sig = inspect.signature(ObservationRepository.update)
-        assert "topic_key" in sig.parameters
-
-    def test_update_signature_has_project(self) -> None:
-        sig = inspect.signature(ObservationRepository.update)
-        assert "project" in sig.parameters
-
-    def test_update_returns_observation(self) -> None:
-        sig = inspect.signature(ObservationRepository.update)
-        assert sig.return_annotation == "Observation"
+        assert sig.return_annotation == "None"
 
 
 class TestGetByTopicKey:

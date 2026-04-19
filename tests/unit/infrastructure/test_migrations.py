@@ -294,3 +294,47 @@ class TestRunPendingMigrations:
         result = load_migrations(nonexistent)
 
         assert result == []
+
+    def test_run_migrations_idempotent_under_race(self, tmp_path: Path) -> None:
+        """BUG-14: Concurrent run_migrations calls don't raise errors.
+
+        Simulates a race where another process already applied a migration
+        between the check and apply steps.
+        """
+        db_path = tmp_path / "test.db"
+        migrations_dir = tmp_path / "migrations"
+        migrations_dir.mkdir()
+
+        (migrations_dir / "001_create_table.sql").write_text(
+            "CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT);"
+        )
+
+        config = DatabaseConfig(db_path=db_path)
+        from src.infrastructure.persistence.migrations import (
+            MigrationRunner,
+            run_migrations,
+        )
+
+        # First run succeeds
+        run_migrations(config, migrations_dir)
+
+        # Simulate race: manually apply the migration tracking
+        # (it's already applied, but add another pending one)
+        (migrations_dir / "002_add_col.sql").write_text(
+            "ALTER TABLE items ADD COLUMN extra TEXT;"
+        )
+
+        # Pre-apply migration 002 tracking to simulate concurrent process
+        runner = MigrationRunner(config, migrations_dir)
+        runner.ensure_migrations_table()
+        with DatabaseConnection(config) as conn:
+            conn.execute(
+                "INSERT INTO _migrations (version, name, applied_at) VALUES (2, 'add_col', '2026-01-01T00:00:00')"
+            )
+
+        # Second run should NOT raise MigrationAlreadyAppliedError
+        run_migrations(config, migrations_dir)
+
+        runner2 = MigrationRunner(config, migrations_dir)
+        applied = runner2.get_applied_versions()
+        assert applied == {1, 2}

@@ -29,6 +29,7 @@ class FakeObservation:
 def _make_memory_service(
     save_return: FakeObservation | None = None,
     recent_return: list[FakeObservation] | None = None,
+    search_return: list[FakeObservation] | None = None,
 ) -> MagicMock:
     """Build a mock MemoryService with sensible defaults."""
     mock = MagicMock()
@@ -36,6 +37,7 @@ def _make_memory_service(
         id="obs-123", timestamp=1000000, content="saved"
     )
     mock.get_recent.return_value = recent_return or []
+    mock.search.return_value = search_return if search_return is not None else []
     return mock
 
 
@@ -116,7 +118,7 @@ class TestRecover:
     def test_recover_no_summaries(self) -> None:
         from src.interfaces.cli.commands.compact import app
 
-        mock_memory = _make_memory_service(recent_return=[])
+        mock_memory = _make_memory_service(recent_return=[], search_return=[])
         result = runner.invoke(
             app,
             ["recover"],
@@ -126,7 +128,7 @@ class TestRecover:
         assert result.exit_code == 0
         assert "No session summaries" in result.stdout
 
-    def test_recover_shows_summaries_and_observations(self) -> None:
+    def test_recover_finds_summaries_via_search(self) -> None:
         from src.interfaces.cli.commands.compact import app
 
         summary_obs = FakeObservation(
@@ -149,7 +151,8 @@ class TestRecover:
             content="Found a bug in the token refresh logic",
         )
         mock_memory = _make_memory_service(
-            recent_return=[summary_obs, regular_obs]
+            recent_return=[regular_obs],
+            search_return=[summary_obs],
         )
 
         result = runner.invoke(
@@ -163,11 +166,54 @@ class TestRecover:
         assert "Fix auth" in result.stdout
         assert "Observations" in result.stdout
         assert "token refresh" in result.stdout
+        # Verify search was called for summaries
+        mock_memory.search.assert_called()
+
+    def test_recover_shows_artifacts_index(self) -> None:
+        from src.interfaces.cli.commands.compact import app
+
+        artifact_obs = FakeObservation(
+            id="art-001",
+            timestamp=1002000,
+            content="Artifacts: plan.md, impl.md",
+            metadata={
+                "type": "artifacts-index",
+                "structured": {"files": ["plan.md", "impl.md", "test_plan.md"]},
+            },
+        )
+        # search is called twice: once for summaries, once for artifacts
+        mock_memory = MagicMock()
+        mock_memory.search.side_effect = [[], [artifact_obs]]
+        mock_memory.get_recent.return_value = []
+
+        result = runner.invoke(
+            app,
+            ["recover"],
+            obj=mock_memory,
+        )
+
+        assert result.exit_code == 0
+        assert "Artifacts Index" in result.stdout
+        assert "plan.md" in result.stdout
+
+    def test_recover_empty_no_crash(self) -> None:
+        from src.interfaces.cli.commands.compact import app
+
+        mock_memory = _make_memory_service(recent_return=[], search_return=[])
+        result = runner.invoke(
+            app,
+            ["recover"],
+            obj=mock_memory,
+        )
+
+        assert result.exit_code == 0
+        assert "No session summaries" in result.stdout
+        assert "No observations" in result.stdout
 
     def test_recover_with_project_filter(self) -> None:
         from src.interfaces.cli.commands.compact import app
 
-        mock_memory = _make_memory_service(recent_return=[])
+        mock_memory = _make_memory_service(recent_return=[], search_return=[])
         result = runner.invoke(
             app,
             ["recover", "--project", "specific-proj"],
