@@ -252,6 +252,70 @@ El hook `git-branch-guard.sh` implementa allowlist de comandos:
 - ✅ **Permitidos**: add, commit, status, diff, log, show, blame, branch, fetch
 - ❌ **Bloqueados**: checkout, switch, reset, clean, push, pull, rebase, merge, stash, cherry-pick
 
+## Interfaces
+
+### API REST (FastAPI)
+
+```bash
+# Iniciar servidor
+uvicorn src.interfaces.api.main:app --host 127.0.0.1 --port 8080
+
+# Endpoints principales
+POST /api/v1/memory         # Crear observación
+GET  /api/v1/memory/{id}     # Obtener por ID
+GET  /api/v1/memory/search   # Buscar (full-text)
+GET  /api/v1/memory/query    # Query con filtros
+GET  /api/v1/system/health   # Health check
+```
+
+Auth: `X-API-Key` header (configurar via `API_KEY` env var).
+
+### MCP Server (stdio/SSE/HTTP)
+
+```bash
+# stdio (Claude Desktop, Cursor)
+memory-mcp
+
+# SSE
+memory-mcp --transport sse --port 8081
+
+# 16 herramientas: memory_save, memory_search, memory_get, memory_list,
+# memory_delete, memory_context, memory_update, memory_stats, memory_timeline,
+# memory_session_start/end/summary, memory_retrieve, memory_suggest_topic_key,
+# memory_save_prompt, memory_capture_passive, memory_merge_projects
+```
+
+### TUI (Textual)
+
+```bash
+memory tui              # Navegador interactivo
+memory tui --db /path   # DB específica
+```
+
+Teclas: `s` buscar, `a` agregar, `S` stats, `d` detalle, `q` salir.
+
+### Trifecta Context Engine (v2)
+
+Context engine para sub-agentes con routing automático (21 features, 110 NL triggers).
+
+```bash
+trifecta ctx plan --task "search observations" --segment .   # Route to feature
+trifecta ctx search -q "database" -s . -l 5                    # Search context
+trifecta index -r .                                           # Rebuild index
+```
+
+## Estado del Proyecto
+
+| Componente | Estado | Tests |
+|-----------|--------|-------|
+| Memory CLI | Completo | 1876 |
+| API REST | Completo | 65 |
+| MCP Server | Completo (16 tools) | - |
+| TUI | Completo (5 screens) | - |
+| Sync Pipeline | Completo | 49 |
+| Trifecta v2 | Integrado (21 features) | - |
+| CI | Verde (0 failures, 0 lint errors) | - |
+
 ## Uso - Programático
 
 ```python
