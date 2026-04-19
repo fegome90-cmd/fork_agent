@@ -29,8 +29,6 @@ class AgentMessenger:
     - Persistence via SQLite store (authoritative)
     """
 
-    __slots__ = ("_orchestrator", "_store", "_last_maintenance")
-
     def __init__(
         self,
         orchestrator: TmuxOrchestrator,
