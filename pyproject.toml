@@ -49,7 +49,7 @@ Documentation = "https://github.com/felipe-gonzalez/tmux_fork/tree/main/docs"
 Issues = "https://github.com/felipe-gonzalez/tmux_fork/issues"
 
 [project.scripts]
-memory = "src.interfaces.cli.main:app"
+memory = "src.interfaces.cli.main:cli"
 fork = "src.interfaces.cli.fork:run_cli"
 fork-api = "src.interfaces.api.main:main"
 memory-mcp = "src.interfaces.mcp.server:run_server_cli"
