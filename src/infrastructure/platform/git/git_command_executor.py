@@ -310,6 +310,43 @@ class GitCommandExecutor:
 
         self._run_git_command(args, cwd=getattr(self, "_repo_path", None))
 
+    def detect_project_from_remote(self, path: Path | None = None) -> str | None:
+        """Detect project name from git remote origin URL.
+
+        Extracts the repository name (without .git suffix) from the
+        'origin' remote URL.
+
+        Supported URL formats:
+          - https://github.com/owner/repo.git  -> "repo"
+          - git@github.com:owner/repo.git      -> "repo"
+          - /local/path/to/repo               -> "repo" (basename)
+
+        Args:
+            path: Optional path within the repository.
+
+        Returns:
+            Lowercase project name, or None if no origin remote exists.
+        """
+        repo_path = path if path is not None else getattr(self, "_repo_path", None)
+
+        try:
+            result = self._run_git_command(
+                ["remote", "get-url", "origin"],
+                cwd=repo_path,
+                check=False,
+            )
+            url = result.stdout.strip()
+            if not url:
+                return None
+
+            repo_name = url.rstrip("/").rsplit("/", 1)[-1]
+            if repo_name.endswith(".git"):
+                repo_name = repo_name[:-4]
+
+            return repo_name.lower() if repo_name else None
+        except (GitError, IndexError):
+            return None
+
     def is_clean(self, path: Path | None = None) -> bool:
         """Check if the working tree is clean (no uncommitted changes).
 

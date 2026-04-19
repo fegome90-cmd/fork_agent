@@ -104,7 +104,7 @@ class Agent(ABC):
         self._status = AgentStatus.PENDING
         self._metrics = AgentMetrics()
         self._circuit_breaker = CircuitBreaker()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @property
     def config(self) -> AgentConfig:
@@ -180,6 +180,7 @@ class TmuxAgent(Agent):
                 [
                     "tmux",
                     "new-session",
+                    "-A",
                     "-d",
                     "-s",
                     self._tmux_session,

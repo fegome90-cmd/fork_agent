@@ -5,9 +5,7 @@ from __future__ import annotations
 import time
 
 from src.domain.entities.scheduled_task import ScheduledTask, TaskStatus
-from src.infrastructure.persistence.repositories.scheduled_task_repository import (
-    ScheduledTaskRepository,
-)
+from src.domain.ports.scheduled_task_repository import ScheduledTaskRepository
 
 
 class SchedulerService:
