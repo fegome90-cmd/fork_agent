@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import platform
 import threading
@@ -16,6 +17,8 @@ from src.domain.entities.telemetry_event import (
     TelemetryEvent,
 )
 from src.domain.ports.telemetry_repository import TelemetryRepository
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetryService:
@@ -53,6 +56,7 @@ class TelemetryService:
 
             return version("fork_agent")
         except Exception:
+            logger.debug("Failed to detect fork_agent version", exc_info=True)
             return "unknown"
 
     @property

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.application.services.workspace.entities import LayoutType, Workspace, WorktreeState
 from src.application.services.workspace.workspace_manager import WorkspaceManager
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
@@ -57,9 +60,8 @@ class WorkspaceDetector:
         try:
             repo_root = self._git.get_repo_root(target_path)
         except Exception:
+            logger.debug("Failed to get repo root for %s", target_path, exc_info=True)
             return None
-
-        # Check if we're in the main repo (not a worktree)
         if target_path == repo_root.resolve():
             return None
 

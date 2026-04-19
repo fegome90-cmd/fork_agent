@@ -743,6 +743,7 @@ class SyncService:
                 self._observation_repo.delete(payload["id"])
                 return "deleted"
             except Exception:
+                logger.debug("Sync delete failed for %s", payload.get("id"), exc_info=True)
                 return "skipped"
 
         if op in ("insert", "update"):
@@ -763,6 +764,7 @@ class SyncService:
                     self._observation_repo.create(observation)
                     return "inserted"
                 except Exception:
+                    logger.debug("Sync insert failed (duplicate?)", exc_info=True)
                     return "skipped"  # duplicate
             else:
                 try:
@@ -770,10 +772,12 @@ class SyncService:
                     return "updated"
                 except Exception:
                     # If update fails (not found), try insert
+                    logger.debug("Sync update failed, trying insert", exc_info=True)
                     try:
                         self._observation_repo.create(observation)
                         return "inserted"
                     except Exception:
+                        logger.debug("Sync fallback insert failed", exc_info=True)
                         return "skipped"
 
         return "skipped"

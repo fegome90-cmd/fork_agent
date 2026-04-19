@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 from src.application.services.messaging.message_protocol import cleanup_temp_files, encode_message
 from src.domain.entities.message import AgentMessage, MessageType
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from src.infrastructure.persistence.message_store import MessageStore
     from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
@@ -127,6 +129,7 @@ class AgentMessenger:
             )
             return result.stdout.strip() if result.returncode == 0 else None
         except Exception:
+            logger.debug("Failed to detect tmux session", exc_info=True)
             return None
 
     def broadcast(self, from_agent: str, payload: str) -> int:
