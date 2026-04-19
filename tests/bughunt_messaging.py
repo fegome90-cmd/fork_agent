@@ -1,6 +1,6 @@
 """Bug Hunt: Messaging Protocol Reliability.
 
-Targets potential truncation issues in Tmux messaging.
+Targets potential truncation issues in Tmux messaging and validates side-channel signaling.
 """
 
 import os
@@ -83,9 +83,10 @@ def test_expired_temp_files_cleanup_leak(messenger, tmp_path):
         assert len(list(tmp_path.glob("fork_msg_*.json"))) == 5
         
         # Run cleanup with -1 age (all should be removed as they are "older" than now + 1s)
-        future_time = 9999999999 # Far future
+        # Use a large time jump
+        future_time = 9999999999.0
         with patch("time.time", return_value=future_time):
-             removed = cleanup_temp_files(max_age_seconds=-1)
-             assert removed == 5
+            removed = cleanup_temp_files(max_age_seconds=-1)
+            assert removed == 5
         
         assert len(list(tmp_path.glob("fork_msg_*.json"))) == 0

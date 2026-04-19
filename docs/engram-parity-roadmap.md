@@ -243,6 +243,7 @@
 | 2026-04-18 | Skill curation | SKILL.md 334→199L, 2 new resources, hub registered |
 | 2026-04-18 | 3-agent audit + real-world test | Content 8/8 PASS, CLI 19/19, MCP 16/16, E2E 9/9 |
 | 2026-04-18 | Minor fixes | session end auto-detect (get_active_any), MCP handshake documented |
+| 2026-04-18 | Git: 10 atomic commits pushed | 170+ files, 18K+ insertions. Branch pushed to origin |
 | **Total** | **29 bugs fixed, 0 open** | **Score 94/100 (Engram: 69, +25)** |
 
 ---
@@ -278,7 +279,10 @@
 | Score | 94/100 |
 | Engram reference | 69/100 |
 | Score delta | +25 over Engram |
-| Bugs found/fixed | 27/27 |
+| Bugs found/fixed | 29/29 |
+| Commits on branch | 10 |
+| Files changed | 170+ |
+| Lines added | 18,000+ |
 | Test baseline | ~1,300 green |
 | MCP tools | 16 |
 | MCP transports | stdio, SSE, streamable-http |

@@ -22,13 +22,18 @@ def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     return None
 
 
-def _get_project_name(project: str | None = None) -> str:
+def _get_project_name(project: str | None = None) -> str | None:
     """Get project name from option or auto-detect from CWD."""
     import os
 
     if project:
         return project
     return Path(os.getcwd()).name
+
+
+def _get_project_filter(project: str | None = None) -> str | None:
+    """Get project for filtering. Returns None (no filter) when not explicitly specified."""
+    return project
 
 
 @app.command(name="save-summary")
@@ -131,23 +136,29 @@ def recover(
     after compaction or session restart.
     """
     memory_service = ctx.obj
-    proj = _get_project_name(project)
+    proj = _get_project_filter(project)
 
     # Use search for deterministic retrieval regardless of observation count
     summaries_raw = memory_service.search("compact/session-summary", limit=summary_limit + 5)
     summaries = [
         obs
         for obs in summaries_raw
-        if obs.metadata
-        and obs.metadata.get("type") == "session-summary"
-        and obs.metadata.get("topic_key") == "compact/session-summary"
+        if obs.type == "session-summary"
+        and (
+            obs.topic_key == "compact/session-summary"
+            or obs.content.startswith("compact/session-summary")
+        )
+        and (
+            not proj
+            or obs.project in (proj, None)
+        )
     ][:summary_limit]
 
     # Also fetch artifacts-index
     artifacts_raw = memory_service.search("compact/artifacts-index", limit=1)
     artifacts_index = [
         obs for obs in artifacts_raw
-        if obs.metadata and obs.metadata.get("type") == "artifacts-index"
+        if obs.type == "artifacts-index"
     ]
 
     # Get recent observations (excluding session summaries)

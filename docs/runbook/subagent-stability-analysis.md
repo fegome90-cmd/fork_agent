@@ -53,7 +53,7 @@ This document analyzes the current fork_agent multi-agent architecture and ident
 | Hook Service | `src/application/services/orchestration/hook_service.py` |
 | IPC Messenger | `src/application/services/messaging/agent_messenger.py` |
 | IPC Protocol | `src/application/services/messaging/message_protocol.py` |
-| Hook Scripts | `.hooks/tmux-session-per-agent.sh` |
+| IPC Signaling | Tmux User Options (`@last_fork_msg`) |
 
 ---
 
@@ -61,18 +61,40 @@ This document analyzes the current fork_agent multi-agent architecture and ident
 
 ### 2.1 Critical Issues
 
-| # | Component | Issue | Root Cause |
-|---|-----------|-------|------------|
-| 1 | TmuxAgent.spawn() | No session validation after creation | Race condition - tmux might not be ready |
-| 2 | TmuxOrchestrator | No context manager / try-finally | Orphaned sessions on Python crash |
-| 3 | Health Monitor | Only checks PID exists | No actual agent responsiveness check |
-| 4 | Circuit Breaker | Not integrated with tmux failures | Only tracks spawn/terminate errors |
-| 5 | IPC Bridge | Retry exists but no send timeout | Can hang indefinitely on tmux busy |
-| 6 | Hook Script | No validation of tmux creation | Silent failures, exit 0 |
-| 7 | AgentManager | Global singleton, no DI | Hard to test, stateful |
-| 8 | Resource Limits | No CPU/memory constraints | Resource exhaustion risk |
-| 9 | Logging | Basic logger.info/error only | Hard to trace failures |
+...
+
 | 10 | Observability | No health endpoints | No Prometheus metrics |
+| 11 | UI Noise | Hidden sessions/flickering | `display-message` floods the status bar |
+
+### 2.2 Failure Mode Analysis
+
+...
+
+**Scenario D: UI Interference (Hidden Sessions)**
+```
+AgentMessenger.broadcast() → sends display-message to all sessions (including orchestrator)
+Tmux status bar flickers or hides session info → user loses context
+```
+
+---
+
+## 3. Detailed Remediation Plan
+
+...
+
+### 3.8 Silent Signaling (Side-channel)
+
+To avoid UI interference and "hidden sessions", the messaging system uses Tmux User Options as an invisible side-channel for inter-agent signaling.
+
+**Mechanism:**
+1. **Side-channel**: Each message sets a pane-level option `@last_fork_msg` with the encoded message ID.
+   ```bash
+   tmux set-option -p -t <session>:<window> @last_fork_msg "# F:<id>"
+   ```
+2. **Self-Exclusion**: The orchestrator detects its own session (`tmux display-message -p #S`) and excludes it from UI notifications and broadcasts.
+3. **Discreet Alerts**: `display-message` is only used for remote sessions and with shortened, non-intrusive text.
+
+This ensures agents can "listen" for messages programmatically without affecting the human user's view.
 
 ### 2.2 Failure Mode Analysis
 

@@ -24,6 +24,9 @@ class FakeObservation:
     timestamp: int
     content: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    type: str | None = None
+    topic_key: str | None = None
+    project: str | None = None
 
 
 def _make_memory_service(
@@ -135,9 +138,9 @@ class TestRecover:
             id="sum-001",
             timestamp=1000000,
             content="Session Summary",
+            type="session-summary",
+            topic_key="compact/session-summary",
             metadata={
-                "type": "session-summary",
-                "topic_key": "compact/session-summary",
                 "structured": {
                     "goal": "Fix auth",
                     "accomplished": "Fixed login flow",
@@ -176,8 +179,8 @@ class TestRecover:
             id="art-001",
             timestamp=1002000,
             content="Artifacts: plan.md, impl.md",
+            type="artifacts-index",
             metadata={
-                "type": "artifacts-index",
                 "structured": {"files": ["plan.md", "impl.md", "test_plan.md"]},
             },
         )
@@ -213,14 +216,83 @@ class TestRecover:
     def test_recover_with_project_filter(self) -> None:
         from src.interfaces.cli.commands.compact import app
 
-        mock_memory = _make_memory_service(recent_return=[], search_return=[])
+        # Two summaries from different projects
+        summary_proj_a = FakeObservation(
+            id="sum-a",
+            timestamp=1000000,
+            content="Summary A",
+            type="session-summary",
+            topic_key="compact/session-summary",
+            project="project-a",
+            metadata={
+                "structured": {"goal": "Fix auth"},
+            },
+        )
+        summary_proj_b = FakeObservation(
+            id="sum-b",
+            timestamp=1001000,
+            content="Summary B",
+            type="session-summary",
+            topic_key="compact/session-summary",
+            project="project-b",
+            metadata={
+                "structured": {"goal": "Fix db"},
+            },
+        )
+        mock_memory = _make_memory_service(
+            recent_return=[],
+            search_return=[summary_proj_a, summary_proj_b],
+        )
+
         result = runner.invoke(
             app,
-            ["recover", "--project", "specific-proj"],
+            ["recover", "--project", "project-a"],
             obj=mock_memory,
         )
 
         assert result.exit_code == 0
+        assert "Fix auth" in result.stdout
+        assert "Fix db" not in result.stdout
+
+    def test_recover_no_project_shows_all(self) -> None:
+        from src.interfaces.cli.commands.compact import app
+
+        summary_proj_a = FakeObservation(
+            id="sum-a",
+            timestamp=1000000,
+            content="Summary A",
+            type="session-summary",
+            topic_key="compact/session-summary",
+            project="project-a",
+            metadata={
+                "structured": {"goal": "Fix auth"},
+            },
+        )
+        summary_proj_b = FakeObservation(
+            id="sum-b",
+            timestamp=1001000,
+            content="Summary B",
+            type="session-summary",
+            topic_key="compact/session-summary",
+            project="project-b",
+            metadata={
+                "structured": {"goal": "Fix db"},
+            },
+        )
+        mock_memory = _make_memory_service(
+            recent_return=[],
+            search_return=[summary_proj_a, summary_proj_b],
+        )
+
+        result = runner.invoke(
+            app,
+            ["recover"],
+            obj=mock_memory,
+        )
+
+        assert result.exit_code == 0
+        assert "Fix auth" in result.stdout
+        assert "Fix db" in result.stdout
 
 
 class TestFileOps:
