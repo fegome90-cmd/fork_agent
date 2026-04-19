@@ -9,6 +9,13 @@ from pathlib import Path
 from src.infrastructure.persistence.database import DatabaseConnection
 
 
+def _get_default_db_path() -> Path:
+    """Lazy import to avoid circular dependency with container.py."""
+    from src.infrastructure.persistence.container import get_default_db_path
+
+    return get_default_db_path()
+
+
 @dataclass(frozen=True)
 class HealthCheckResult:
     """Result of a health check."""
@@ -29,7 +36,7 @@ class HealthCheckService:
 
     def __init__(self, connection: DatabaseConnection, db_path: Path | None = None) -> None:
         self._connection = connection
-        self._db_path = db_path or Path("data/memory.db")
+        self._db_path = db_path or _get_default_db_path()
 
     def check_health(self, verbose: bool = False) -> HealthCheckResult:
         """Run full health check on the database.

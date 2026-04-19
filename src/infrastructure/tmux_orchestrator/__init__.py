@@ -7,6 +7,7 @@ Supports multiple backends: opencode, pi.dev, etc.
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 import warnings
 from dataclasses import dataclass
@@ -18,6 +19,10 @@ if TYPE_CHECKING:
     from src.domain.ports.agent_backend import AgentBackend
 
 logger = logging.getLogger(__name__)
+
+# Security: patterns for sanitizing tmux send-keys input
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 ORCHESTRATOR_DIR = PROJECT_ROOT / ".tmux-orchestrator"
@@ -36,6 +41,29 @@ class TmuxSession:
     name: str
     windows: tuple[TmuxWindow, ...]
     attached: bool
+
+
+def _sanitize_tmux_text(text: str) -> str:
+    """Strip ANSI sequences, control characters, and newlines from tmux input.
+
+    Prevents prompt injection via embedded newlines or escape sequences.
+
+    Args:
+        text: Raw text intended for tmux send-keys
+
+    Returns:
+        Sanitized text safe to send via tmux send-keys
+
+    Raises:
+        ValueError: If the sanitized result is empty
+    """
+    text = _ANSI_ESCAPE.sub("", text)
+    text = _CONTROL_CHARS.sub("", text)
+    text = text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+    text = text.strip()
+    if not text:
+        raise ValueError("sanitized tmux text is empty")
+    return text
 
 
 class TmuxOrchestrator:
@@ -146,13 +174,26 @@ class TmuxOrchestrator:
         return self._send_keys(session, window, command)
 
     def _send_keys(self, session: str, window: int, text: str) -> bool:
-        """Internal: send text via tmux send-keys."""
+        """Internal: send text via tmux send-keys.
+
+        Sanitizes input to prevent prompt injection via control characters,
+        ANSI escape sequences, or embedded newlines.
+        """
+        try:
+            sanitized = _sanitize_tmux_text(text)
+        except ValueError:
+            logger.warning(
+                "send-keys blocked: text empty after sanitization",
+                extra={"session": session, "window": window, "reason": "empty_after_sanitize"},
+            )
+            return False
+
         if self._safety_mode:
-            print(f"SAFETY: Would send to {session}:{window}: {text[:50]}...")
+            print(f"SAFETY: Would send to {session}:{window}: {sanitized[:50]}...")
             return True
         try:
             result = subprocess.run(
-                ["tmux", "send-keys", "-t", f"{session}:{window}", text],
+                ["tmux", "send-keys", "-t", f"{session}:{window}", sanitized],
                 capture_output=True,
                 timeout=5,
             )
@@ -222,9 +263,26 @@ class TmuxOrchestrator:
         Returns:
             True if command was sent successfully.
         """
+        windows = self._get_windows(session)
+        if not windows:
+            logger.warning("No windows found in tmux session %s", session)
+            return False
+
+        target_window = window
+        existing_indexes = {w.window_index for w in windows}
+        if target_window not in existing_indexes:
+            active_window = next((w.window_index for w in windows if w.active), None)
+            target_window = active_window if active_window is not None else windows[0].window_index
+            logger.info(
+                "Requested window %s not found in session %s, using window %s",
+                window,
+                session,
+                target_window,
+            )
+
         actual_model = model or backend.get_default_model()
         cmd = backend.get_launch_command(task, actual_model)
-        return self.send_command(session, window, cmd)
+        return self.send_command(session, target_window, cmd)
 
     def get_status(self) -> dict[str, Any]:
         sessions = self.get_sessions()

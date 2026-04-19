@@ -2,7 +2,10 @@
   "active_plan": "/Users/felipe_gonzalez/Developer/tmux_fork/.sisyphus/plans/integration-gaps-wave2-wave3.md",
   "started_at": "2026-02-26T02:40:00.000Z",
   "completed_at": "2026-02-26T02:45:00.000Z",
-  "session_ids": ["ses_wave2_wave3_complete"],
+  "session_ids": [
+    "ses_wave2_wave3_complete",
+    "ses_360fd870dffeQHL65xMbMeqr9N"
+  ],
   "plan_name": "integration-gaps-wave2-wave3",
   "status": "completed",
   "wave1_status": "completed",

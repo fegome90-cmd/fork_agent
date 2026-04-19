@@ -1,6 +1,7 @@
 """Modelos Pydantic para la API."""
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -142,26 +143,57 @@ class ObservationCreate(BaseModel):
     """Request para crear observacion."""
 
     content: str = Field(..., min_length=1, max_length=10000)
+    type: str | None = None
+    project: str | None = None
+    topic_key: str | None = None
+    metadata: dict[str, Any] | None = None
+    title: str | None = None
 
 
-class Observation(BaseModel):
-    """Observacion guardada."""
+class ObservationUpdate(BaseModel):
+    """Request para actualizar observacion."""
+
+    content: str | None = Field(None, min_length=1, max_length=10000)
+    type: str | None = None
+    project: str | None = None
+    topic_key: str | None = None
+    metadata: dict[str, Any] | None = None
+    title: str | None = None
+
+
+class ObservationOut(BaseModel):
+    """Observation returned by the API."""
 
     id: str
     content: str
-    created_at: datetime
+    timestamp: int
+    metadata: dict[str, Any] | None = None
+    idempotency_key: str | None = None
+    project: str | None = None
+    type: str | None = None
+    topic_key: str | None = None
+    revision_count: int = 1
+    session_id: str | None = None
 
 
 class ObservationResponse(BaseModel):
     """Response de observacion."""
 
-    data: Observation
+    data: ObservationOut
 
 
 class ObservationListResponse(BaseModel):
     """Response para listar observaciones."""
 
-    data: list[Observation]
+    data: list[ObservationOut]
+    count: int | None = None
+
+
+class QueryResponse(BaseModel):
+    """Response for structured memory query."""
+
+    data: list[dict[str, Any]]
+    count: int
 
 
 class AgentInfo(BaseModel):
@@ -235,3 +267,81 @@ class WebhookListResponse(BaseModel):
     """Response para listar webhooks."""
 
     data: list[WebhookSafe]
+
+
+class GcStatusResponse(BaseModel):
+    """Response for GC status endpoint."""
+
+    last_run_at: datetime | None = None
+    cleaned_count: int = 0
+    failed_count: int = 0
+    last_duration_ms: int = 0
+    gc_interval_seconds: int = 0
+    gc_min_age_seconds: int = 0
+    status: str = "never_run"
+
+
+# Discovery card models
+from src.interfaces.api.models.discovery import (
+    AgentBackendInfo,
+    AuthInfo,
+    CardType,
+    DiscoveryCardEnvelope,
+    EndpointSummary,
+    ErrorGuidance,
+    OverviewCardData,
+    WorkflowCardData,
+    WorkflowListResponse,
+    WorkflowStep,
+)
+
+__all__ = [
+    # Process models
+    "ProcessInfo",
+    "ProcessListResponse",
+    "ProcessStartRequest",
+    "ProcessScaleRequest",
+    "ProcessResponse",
+    # Agent models
+    "AgentSession",
+    "AgentSessionCreate",
+    "AgentSessionResponse",
+    "SessionListResponse",
+    # Workflow models
+    "WorkflowPlanRequest",
+    "WorkflowPlan",
+    "WorkflowExecute",
+    "WorkflowVerify",
+    "WorkflowShip",
+    "WorkflowResponse",
+    # Observation models
+    "ObservationCreate",
+    "ObservationOut",
+    "ObservationUpdate",
+    "ObservationResponse",
+    "ObservationListResponse",
+    "QueryResponse",
+    # System models
+    "AgentInfo",
+    "HealthResponse",
+    "MetricsResponse",
+    "ErrorResponse",
+    # Webhook models
+    "WebhookCreate",
+    "Webhook",
+    "WebhookSafe",
+    "WebhookResponse",
+    "WebhookListResponse",
+    "GcStatusResponse",
+    # Discovery models
+    "CardType",
+    "AuthInfo",
+    "EndpointSummary",
+    "AgentBackendInfo",
+    "WorkflowStep",
+    "WorkflowCardData",
+    "ErrorGuidance",
+    "OverviewCardData",
+    "DiscoveryCardEnvelope",
+    "WorkflowListResponse",
+]

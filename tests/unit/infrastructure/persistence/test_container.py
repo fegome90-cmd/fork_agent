@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from src.infrastructure.persistence.container import (
     create_container,
     detect_memory_db_path,
+    get_default_db_path,
     get_memory_service,
     get_memory_service_auto,
     get_tmux_orchestrator,
@@ -20,7 +21,7 @@ class TestGetTmuxOrchestrator:
 
     def test_returns_tmux_orchestrator_instance(self) -> None:
         """Should return a TmuxOrchestrator instance."""
-        with patch("src.infrastructure.persistence.container._get_global_container") as mock_get:
+        with patch("src.infrastructure.persistence.container.get_container") as mock_get:
             mock_container = MagicMock()
             mock_orchestrator = MagicMock()
             mock_container.tmux_orchestrator.return_value = mock_orchestrator
@@ -33,7 +34,7 @@ class TestGetTmuxOrchestrator:
 
     def test_creates_singleton_instance(self) -> None:
         """Should return the same instance on subsequent calls."""
-        with patch("src.infrastructure.persistence.container._get_global_container") as mock_get:
+        with patch("src.infrastructure.persistence.container.get_container") as mock_get:
             mock_container = MagicMock()
             mock_orchestrator = MagicMock()
             mock_container.tmux_orchestrator.return_value = mock_orchestrator
@@ -50,7 +51,7 @@ class TestGetMemoryService:
 
     def test_returns_memory_service_with_default_path(self) -> None:
         """Should return a MemoryService with default DB path."""
-        with patch("src.infrastructure.persistence.container._get_global_container") as mock_get:
+        with patch("src.infrastructure.persistence.container.get_container") as mock_get:
             mock_container = MagicMock()
             mock_service = MagicMock()
             mock_container.memory_service.return_value = mock_service
@@ -133,7 +134,7 @@ class TestDetectMemoryDbPath:
 
             result = detect_memory_db_path()
 
-            assert result == Path("data/memory.db")
+            assert result == get_default_db_path()
 
     def test_returns_worktree_path_when_in_worktree(self) -> None:
         """Should return worktree-specific path when in a worktree."""
@@ -155,11 +156,11 @@ class TestDetectMemoryDbPath:
     def test_returns_default_on_detection_failure(self) -> None:
         """Should return default path when detection fails."""
         with patch("src.infrastructure.persistence.container.get_workspace_manager") as mock_get_wm:
-            mock_get_wm.side_effect = Exception("Detection failed")
+            mock_get_wm.side_effect = OSError("Detection failed")
 
             result = detect_memory_db_path()
 
-            assert result == Path("data/memory.db")
+            assert result == get_default_db_path()
 
 
 class TestGetMemoryServiceAuto:

@@ -11,7 +11,9 @@ Un "Cookbook" interno guía a `fork_agent` para seleccionar la herramienta idón
 ## Características Principales
 
 - **Orquestación de Terminal**: Bifurca sesiones para gestionar tareas complejas y concurrentes.
+- **Mensajería Inter-Agente (IPC)**: Sistema de comunicación estructurado y silencioso entre sesiones de tmux con persistencia en base de datos.
 - **Soporte Multi-Agente Avanzado**:
+
   - **Raw CLI**: Ejecución directa de comandos de shell.
   - **Claude Code**: Para interacciones programáticas asistidas por IA.
   - **Codex CLI**: Generación y ejecución de código asistida.
@@ -115,6 +117,78 @@ memory workspace enter my-workspace
 # Detectar workspace actual
 memory workspace detect
 ```
+
+### Mensajería Inter-Agente (IPC)
+
+```bash
+# Enviar mensaje directo a un agente (session:window)
+fork message send agent1:1 "Tarea completada"
+
+# Broadcast a todos los agentes activos
+fork message broadcast "Status update: todos los sistemas OK"
+
+# Ver historial de mensajes de un agente
+fork message history agent1:1
+
+# Limpieza de mensajes viejos
+fork message cleanup --max-age 300
+```
+
+
+## MCP Server
+
+fork_agent includes a built-in MCP (Model Context Protocol) server for AI agent integrations. It exposes memory operations as MCP tools accessible from Claude Desktop, Cursor, and any MCP-compatible client.
+
+### Install
+
+```bash
+# pip (recommended)
+pip install fork_agent
+
+# uvx (one-off, no install)
+uvx fork_agent
+
+# uv tool (global)
+uv tool install fork_agent
+```
+
+### Claude Desktop Configuration
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "memory-mcp"
+    }
+  }
+}
+```
+
+### Available MCP Tools (17)
+
+| Tool | Description |
+|------|-------------|
+| `memory_save` | Save observation with metadata |
+| `memory_search` | FTS5 full-text search |
+| `memory_retrieve` | Enhanced retrieval with pipeline v2 (dedup, ranking, bridges) |
+| `memory_get` | Get by ID |
+| `memory_list` | List with pagination |
+| `memory_update` | Update existing observation |
+| `memory_delete` | Delete observation |
+| `memory_context` | Recent session summaries |
+| `memory_stats` | Database statistics |
+| `memory_session_start` | Start session |
+| `memory_session_end` | End session |
+| `memory_session_summary` | Save session summary |
+| `memory_suggest_topic_key` | Suggest stable topic key |
+| `memory_save_prompt` | Save user prompt |
+| `memory_capture_passive` | Extract learnings from text |
+| `memory_merge_projects` | Consolidate projects |
+| `memory_timeline` | Observations in time range |
+
+See [docs/mcp-setup.md](docs/mcp-setup.md) for full setup guide with all clients, custom DB path, and verification steps.
 
 ## Hooks de Integración
 

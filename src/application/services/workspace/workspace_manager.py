@@ -189,6 +189,11 @@ class WorkspaceManager(WorkspaceManagerABC):
         self._layout_resolver = LayoutResolver(config)
         self._hook_runner = hook_runner
 
+    @property
+    def git_executor(self) -> GitCommandExecutor:
+        """Public accessor for the git command executor."""
+        return self._git
+
     def create_workspace(self, name: str, layout: LayoutType | None = None) -> Workspace:
         """Create a new workspace.
 
@@ -486,8 +491,20 @@ class WorkspaceManager(WorkspaceManagerABC):
 
         return None
 
-    def _detect_layout(self, worktree_path: Path, repo_root: Path) -> LayoutType:
+    def detect_layout(self, worktree_path: Path, repo_root: Path) -> LayoutType:
         """Detect the layout type based on worktree path.
+
+        Args:
+            worktree_path: Path to the worktree.
+            repo_root: Root path of the git repository.
+
+        Returns:
+            Detected LayoutType.
+        """
+        return self._detect_layout(worktree_path, repo_root)
+
+    def _detect_layout(self, worktree_path: Path, repo_root: Path) -> LayoutType:
+        """Internal layout detection logic.
 
         Args:
             worktree_path: Path to the worktree.

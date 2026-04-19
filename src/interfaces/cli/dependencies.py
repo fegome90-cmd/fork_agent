@@ -1,89 +1,30 @@
-"""CLI dependencies for dependency injection."""
+"""CLI dependencies — re-exports from canonical container.
+
+This module exists so CLI commands can import from a CLI-local path,
+keeping the interface layer clean. All actual DI logic lives in
+src.infrastructure.persistence.container.
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from src.application.services.cleanup_service import CleanupService
-from src.application.services.memory_service import MemoryService
-from src.application.services.orchestration.hook_service import HookService
-from src.application.services.scheduler_service import SchedulerService
-from src.application.services.telemetry.telemetry_service import TelemetryService
-from src.application.services.workflow.executor import WorkflowExecutor
-from src.infrastructure.persistence.container import (
+from src.infrastructure.persistence.container import (  # noqa: F401
     Container,
     create_container,
+    detect_memory_db_path,
+    get_cleanup_service,
+    get_container,
+    get_health_check_service,
+    get_hook_service,
+    get_memory_service,
+    get_memory_service_auto,
+    get_promise_repository,
+    get_repository,
+    get_scheduler_service,
+    get_session_service,
+    get_sync_service,
+    get_telemetry_service,
+    get_tmux_orchestrator,
+    get_workflow_executor,
+    get_workspace_manager,
+    override_database_for_testing,
 )
-from src.infrastructure.persistence.container import (
-    get_memory_service as _get_memory_service,
-)
-from src.infrastructure.persistence.container import (
-    get_tmux_orchestrator as _get_tmux_orchestrator,
-)
-from src.infrastructure.persistence.container import (
-    get_workspace_manager as _get_workspace_manager,
-)
-from src.infrastructure.persistence.health_check import HealthCheckService
-
-_hook_service: HookService | None = None
-_workflow_executor: WorkflowExecutor | None = None
-
-
-def get_hook_service() -> HookService:
-    """Get or create shared singleton HookService instance."""
-    global _hook_service
-    if _hook_service is None:
-        _hook_service = HookService()
-    return _hook_service
-
-
-def get_container(db_path: Path | None = None) -> Container:
-    return create_container(db_path)
-
-
-def get_repository(db_path: Path | None = None):
-    container = get_container(db_path)
-    return container.observation_repository()
-
-
-def get_memory_service(db_path: Path | None = None) -> MemoryService:
-    """Get MemoryService instance for CLI commands."""
-    container = get_container(db_path)
-    return container.memory_service()
-
-
-def get_scheduler_service(db_path: Path | None = None) -> SchedulerService:
-    """Get SchedulerService instance for CLI commands."""
-    container = get_container(db_path)
-    return container.scheduler_service()
-
-
-def get_cleanup_service(db_path: Path | None = None) -> CleanupService:
-    """Get CleanupService instance for CLI commands."""
-    container = get_container(db_path)
-    return container.cleanup_service()
-
-
-def get_health_check_service(db_path: Path | None = None) -> HealthCheckService:
-    """Get HealthCheckService instance for CLI commands."""
-    container = get_container(db_path)
-    return container.health_check_service()
-
-
-def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
-    """Get TelemetryService instance for CLI commands."""
-    container = get_container(db_path)
-    return container.telemetry_service()  # type: ignore[no-any-return]
-
-
-def get_workflow_executor() -> WorkflowExecutor:
-    """Get or create shared singleton WorkflowExecutor instance."""
-    global _workflow_executor
-    if _workflow_executor is None:
-        _workflow_executor = WorkflowExecutor(
-            tmux_orchestrator=_get_tmux_orchestrator(),
-            memory_service=_get_memory_service(),
-            workspace_manager=_get_workspace_manager(),
-            hook_service=get_hook_service(),
-        )
-    return _workflow_executor

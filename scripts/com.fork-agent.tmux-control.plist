@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.fork-agent.tmux-control</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/felipe_gonzalez/Developer/tmux_fork/.venv/bin/python</string>
+        <string>-m</string>
+        <string>src.interfaces.tmux_control.main</string>
+    </array>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TMUX_CONTROL_SOCKET</key>
+        <string>/var/run/fork-agent/tmux.sock</string>
+        <key>TMUX_CONTROL_API_KEY</key>
+        <string>CHANGE_ME_IN_PRODUCTION</string>
+    </dict>
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <true/>
+    
+    <key>StandardOutPath</key>
+    <string>/var/log/fork-agent/tmux-control.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/var/log/fork-agent/tmux-control.error.log</string>
+    
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

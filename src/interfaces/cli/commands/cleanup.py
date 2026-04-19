@@ -7,11 +7,12 @@ from pathlib import Path
 import typer
 
 from src.application.services.cleanup_service import CleanupService
+from src.infrastructure.persistence.container import get_default_db_path
 from src.interfaces.cli.dependencies import get_cleanup_service
 
 app = typer.Typer()
 
-DEFAULT_DB_PATH = Path("data/memory.db")
+DEFAULT_DB_PATH = get_default_db_path()
 
 
 def _get_cleanup_service_from_context(ctx: typer.Context) -> CleanupService:
@@ -25,9 +26,9 @@ def _get_cleanup_service_from_context(ctx: typer.Context) -> CleanupService:
         return ctx.obj.cleanup_service()
 
     # Fallback: construct from db_path
-    db_path = DEFAULT_DB_PATH
+    db_path = get_default_db_path()
     if ctx.parent and ctx.parent.params:
-        db_path = Path(ctx.parent.params.get("db_path", DEFAULT_DB_PATH))
+        db_path = Path(ctx.parent.params.get("db_path", str(get_default_db_path())))
 
     return get_cleanup_service(db_path)
 

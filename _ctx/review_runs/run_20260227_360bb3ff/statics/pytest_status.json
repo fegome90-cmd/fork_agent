@@ -1,0 +1,19 @@
+{
+  "tool": "pytest",
+  "status": "FAIL",
+  "required": true,
+  "completed_at": "2026-02-27T22:03:28.366Z",
+  "source_path": "/Users/felipe_gonzalez/Developer/tmux_fork/_ctx/review_runs/run_20260227_360bb3ff/statics/pytest-report.md",
+  "content_hash": "ac205cd55ec9547c",
+  "is_extra": false,
+  "execution": {
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "coverage_percent": null,
+    "coverage_threshold": 80,
+    "coverage_met": null,
+    "reason": "Pytest output indicates failing tests"
+  }
+}

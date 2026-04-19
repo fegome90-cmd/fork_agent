@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 import threading
 import time
@@ -32,6 +33,10 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+# Security: patterns for sanitizing tmux send-keys input (mirrors tmux_orchestrator)
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 
 # Session prefix for fork_agent managed sessions
 FORK_SESSION_PREFIX = "fork-"
@@ -99,7 +104,7 @@ class Agent(ABC):
         self._status = AgentStatus.PENDING
         self._metrics = AgentMetrics()
         self._circuit_breaker = CircuitBreaker()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @property
     def config(self) -> AgentConfig:
@@ -175,6 +180,7 @@ class TmuxAgent(Agent):
                 [
                     "tmux",
                     "new-session",
+                    "-A",
                     "-d",
                     "-s",
                     self._tmux_session,
@@ -275,9 +281,19 @@ class TmuxAgent(Agent):
 
     def send_input(self, message: str) -> bool:
         try:
-            escaped = message.replace("'", "'\\''")
+            # Sanitize to prevent prompt injection via newlines or control chars
+            sanitized = _ANSI_ESCAPE.sub("", message)
+            sanitized = _CONTROL_CHARS.sub("", sanitized)
+            sanitized = sanitized.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+            sanitized = sanitized.strip()
+            if not sanitized:
+                logger.warning(
+                    "send_input blocked: empty after sanitization",
+                    extra={"agent": self._config.name, "reason": "empty_after_sanitize"},
+                )
+                return False
             result = subprocess.run(
-                ["tmux", "send-keys", "-t", self._tmux_session, f"{escaped}", "Enter"],
+                ["tmux", "send-keys", "-t", self._tmux_session, f"{sanitized}", "Enter"],
                 capture_output=True,
                 text=True,
                 timeout=5,

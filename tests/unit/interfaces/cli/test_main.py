@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
+from src.infrastructure.persistence.container import get_default_db_path
 from src.interfaces.cli import main
 
 runner = CliRunner()
@@ -82,7 +83,7 @@ class TestMainCallback:
 
             runner.invoke(main.app, ["test-cmd"])
 
-            mock_get_service.assert_called_once_with(Path("data/memory.db"))
+            mock_get_service.assert_called_once_with(get_default_db_path())
 
 
 class TestMainHelp:

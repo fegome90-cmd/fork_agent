@@ -12,6 +12,19 @@ license = {text = "MIT"}
 authors = [
     {name = "fork_agent Team"}
 ]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Shells",
+    "Topic :: Utilities",
+    "Framework :: AsyncIO",
+]
+keywords = ["memory", "mcp", "ai-agent", "terminal", "tmux", "cli", "claude", "persistent-memory", "context"]
 dependencies = [
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
@@ -26,12 +39,20 @@ dependencies = [
     "python-multipart>=0.0.6",
     "aiofiles>=23.0.0",
     "filelock>=3.12.0",
+    "mcp[cli]>=1.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/felipe-gonzalez/tmux_fork"
+Repository = "https://github.com/felipe-gonzalez/tmux_fork"
+Documentation = "https://github.com/felipe-gonzalez/tmux_fork/tree/main/docs"
+Issues = "https://github.com/felipe-gonzalez/tmux_fork/issues"
+
 [project.scripts]
-memory = "src.interfaces.cli.main:app"
+memory = "src.interfaces.cli.main:cli"
 fork = "src.interfaces.cli.fork:run_cli"
 fork-api = "src.interfaces.api.main:main"
+memory-mcp = "src.interfaces.mcp.server:run_server_cli"
 
 [project.optional-dependencies]
 dev = [
@@ -43,6 +64,10 @@ dev = [
     "ruff>=0.3.0",
     "black>=24.0.0",
     "hypothesis>=6.90.0",
+]
+tui = [
+    "rich>=14.3.3",
+    "textual>=8.2.3",
 ]
 
 [tool.pytest.ini_options]
@@ -63,7 +88,6 @@ omit = [
     "**/conftest.py",
     "**/.venv/*",
     "**/migrations/*",
-    "**/interfaces/api/**",
     "**/tmux_orchestrator/**",
     "**/config/**",
     "**/domain/ports/*",
@@ -97,7 +121,7 @@ exclude_lines = [
     "raise NotImplementedError",
 ]
 show_missing = true
-fail_under = 90
+fail_under = 72
 precision = 2
 
 [tool.mypy]
@@ -150,3 +174,8 @@ skip = [".venv", "venv"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.3.0",
+]

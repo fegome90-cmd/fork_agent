@@ -85,7 +85,7 @@ class TaskDecomposer:
 
         return tasks
 
-    def _create_foundation_tasks(self, goal: Goal) -> list[Task]:
+    def _create_foundation_tasks(self, _goal: Goal) -> list[Task]:
         """Create foundation/setup tasks."""
         tasks = []
 
@@ -126,7 +126,7 @@ class TaskDecomposer:
 
     def _create_integration_tasks(
         self,
-        goal: Goal,
+        _goal: Goal,
         core_tasks: list[Task],
     ) -> list[Task]:
         """Create integration tasks."""

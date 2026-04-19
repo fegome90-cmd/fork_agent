@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import glob
 import json
+import os
+from pathlib import Path
 
 import pytest
 
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
+    FORK_MSG_SHORT_PREFIX,
+    FORK_MSG_TEMP_DIR,
+    cleanup_temp_files,
     create_command,
     create_handoff,
     create_reply,
@@ -18,7 +24,7 @@ from src.domain.entities.message import AgentMessage, MessageType
 
 
 class TestForkMsgPrefix:
-    """Tests for protocol prefix constant."""
+    """Tests for protocol prefix constants."""
 
     def test_prefix_is_defined(self) -> None:
         """FORK_MSG_PREFIX should be defined with comment prefix for shell safety."""
@@ -28,14 +34,22 @@ class TestForkMsgPrefix:
         """Prefix should end with colon for easy splitting."""
         assert FORK_MSG_PREFIX.endswith(":")
 
+    def test_short_prefix_is_defined(self) -> None:
+        """FORK_MSG_SHORT_PREFIX should be defined for v2 protocol."""
+        assert FORK_MSG_SHORT_PREFIX == "# F:"
+
+    def test_short_prefix_ends_with_colon(self) -> None:
+        """Short prefix should end with colon."""
+        assert FORK_MSG_SHORT_PREFIX.endswith(":")
+
 
 class TestEncodeMessage:
-    """Tests for encode_message function."""
+    """Tests for encode_message function (v2 protocol)."""
 
-    def test_encode_basic_message(self) -> None:
-        """Should encode message with prefix."""
+    def test_encode_uses_short_prefix(self) -> None:
+        """Should encode message with short prefix (# F:)."""
         msg = AgentMessage(
-            id="test-id",
+            id="test-id-12345",
             from_agent="s1:0",
             to_agent="s2:0",
             message_type=MessageType.COMMAND,
@@ -45,14 +59,28 @@ class TestEncodeMessage:
 
         encoded = encode_message(msg)
 
-        assert encoded.startswith(FORK_MSG_PREFIX)
-        assert "test-id" in encoded
-        assert "s1:0" in encoded
+        assert encoded.startswith(FORK_MSG_SHORT_PREFIX)
 
-    def test_encode_produces_valid_json(self) -> None:
-        """Encoded message (after prefix) should be valid JSON."""
+    def test_encode_is_short(self) -> None:
+        """Encoded message should be short (< 20 chars)."""
         msg = AgentMessage(
-            id="test-id",
+            id="test-id-12345",
+            from_agent="s1:0",
+            to_agent="s2:0",
+            message_type=MessageType.COMMAND,
+            payload='{"task": "run"}',
+            created_at=1234567890000,
+        )
+
+        encoded = encode_message(msg)
+
+        # Format: "# F:{id_short}" where id_short is first 8 chars
+        assert len(encoded) < 20
+
+    def test_encode_writes_temp_file(self) -> None:
+        """Should write full JSON to temp file."""
+        msg = AgentMessage(
+            id="unique-test-id-999",
             from_agent="s1:0",
             to_agent="s2:0",
             message_type=MessageType.COMMAND,
@@ -60,17 +88,26 @@ class TestEncodeMessage:
             created_at=1234567890000,
         )
 
-        encoded = encode_message(msg)
-        json_part = encoded[len(FORK_MSG_PREFIX) :]
+        encode_message(msg)
 
-        # Should not raise
-        data = json.loads(json_part)
-        assert data["id"] == "test-id"
+        # Check temp file exists
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}*.json")
+        matches = glob.glob(pattern)
+        assert len(matches) >= 1
 
-    def test_encode_includes_all_fields(self) -> None:
-        """Encoded message should include all message fields."""
+        # Verify JSON content
+        data = json.loads(Path(matches[0]).read_text())
+        assert data["id"] == msg.id
+        assert data["from_agent"] == msg.from_agent
+
+        # Cleanup
+        for match in matches:
+            Path(match).unlink()
+
+    def test_encode_includes_all_fields_in_temp_file(self) -> None:
+        """Temp file should include all message fields."""
         msg = AgentMessage(
-            id="msg-123",
+            id="msg-123-abc",
             from_agent="agent1:0",
             to_agent="agent2:0",
             message_type=MessageType.REPLY,
@@ -79,10 +116,16 @@ class TestEncodeMessage:
             correlation_id="corr-456",
         )
 
-        encoded = encode_message(msg)
-        data = json.loads(encoded[len(FORK_MSG_PREFIX) :])
+        encode_message(msg)
 
-        assert data["id"] == "msg-123"
+        # Read temp file
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}*.json")
+        matches = glob.glob(pattern)
+        assert len(matches) >= 1
+
+        data = json.loads(Path(matches[0]).read_text())
+
+        assert data["id"] == "msg-123-abc"
         assert data["from_agent"] == "agent1:0"
         assert data["to_agent"] == "agent2:0"
         assert data["message_type"] == "REPLY"
@@ -90,10 +133,14 @@ class TestEncodeMessage:
         assert data["created_at"] == 9999999999999
         assert data["correlation_id"] == "corr-456"
 
+        # Cleanup
+        for match in matches:
+            Path(match).unlink()
+
     def test_encode_handles_none_correlation_id(self) -> None:
-        """Should handle None correlation_id."""
+        """Should handle None correlation_id in temp file."""
         msg = AgentMessage(
-            id="test-id",
+            id="test-id-none",
             from_agent="s1:0",
             to_agent="s2:0",
             message_type=MessageType.COMMAND,
@@ -102,10 +149,18 @@ class TestEncodeMessage:
             correlation_id=None,
         )
 
-        encoded = encode_message(msg)
-        data = json.loads(encoded[len(FORK_MSG_PREFIX) :])
+        encode_message(msg)
 
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}*.json")
+        matches = glob.glob(pattern)
+        assert len(matches) >= 1
+
+        data = json.loads(Path(matches[0]).read_text())
         assert data["correlation_id"] is None
+
+        # Cleanup
+        for match in matches:
+            Path(match).unlink()
 
 
 class TestDecodeMessage:
@@ -292,7 +347,7 @@ class TestRoundTrip:
     def test_round_trip_preserves_message(self, msg_type: MessageType, payload: str) -> None:
         """Encode/decode should preserve message data."""
         original = AgentMessage(
-            id="test-id",
+            id="test-id-rt",
             from_agent="s1:0",
             to_agent="s2:0",
             message_type=msg_type,
@@ -312,3 +367,128 @@ class TestRoundTrip:
         assert decoded.payload == original.payload
         assert decoded.created_at == original.created_at
         assert decoded.correlation_id == original.correlation_id
+
+        # Cleanup
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{original.id[:8]}*.json")
+        for match in glob.glob(pattern):
+            Path(match).unlink()
+
+
+class TestDecodeV2Protocol:
+    """Tests for decode_message with v2 protocol."""
+
+    def test_decode_short_prefix(self) -> None:
+        """Should decode v2 protocol messages (# F:id_short)."""
+        msg = AgentMessage(
+            id="abc12345-def6",
+            from_agent="s:0",
+            to_agent="s:1",
+            message_type=MessageType.COMMAND,
+            payload="test",
+            created_at=1234567890000,
+        )
+
+        # Encode creates temp file
+        encoded = encode_message(msg)
+        assert encoded.startswith("# F:")
+
+        # Decode should read from temp file
+        decoded = decode_message(encoded)
+        assert decoded is not None
+        assert decoded.id == msg.id
+
+        # Cleanup
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}*.json")
+        for match in glob.glob(pattern):
+            Path(match).unlink()
+
+    def test_decode_returns_none_if_temp_file_missing(self) -> None:
+        """Should return None if temp file doesn't exist."""
+        # Try to decode with non-existent ID
+        result = decode_message("# F:nonexist")
+        assert result is None
+
+
+class TestBackwardCompatibility:
+    """Tests for v1 protocol backward compatibility."""
+
+    def test_decode_v1_protocol(self) -> None:
+        """Should still decode v1 protocol messages."""
+        encoded = '# FORK_MSG:{"id":"x1","from_agent":"s:0","to_agent":"s:1","message_type":"COMMAND","payload":"test","created_at":123,"correlation_id":null}'
+        decoded = decode_message(encoded)
+
+        assert decoded is not None
+        assert decoded.id == "x1"
+        assert decoded.from_agent == "s:0"
+
+    def test_decode_prefers_v2_over_v1(self) -> None:
+        """Should prefer v2 if both prefixes present."""
+        # Create v2 message with temp file
+        msg = AgentMessage(
+            id="prefer-v2-test",
+            from_agent="s:0",
+            to_agent="s:1",
+            message_type=MessageType.COMMAND,
+            payload="v2-data",
+            created_at=1234567890000,
+        )
+        encoded = encode_message(msg)
+
+        # Decode should work
+        decoded = decode_message(encoded)
+        assert decoded is not None
+        assert decoded.payload == "v2-data"
+
+        # Cleanup
+        pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}*.json")
+        for match in glob.glob(pattern):
+            Path(match).unlink()
+
+
+class TestCleanupTempFiles:
+    """Tests for cleanup_temp_files function."""
+
+    def test_cleanup_removes_old_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Should remove files older than TTL."""
+        # Create a temp file with old mtime
+        old_file = tmp_path / "fork_msg_oldtest.json"
+        old_file.write_text('{"id":"old"}')
+
+        # Set mtime to 10 minutes ago
+        import time
+
+        old_time = time.time() - 600
+        os.utime(old_file, (old_time, old_time))
+
+        # Create a new file
+        new_file = tmp_path / "fork_msg_newtest.json"
+        new_file.write_text('{"id":"new"}')
+
+        # Monkeypatch the temp dir
+        monkeypatch.setattr(
+            "src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR",
+            tmp_path,
+        )
+
+        # Cleanup with 5 min TTL
+        removed = cleanup_temp_files(max_age_seconds=300)
+
+        assert removed == 1
+        assert not old_file.exists()
+        assert new_file.exists()
+
+    def test_cleanup_keeps_recent_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Should not remove files newer than TTL."""
+        # Create a new file
+        new_file = tmp_path / "fork_msg_recent.json"
+        new_file.write_text('{"id":"recent"}')
+
+        monkeypatch.setattr(
+            "src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR",
+            tmp_path,
+        )
+
+        removed = cleanup_temp_files(max_age_seconds=300)
+
+        assert removed == 0
+        assert new_file.exists()

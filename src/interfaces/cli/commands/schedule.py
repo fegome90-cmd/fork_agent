@@ -9,6 +9,7 @@ from pathlib import Path
 
 import typer
 
+from src.infrastructure.persistence.container import get_default_db_path
 from src.interfaces.cli.dependencies import get_scheduler_service
 
 app = typer.Typer()
@@ -20,7 +21,7 @@ def add(
     action: str = typer.Argument(...),
     delay_seconds: int = typer.Argument(...),
     context: str | None = typer.Option(None, "--context", "-c"),
-    db_path: str = typer.Option("data/memory.db", "--db", "-d"),
+    db_path: str = typer.Option(str(get_default_db_path()), "--db", "-d"),
 ) -> None:
     scheduler_service = get_scheduler_service(Path(db_path))
     context_dict = None
@@ -49,7 +50,7 @@ def add(
 @app.command(name="list")
 def list_tasks(
     _ctx: typer.Context,
-    db_path: str = typer.Option("data/memory.db", "--db", "-d"),
+    db_path: str = typer.Option(str(get_default_db_path()), "--db", "-d"),
 ) -> None:
     scheduler_service = get_scheduler_service(Path(db_path))
     tasks = scheduler_service.get_pending_tasks()
@@ -66,7 +67,7 @@ def list_tasks(
 def show(
     _ctx: typer.Context,
     task_id: str = typer.Argument(...),
-    db_path: str = typer.Option("data/memory.db", "--db", "-d"),
+    db_path: str = typer.Option(str(get_default_db_path()), "--db", "-d"),
 ) -> None:
     scheduler_service = get_scheduler_service(Path(db_path))
     task = scheduler_service.get_task(task_id)
@@ -88,7 +89,7 @@ def show(
 def cancel(
     _ctx: typer.Context,
     task_id: str = typer.Argument(...),
-    db_path: str = typer.Option("data/memory.db", "--db", "-d"),
+    db_path: str = typer.Option(str(get_default_db_path()), "--db", "-d"),
 ) -> None:
     scheduler_service = get_scheduler_service(Path(db_path))
     task = scheduler_service.get_task(task_id)

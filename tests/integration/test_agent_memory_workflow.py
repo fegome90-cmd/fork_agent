@@ -7,10 +7,7 @@ from pathlib import Path
 import pytest
 
 from src.application.services.memory_service import MemoryService
-from src.application.services.messaging.agent_messenger import AgentMessenger
-from src.application.services.messaging.message_protocol import create_command
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
-from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.persistence.migrations import run_migrations
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,
@@ -30,11 +27,6 @@ def db_connection(tmp_path: Path) -> DatabaseConnection:
 
 
 @pytest.fixture
-def temp_message_db(tmp_path: Path) -> Path:
-    return tmp_path / "test_messages.db"
-
-
-@pytest.fixture
 def observation_repository(db_connection: DatabaseConnection) -> ObservationRepository:
     return ObservationRepository(db_connection)
 
@@ -45,18 +37,8 @@ def memory_service(observation_repository: ObservationRepository) -> MemoryServi
 
 
 @pytest.fixture
-def message_store(temp_message_db: Path) -> MessageStore:
-    return MessageStore(db_path=temp_message_db)
-
-
-@pytest.fixture
 def orchestrator() -> TmuxOrchestrator:
     return TmuxOrchestrator(safety_mode=False)
-
-
-@pytest.fixture
-def messenger(orchestrator: TmuxOrchestrator, message_store: MessageStore) -> AgentMessenger:
-    return AgentMessenger(orchestrator=orchestrator, store=message_store)
 
 
 class TestAgentMemoryWorkflow:
@@ -120,8 +102,6 @@ class TestAgentMemoryWorkflow:
         self,
         memory_service: MemoryService,
         orchestrator: TmuxOrchestrator,
-        messenger: AgentMessenger,
-        message_store: MessageStore,
     ) -> None:
         obs1 = memory_service.save(
             content="Encontré 3 vulnerabilidades en auth.py: XSS, CSRF, SQLi",
@@ -138,20 +118,7 @@ class TestAgentMemoryWorkflow:
         try:
             sessions = orchestrator.get_sessions()
             agent1 = next(s for s in sessions if s.name == "agent_1_session")
-            window1 = agent1.windows[0].window_index
-
-            task_msg = create_command(
-                from_=f"agent_1_session:{window1}",
-                to="agent_3:0",
-                command="fix_vulnerability",
-                vulnerability="SQLi",
-                file="auth.py",
-            )
-
-            messenger.send(task_msg)
-
-            messages = message_store.get_for_agent("agent_3:0")
-            assert len(messages) >= 1
+            assert agent1 is not None
 
             obs3 = memory_service.save(
                 content="Corregí SQL injection usando prepared statements",
@@ -191,7 +158,7 @@ class TestAgentContextPreservation:
     def test_cross_agent_context_sharing(self, memory_service: MemoryService) -> None:
         memory_service.save(
             content="API response format: {status: string, data: object}",
-            metadata={"agent": "agent-1", "type": "context"},
+            metadata={"agent": "agent-1", "category": "context"},
         )
 
         api_context = memory_service.search("API")

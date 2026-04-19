@@ -17,6 +17,7 @@ from src.interfaces.api.models import (
     AgentSession,
     AgentSessionCreate,
     AgentSessionResponse,
+    GcStatusResponse,
     SessionListResponse,
 )
 
@@ -189,6 +190,62 @@ class SessionStore:
             return session_id in _sessions
 
 
+def _restore_sessions_from_disk() -> int:
+    """Load all persisted sessions from disk into SessionStore at startup.
+
+    Called before any GC to ensure sessions persisted to disk are not
+    incorrectly marked as orphans.
+
+    Returns:
+        Number of sessions restored.
+    """
+    if not _sessions_dir.exists():
+        return 0
+    count = 0
+    for f in _sessions_dir.glob("*.json"):
+        session_id = f.stem
+        if SessionStore.exists(session_id):
+            continue  # Already in memory
+        session = _load_session_from_disk(session_id)
+        if session:
+            SessionStore.set(session_id, session)
+            count += 1
+    if count > 0:
+        logger.info("gc: sessions restored from disk", extra={"count": count})
+    return count
+
+
+@router.get("/sessions/gc/status", response_model=GcStatusResponse)
+async def get_gc_status() -> GcStatusResponse:
+    """Get GC (garbage collector) status.
+
+    Returns information about the last GC run, including counts of cleaned/failed sessions,
+    timing, and current GC configuration.
+    """
+    from src.interfaces.api.main import GC_INTERVAL_SECONDS, GC_MIN_AGE_SECONDS, get_gc_state
+
+    state = get_gc_state()
+
+    if state.last_run_at is None:
+        gc_status = "never_run"
+    elif state.failed_count > 0 and state.cleaned_count == 0:
+        gc_status = "all_failed"
+    elif state.failed_count > 0:
+        gc_status = "partial_failure"
+    else:
+        gc_status = "ok"
+
+    return GcStatusResponse(
+        last_run_at=state.last_run_at,
+        cleaned_count=state.cleaned_count,
+        failed_count=state.failed_count,
+        last_duration_ms=state.last_duration_ms,
+        gc_interval_seconds=GC_INTERVAL_SECONDS,
+        gc_min_age_seconds=GC_MIN_AGE_SECONDS,
+        status=gc_status,
+    )
+
+
 @router.post("/sessions", response_model=AgentSessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(
     request: AgentSessionCreate,
@@ -292,7 +349,7 @@ async def create_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create session: {e}",
-        ) from None
+        ) from e
     finally:
         # BUG FIX: Always release semaphore to prevent leak
         _session_semaphore.release()

@@ -1,73 +1,349 @@
-"""Rutas para memoria."""
+"""Memory routes for the API."""
 
-import uuid
-from datetime import datetime
+from __future__ import annotations
+
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.interfaces.api.dependencies import verify_api_key
+from src.interfaces.api.dependencies import get_memory_service, verify_api_key
 from src.interfaces.api.models import (
-    Observation,
     ObservationCreate,
     ObservationListResponse,
+    ObservationOut,
     ObservationResponse,
+    ObservationUpdate,
+    QueryResponse,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/memory", tags=["memory"])
-
-
-_observations: dict[str, Observation] = {}
 
 
 @router.post("", response_model=ObservationResponse, status_code=status.HTTP_201_CREATED)
 async def create_observation(
     request: ObservationCreate,
     _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
 ) -> ObservationResponse:
-    """Guarda una observación."""
-    obs_id = f"obs-{uuid.uuid4().hex[:6]}"
-    observation = Observation(
-        id=obs_id,
-        content=request.content,
-        created_at=datetime.now(),
-    )
-    _observations[obs_id] = observation
-    return ObservationResponse(data=observation)
+    """Save an observation."""
+    try:
+        observation = memory.save(
+            content=request.content,
+            type=request.type,
+            project=request.project,
+            topic_key=request.topic_key,
+            metadata=request.metadata,
+            title=request.title,
+        )
+        return ObservationResponse(
+            data=ObservationOut(
+                id=observation.id,
+                content=observation.content,
+                timestamp=observation.timestamp,
+                metadata=observation.metadata,
+                idempotency_key=observation.idempotency_key,
+                project=observation.project,
+                type=observation.type,
+                topic_key=observation.topic_key,
+                revision_count=observation.revision_count,
+                session_id=observation.session_id,
+            )
+        )
+    except Exception as e:
+        logger.error(f"Failed to create observation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save observation",
+        ) from e
 
 
 @router.get("", response_model=ObservationListResponse)
-async def list_observations(_: str = Depends(verify_api_key)) -> ObservationListResponse:
-    """Lista todas las observaciones."""
-    return ObservationListResponse(data=list(_observations.values()))
+async def list_observations(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
+) -> ObservationListResponse:
+    """List recent observations."""
+    try:
+        observations = memory.get_recent(limit=limit, offset=offset)
+        return ObservationListResponse(
+            data=[
+                ObservationOut(
+                    id=obs.id,
+                    content=obs.content,
+                    timestamp=obs.timestamp,
+                    metadata=obs.metadata,
+                    idempotency_key=obs.idempotency_key,
+                    project=obs.project,
+                    type=obs.type,
+                    topic_key=obs.topic_key,
+                    revision_count=obs.revision_count,
+                    session_id=obs.session_id,
+                )
+                for obs in observations
+            ],
+            count=len(observations),
+        )
+    except Exception as e:
+        logger.error(f"Failed to list observations: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list observations",
+        ) from e
 
 
 @router.get("/search", response_model=ObservationListResponse)
 async def search_observations(
-    q: str = Query(..., description="Query de búsqueda"),
+    q: str = Query(..., description="Search query"),
+    limit: int = Query(20, ge=1, le=100),
     _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
 ) -> ObservationListResponse:
-    """Busca observaciones."""
-    results = [obs for obs in _observations.values() if q.lower() in obs.content.lower()]
-    return ObservationListResponse(data=results)
+    """Search observations using FTS5."""
+    try:
+        results = memory.search(q, limit=limit)
+        return ObservationListResponse(
+            data=[
+                ObservationOut(
+                    id=obs.id,
+                    content=obs.content,
+                    timestamp=obs.timestamp,
+                    metadata=obs.metadata,
+                    idempotency_key=obs.idempotency_key,
+                    project=obs.project,
+                    type=obs.type,
+                    topic_key=obs.topic_key,
+                    revision_count=obs.revision_count,
+                    session_id=obs.session_id,
+                )
+                for obs in results
+            ],
+            count=len(results),
+        )
+    except Exception as e:
+        logger.error(f"Failed to search observations: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Search failed",
+        ) from e
+
+
+@router.get("/query", response_model=QueryResponse)
+async def query_memory(
+    agent: str | None = Query(None, description="Filter by agent ID"),
+    run: str | None = Query(None, description="Filter by run ID"),
+    event_type: str | None = Query(None, alias="event-type", description="Filter by event type"),
+    limit: int = Query(20, ge=1, le=100),
+    scan_limit: int = Query(1000, alias="scan-limit", description="Max observations to scan"),
+    since: str | None = Query(None, description="Time filter (e.g., '24h', '7d', or ISO date)"),
+    _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
+) -> QueryResponse:
+    """Query memory events with structured filters."""
+    # Parse since parameter to ms
+    since_ms = None
+    if since:
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime.now(UTC)
+        if since.endswith("h"):
+            try:
+                hours = int(since[:-1])
+                since_ms = int((now - timedelta(hours=hours)).timestamp() * 1000)
+            except ValueError:
+                pass
+        elif since.endswith("d"):
+            try:
+                days = int(since[:-1])
+                since_ms = int((now - timedelta(days=days)).timestamp() * 1000)
+            except ValueError:
+                pass
+        else:
+            try:
+                dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                since_ms = int(dt.timestamp() * 1000)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid --since format",
+                ) from None
+
+    try:
+        results = memory.query(
+            agent=agent,
+            run_id=run,
+            event_type=event_type,
+            limit=limit,
+            scan_limit=scan_limit,
+            since_ms=since_ms,
+        )
+
+        # Map to structured output
+        output = []
+        for obs in results:
+            output.append(
+                {
+                    "id": obs.id,
+                    "timestamp": obs.timestamp,
+                    "event_type": obs.metadata.get("event_type") if obs.metadata else None,
+                    "run_id": obs.metadata.get("run_id") if obs.metadata else None,
+                    "task_id": obs.metadata.get("task_id") if obs.metadata else None,
+                    "agent_id": obs.metadata.get("agent_id") if obs.metadata else None,
+                    "content": obs.content,
+                    "metadata": obs.metadata,
+                }
+            )
+
+        return QueryResponse(data=output, count=len(output))
+    except Exception as e:
+        logger.error(f"Query failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Query failed",
+        ) from e
+
+
+@router.get("/timeline/{run_id}", response_model=QueryResponse)
+async def get_timeline(
+    run_id: str,
+    scan_limit: int = Query(1000, alias="scan-limit"),
+    _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
+) -> QueryResponse:
+    """Get chronological timeline for a specific run."""
+    try:
+        # Use query with run_id and high limit
+        results = memory.query(
+            run_id=run_id,
+            limit=scan_limit,
+            scan_limit=scan_limit,
+        )
+
+        # Sort by timestamp ASC (chronological)
+        results.sort(key=lambda o: o.timestamp)
+
+        output = []
+        for obs in results:
+            output.append(
+                {
+                    "id": obs.id,
+                    "timestamp": obs.timestamp,
+                    "event_type": obs.metadata.get("event_type") if obs.metadata else None,
+                    "agent_id": obs.metadata.get("agent_id") if obs.metadata else None,
+                    "task_id": obs.metadata.get("task_id") if obs.metadata else None,
+                    "content": obs.content,
+                    "success": obs.metadata.get("success") if obs.metadata else None,
+                }
+            )
+
+        return QueryResponse(data=output, count=len(output))
+    except Exception as e:
+        logger.error(f"Timeline failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Timeline failed",
+        ) from e
 
 
 @router.get("/{obs_id}", response_model=ObservationResponse)
 async def get_observation(
     obs_id: str,
     _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
 ) -> ObservationResponse:
-    """Obtiene una observación por ID."""
-    if obs_id not in _observations:
-        raise HTTPException(status_code=404, detail="Observation not found")
-    return ObservationResponse(data=_observations[obs_id])
+    """Get an observation by ID."""
+    from src.application.exceptions import ObservationNotFoundError
+
+    try:
+        observation = memory.get_by_id(obs_id)
+        return ObservationResponse(
+            data=ObservationOut(
+                id=observation.id,
+                content=observation.content,
+                timestamp=observation.timestamp,
+                metadata=observation.metadata,
+                idempotency_key=observation.idempotency_key,
+                project=observation.project,
+                type=observation.type,
+                topic_key=observation.topic_key,
+                revision_count=observation.revision_count,
+                session_id=observation.session_id,
+            )
+        )
+    except ObservationNotFoundError:
+        raise HTTPException(status_code=404, detail="Observation not found") from None
+    except Exception as e:
+        logger.error(f"Failed to get observation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving observation",
+        ) from e
+
+
+@router.put("/{obs_id}", response_model=ObservationResponse)
+async def update_observation(
+    obs_id: str,
+    request: ObservationUpdate,
+    _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
+) -> ObservationResponse:
+    """Update an existing observation."""
+    from src.application.exceptions import ObservationNotFoundError
+
+    try:
+        observation = memory.update(
+            observation_id=obs_id,
+            content=request.content,
+            type=request.type,
+            project=request.project,
+            topic_key=request.topic_key,
+            metadata=request.metadata,
+            title=request.title,
+        )
+        return ObservationResponse(
+            data=ObservationOut(
+                id=observation.id,
+                content=observation.content,
+                timestamp=observation.timestamp,
+                metadata=observation.metadata,
+                idempotency_key=observation.idempotency_key,
+                project=observation.project,
+                type=observation.type,
+                topic_key=observation.topic_key,
+                revision_count=observation.revision_count,
+                session_id=observation.session_id,
+            )
+        )
+    except ObservationNotFoundError:
+        raise HTTPException(status_code=404, detail="Observation not found") from None
+    except Exception as e:
+        logger.error(f"Failed to update observation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating observation",
+        ) from e
 
 
 @router.delete("/{obs_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_observation(
     obs_id: str,
     _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
 ) -> None:
-    """Elimina una observación."""
-    if obs_id not in _observations:
-        raise HTTPException(status_code=404, detail="Observation not found")
-    del _observations[obs_id]
+    """Delete an observation."""
+    from src.application.exceptions import ObservationNotFoundError
+
+    try:
+        memory.get_by_id(obs_id)
+        memory.delete(obs_id)
+    except ObservationNotFoundError:
+        raise HTTPException(status_code=404, detail="Observation not found") from None
+    except Exception as e:
+        logger.error(f"Failed to delete observation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error deleting observation",
+        ) from e

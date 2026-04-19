@@ -1,0 +1,8 @@
+{
+  "tool": "pyrefly",
+  "status": "PENDING",
+  "required": false,
+  "reason": "Python type checker (optional)",
+  "requested_at": "2026-02-27T21:39:34.780Z",
+  "command": "pyrefly check ."
+}

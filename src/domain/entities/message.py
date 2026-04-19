@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import UTC
 from enum import Enum, auto
 
 
@@ -53,7 +54,14 @@ class AgentMessage:
     created_at: int
     correlation_id: str | None = None
 
+    @property
+    def created_at_iso(self) -> str:
+        """Get the creation time as an ISO-formatted string."""
+        from datetime import datetime
+        return datetime.fromtimestamp(self.created_at / 1000, tz=UTC).isoformat()
+
     @classmethod
+
     def create(
         cls,
         from_agent: str,

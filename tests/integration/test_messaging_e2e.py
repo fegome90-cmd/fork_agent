@@ -16,9 +16,10 @@ import pytest
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
-    decode_message,
+    FORK_MSG_SHORT_PREFIX,
 )
 from src.domain.entities.message import AgentMessage, MessageType
+from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
@@ -122,7 +123,9 @@ class TestMessageSendAndCapture:
     def test_send_message_to_session(self, tmux_cleanup, temp_db: Path) -> None:
         """Should send a message to a tmux session and store it."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
-        store = MessageStore(db_path=temp_db)
+        config = DatabaseConfig(db_path=temp_db)
+        conn = DatabaseConnection(config=config)
+        store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
         # Create session
@@ -162,7 +165,9 @@ class TestMessageSendAndCapture:
     def test_capture_sent_message(self, tmux_cleanup, temp_db: Path) -> None:
         """Should capture a message that was sent to a session."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
-        store = MessageStore(db_path=temp_db)
+        config = DatabaseConfig(db_path=temp_db)
+        conn = DatabaseConnection(config=config)
+        store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
         # Create session
@@ -196,10 +201,9 @@ class TestMessageSendAndCapture:
         # Capture pane content
         content = orchestrator.capture_content(session_name, window_index, lines=50)
 
-        # The encoded message should be in the pane (normalize newlines for robustness)
-        # Terminal width may split the message across lines
-        normalized_content = content.replace("\n", "")
-        assert FORK_MSG_PREFIX in normalized_content, f"Message not found in pane. Content: {content[:200]}"
+        # The message MUST NOT be in the terminal (silent IPC)
+        assert FORK_MSG_PREFIX not in content
+        assert FORK_MSG_SHORT_PREFIX not in content
 
 
 class TestMessageBroadcast:
@@ -208,14 +212,16 @@ class TestMessageBroadcast:
     def test_broadcast_includes_created_sessions(self, tmux_cleanup, temp_db: Path) -> None:
         """Should broadcast a message to our test sessions."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
-        store = MessageStore(db_path=temp_db)
+        config = DatabaseConfig(db_path=temp_db)
+        conn = DatabaseConnection(config=config)
+        store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
-        # Create multiple sessions with unique names
+        # Use agent- prefixed names so broadcast() actually targets them
         sessions = [
-            "test_e2e_bc_unique_1",
-            "test_e2e_bc_unique_2",
-            "test_e2e_bc_unique_3",
+            "agent-test-bc-1",
+            "agent-test-bc-2",
+            "agent-test-bc-3",
         ]
         for session_name in sessions:
             success = orchestrator.create_session(session_name)
@@ -224,9 +230,10 @@ class TestMessageBroadcast:
 
         time.sleep(0.5)
 
-        # Get count of sessions before broadcast
+        # Count only windows in OUR test sessions (not all system tmux sessions)
         all_sessions = orchestrator.get_sessions()
-        total_windows = sum(len(s.windows) for s in all_sessions)
+        our_session_names = set(sessions)
+        our_windows = sum(len(s.windows) for s in all_sessions if s.name in our_session_names)
 
         # Broadcast message
         count = messenger.broadcast(
@@ -234,19 +241,19 @@ class TestMessageBroadcast:
             payload="broadcast test message",
         )
 
-        # Should send to at least our 3 test sessions
-        assert count >= 3, f"Expected at least 3 broadcasts, got {count}"
-        # And should match total windows in all sessions
-        assert count == total_windows, f"Broadcast count {count} != total windows {total_windows}"
+        # Should send to at least our 3 test session windows
+        assert count >= our_windows, f"Expected at least {our_windows} broadcasts, got {count}"
 
     def test_broadcast_stores_messages(self, tmux_cleanup, temp_db: Path) -> None:
         """Should store broadcast messages in the database."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
-        store = MessageStore(db_path=temp_db)
+        config = DatabaseConfig(db_path=temp_db)
+        conn = DatabaseConnection(config=config)
+        store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
-        # Create session
-        session_name = "test_e2e_bc_store_unique_1"
+        # Use agent- prefix so broadcast() targets this session
+        session_name = "agent-test-bc-store-1"
         orchestrator.create_session(session_name)
         tmux_cleanup(session_name)
 
@@ -276,7 +283,9 @@ class TestMessageProtocolE2E:
     def test_full_message_round_trip(self, tmux_cleanup, temp_db: Path) -> None:
         """Should encode, send, capture, and decode a message."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
-        store = MessageStore(db_path=temp_db)
+        config = DatabaseConfig(db_path=temp_db)
+        conn = DatabaseConnection(config=config)
+        store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
         # Create session
@@ -309,29 +318,14 @@ class TestMessageProtocolE2E:
 
         time.sleep(0.5)
 
-        # Capture and find message
+        # Verify terminal is silent (IPC messages not visible)
         content = orchestrator.capture_content(session_name, window_index, lines=100)
+        assert FORK_MSG_PREFIX not in content
+        assert FORK_MSG_SHORT_PREFIX not in content
 
-        # Find the FORK_MSG line
-        found = False
-        for line in content.split("\n"):
-            if FORK_MSG_PREFIX in line:
-                # Extract the JSON part
-                start = line.find(FORK_MSG_PREFIX)
-                msg_line = line[start:].strip()
-                decoded = decode_message(msg_line)
-                if decoded is not None:
-                    assert decoded.from_agent == "sender:0"
-                    assert decoded.message_type == MessageType.COMMAND
-                    assert decoded.correlation_id == "test-corr-123"
-                    found = True
-                    break
-
-        if not found:
-            # At minimum, verify the message was stored
-            stored = store.get_for_agent(target_agent)
-            assert len(stored) == 1, f"Expected 1 stored message, found {len(stored)}"
-            assert stored[0].correlation_id == "test-corr-123"
+        # Verify it's in the DB instead
+        messages = store.get_for_agent(target_agent)
+        assert any(m.correlation_id == "test-corr-123" for m in messages)
 
 
 class TestMessageHistory:
@@ -340,7 +334,9 @@ class TestMessageHistory:
     def test_history_includes_sent_and_received(self, tmux_cleanup, temp_db: Path) -> None:
         """History should include both sent and received messages."""
         orchestrator = TmuxOrchestrator(safety_mode=False)
-        store = MessageStore(db_path=temp_db)
+        config = DatabaseConfig(db_path=temp_db)
+        conn = DatabaseConnection(config=config)
+        store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
         # Create sessions

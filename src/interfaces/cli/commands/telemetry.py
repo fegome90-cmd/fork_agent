@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -35,12 +36,29 @@ def _format_duration(ms: int) -> str:
     return f"{hours:.1f}h"
 
 
+def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
+    """Get database path from CLI context.
+
+    For subcommands (telemetry status), we need to traverse up to find
+    the root context that has the db_path parameter.
+    """
+    # Walk up the context tree to find db_path
+    current = ctx
+    while current:
+        if hasattr(current, 'params') and 'db_path' in current.params:
+            return Path(current.params['db_path'])
+        current = current.parent if hasattr(current, 'parent') else None
+
+    return None
+
+
 @app.command()
 def status(
-    _ctx: typer.Context,
+    ctx: typer.Context,
 ) -> None:
     """Show telemetry status and summary."""
-    telemetry = get_telemetry_service()
+    db_path = _get_db_path_from_context(ctx)
+    telemetry = get_telemetry_service(db_path)
 
     typer.echo("=" * 60)
     typer.echo("  FORK_AGENT TELEMETRY STATUS")

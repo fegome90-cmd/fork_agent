@@ -68,7 +68,7 @@ async def verify_plan(
             task=f"Workflow plan {plan_id}",
             state=PromiseState.VERIFY_PASSED,
             verify_evidence=VerifyEvidence(
-                artifact_path="",
+                artifact_path=f"/tmp/verify-{verify_id}.json",
                 passed=passed,
                 exit_code=0,
                 timestamp=now.isoformat(),
@@ -78,8 +78,11 @@ async def verify_plan(
             metadata={"verify_id": verify_id},
         )
         repo.save(contract)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception(f"Failed to persist verify evidence for plan {plan_id}")
+        raise HTTPException(
+            status_code=500, detail=f"Verification failed to persist evidence: {str(e)}"
+        ) from e
 
     data = {
         "verify_id": verify_id,
@@ -105,15 +108,14 @@ async def ship_plan(
         contract = repo.get_by_plan_id(plan_id)
     except RepositoryError as e:
         logger.error(f"Repository error: {e}")
-        raise HTTPException(status_code=500, detail="Database error") from None
+        raise HTTPException(status_code=500, detail="Database error") from e
 
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
 
     if contract.state != PromiseState.VERIFY_PASSED:
         raise HTTPException(
-            status_code=409,
-            detail=f"Contract must be VERIFY_PASSED, got {contract.state}"
+            status_code=409, detail=f"Contract must be VERIFY_PASSED, got {contract.state}"
         )
 
     # Persist SHIPPED state
@@ -158,4 +160,4 @@ async def get_plan_status(
         )
     except RepositoryError as e:
         logger.error(f"Repository error fetching contract: {e}")
-        raise HTTPException(status_code=500, detail="Database error") from None
+        raise HTTPException(status_code=500, detail="Database error") from e

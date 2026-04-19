@@ -57,11 +57,25 @@ memory workflow ship             # Ship (requires verify)
 memory workflow status           # Status
 memory schedule add "cmd" 60    # Schedule task
 memory schedule list            # List tasks
+
+## Fork & Messaging Commands
+
+```bash
+# Messaging (IPC)
+fork message send <target> "payload"  # Send message (session:window)
+fork message broadcast "payload"     # Send to all agent windows
+fork message history <agent_id>      # View message history
+fork message cleanup                 # Cleanup expired messages
+
+# Health & Diagnostics
+fork doctor tmux-health    # Check tmux status
+./scripts/trifecta_health.sh # Verify context daemon health
 ```
 
 ## API
 
 REST API docs: `docs/pm2-fork-agent-api.md`
+
 
 Endpoints:
 - `GET /api/v1/processes` - List PM2 processes

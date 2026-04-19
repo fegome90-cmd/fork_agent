@@ -6,14 +6,18 @@ via SQLite. It acts as the application layer interface for messaging.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
-from src.application.services.messaging.message_protocol import encode_message
+from src.application.services.messaging.message_protocol import cleanup_temp_files, encode_message
 from src.domain.entities.message import AgentMessage, MessageType
 
 if TYPE_CHECKING:
     from src.infrastructure.persistence.message_store import MessageStore
     from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
+
+# Allowed prefixes for session names to avoid sending messages to non-agent sessions
+ALLOWED_SESSION_PREFIXES = ("fork-", "agent-", "opencode-")
 
 
 class AgentMessenger:
@@ -21,11 +25,9 @@ class AgentMessenger:
 
     Coordinates:
     - Message encoding via protocol
-    - Sending via tmux send-keys
-    - Persistence via SQLite store
+    - Sending via tmux notifications (silent)
+    - Persistence via SQLite store (authoritative)
     """
-
-    __slots__ = ("_orchestrator", "_store")
 
     def __init__(
         self,
@@ -40,6 +42,7 @@ class AgentMessenger:
         """
         self._orchestrator = orchestrator
         self._store = store
+        self._last_maintenance = 0.0
 
     @property
     def orchestrator(self) -> TmuxOrchestrator:
@@ -50,54 +53,100 @@ class AgentMessenger:
         return self._store
 
     def send(self, msg: AgentMessage) -> bool:
-        """Send a message via tmux and store it.
-
-        The message is always stored for audit/retry purposes,
-        even if tmux send fails.
-
-        Args:
-            msg: The message to send
-
-        Returns:
-            True if tmux send succeeded, False otherwise
-        """
-        # Always store the message first (for audit/retry)
-        self._store.save(msg)
-
-        # Parse session:window from to_agent
+        """Send a message via shared DB and silent notification."""
+        # 0. Validation (Fail fast)
         parts = msg.to_agent.split(":")
         if len(parts) != 2:
+            logging.error(f"Invalid target agent format: {msg.to_agent}. Expected 'session:window'")
             return False
 
-        session, window_str = parts
+        target_session, window_index = parts
+
+        # 1. Authoritative Store (DB is the transport)
+        # Note: self._store.save() now triggers auto-cleanup of expired and hard-limit pruning
+        self._store.save(msg)
+
+        # 2. Ephemeral Maintenance (Filesystem protection)
+        import time
+        now = time.time()
+        if now - self._last_maintenance > 30: # Every 30 seconds max
+            cleanup_temp_files(max_age_seconds=60)
+            self._last_maintenance = now
+
+        # 3. Persist to temp storage for v2 protocol decoding
         try:
-            window = int(window_str)
-        except ValueError:
+            encoded_msg = encode_message(msg)
+        except Exception as e:
+            logging.error(f"Failed to encode message for protocol v2: {e}")
             return False
 
-        # Encode and send via tmux
-        encoded = encode_message(msg)
-        success = self._orchestrator.send_message(session, window, encoded)
+        # 4. Background Signaling (Side-channel)
+        # We use Tmux User Options as an invisible side-channel for agents.
+        # This is 100% clean and doesn't affect the human UI (status bar).
+        import subprocess
+        try:
+            # Check if session exists first
+            check = subprocess.run(["tmux", "has-session", "-t", target_session], capture_output=True)
+            if check.returncode != 0:
+                logging.warning(f"Messaging target session not found: {target_session}")
+                return False
 
-        return success
+            # Set the message ID as a pane option (Side-channel)
+            subprocess.run([
+                "tmux", "set-option", "-p", "-t", f"{target_session}:{window_index}",
+                "@last_fork_msg", encoded_msg
+            ], capture_output=True)
+
+            # 5. UI Notification (Optional/Discreet)
+            # To avoid "hiding sessions", we ONLY send display-message if the target
+            # is NOT our current session. Even then, we use a very short message.
+            current_session = self._get_current_session()
+            if target_session != current_session:
+                # We show a generic notification that doesn't leak IDs to the status bar
+                # but alerts the user/agent that something happened.
+                subprocess.run([
+                    "tmux", "display-message", "-t", target_session,
+                    f"FORK: Msg from {msg.from_agent}"
+                ], capture_output=True, timeout=1)
+
+            return True
+        except Exception as e:
+            logging.error(f"Failed to send tmux notification: {e}")
+            return False
+
+    def _get_current_session(self) -> str | None:
+        """Identify current tmux session name safely."""
+        import os
+        import subprocess
+        if "TMUX" not in os.environ:
+            return None
+        try:
+            result = subprocess.run(
+                ["tmux", "display-message", "-p", "#S"],
+                capture_output=True, text=True, timeout=1
+            )
+            return result.stdout.strip() if result.returncode == 0 else None
+        except Exception:
+            return None
 
     def broadcast(self, from_agent: str, payload: str) -> int:
-        """Broadcast a message to all active sessions.
+        """Broadcast a message to all active agent sessions.
 
-        Creates a COMMAND message with to_agent='*' and sends it to
-        all active tmux sessions.
-
-        Args:
-            from_agent: Source session:window
-            payload: Message payload (will be JSON-encoded if not already)
-
-        Returns:
-            Number of successful sends
+        Excludes the current session to avoid UI noise (hiding status bar).
         """
         sessions = self._orchestrator.get_sessions()
+        current_session = self._get_current_session()
         success_count = 0
 
         for session in sessions:
+            # Skip current session (the orchestrator) to avoid UI flickering/hiding
+            if session.name == current_session:
+                continue
+
+            # Only broadcast to sessions that look like agents
+            if not any(session.name.startswith(p) for p in ALLOWED_SESSION_PREFIXES):
+                continue
+
             for window in session.windows:
                 # Create broadcast message for this target
                 msg = AgentMessage.create(
@@ -107,35 +156,16 @@ class AgentMessenger:
                     payload=payload,
                 )
 
-                # Store and send
-                self._store.save(msg)
-                encoded = encode_message(msg)
-
-                if self._orchestrator.send_message(session.name, window.window_index, encoded):
+                # Use the silent send method
+                if self.send(msg):
                     success_count += 1
 
         return success_count
 
     def get_messages(self, agent_id: str, limit: int = 50) -> list[AgentMessage]:
-        """Get messages addressed to a specific agent.
-
-        Args:
-            agent_id: The agent's session:window identifier
-            limit: Maximum number of messages to return
-
-        Returns:
-            List of messages in descending order by created_at
-        """
+        """Get messages addressed to a specific agent."""
         return self._store.get_for_agent(agent_id, limit)
 
     def get_history(self, agent_id: str, limit: int = 100) -> list[AgentMessage]:
-        """Get message history for an agent (sent and received).
-
-        Args:
-            agent_id: The agent's session:window identifier
-            limit: Maximum number of messages to return
-
-        Returns:
-            List of messages in descending order by created_at
-        """
+        """Get message history for an agent (sent and received)."""
         return self._store.get_history(agent_id, limit)

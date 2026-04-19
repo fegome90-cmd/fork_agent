@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from src.application.services.workflow.executor import (
+    TASK_STATUS_EXECUTING,
+    TASK_STATUS_PENDING,
     CleanupResult,
     ExecutionResult,
     TaskExecutionResult,
     WorkflowExecutor,
-    TASK_STATUS_EXECUTING,
-    TASK_STATUS_PENDING,
 )
 from src.application.services.workflow.state import (
     ExecuteState,
@@ -28,7 +26,6 @@ from src.application.services.workspace.entities import (
     Workspace,
     WorktreeState,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -237,7 +234,7 @@ class TestExecuteTask:
         assert result.session_name is not None
         assert result.worktree_name is not None
         assert "fork-" in result.session_name
-        assert "task-implement-user-auth" == result.worktree_name
+        assert result.worktree_name == "task-implement-user-auth"
 
         # Verify tmux calls
         mock_tmux.create_session.assert_called_once()
@@ -481,7 +478,7 @@ class TestExecutePlan:
         assert len(result.spawned_sessions) == 1
         # Verify model was passed to launch_agent
         call_args = mock_tmux.launch_agent.call_args
-        assert call_args[0][2] == "custom-model"
+        assert call_args[0][4] == "custom-model"
 
     def test_execute_plan_memory_persistence(
         self,

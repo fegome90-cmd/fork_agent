@@ -6,7 +6,6 @@ This module provides CLI commands for managing git worktree-based workspaces.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import click
 
@@ -92,6 +91,11 @@ def create(name: str, layout: str | None, no_hooks: bool) -> None:
         fork workspace create my-feature
         fork workspace create my-feature --layout SIBLING
     """
+    # Validate workspace name: reject slashes to stay consistent with remove
+    if "/" in name:
+        click.echo(f"Error: Invalid workspace name '{name}' (slashes are not allowed)", err=True)
+        sys.exit(1)
+
     try:
         layout_type = LayoutType[layout] if layout else None
 
@@ -185,8 +189,10 @@ def remove(name: str, force: bool, yes: bool) -> None:
         fork workspace remove my-feature --force
     """
     # Validate workspace name to prevent injection
-    if not name or not name.replace("-", "").replace("_", "").isalnum():
-        click.echo(f"Error: Invalid workspace name '{name}'", err=True)
+    # Strip allowed separators and check minimum meaningful length
+    stripped = name.replace("-", "").replace("_", "")
+    if not name or not stripped.isalnum() or len(stripped) < 2:
+        click.echo(f"Error: Invalid workspace name '{name}' (must contain at least 2 alphanumeric characters)", err=True)
         sys.exit(1)
 
     # Confirmation prompt unless --yes is passed
@@ -253,12 +259,11 @@ def enter(name: str, spawn_terminal: bool) -> None:
             if shutil.which("tmux"):
                 terminal_cmd = ["tmux", "new-session", "-c", str(ws.path)]
             elif shutil.which("open") and sys.platform == "darwin":
-                # macOS - open Terminal.app
+                # macOS - use osascript to reliably set working directory
                 terminal_cmd = [
-                    "open",
-                    "-a",
-                    "Terminal",
-                    str(ws.path),
+                    "osascript",
+                    "-e",
+                    f'tell application "Terminal" to do script "cd {ws.path} && exec $SHELL"',
                 ]
             elif shutil.which("gnome-terminal"):
                 terminal_cmd = ["gnome-terminal", "--working-directory", str(ws.path)]
@@ -316,6 +321,57 @@ def detect() -> None:
 
 
 @workspace.command()
+@click.argument("name")
+@click.option(
+    "--target",
+    "-t",
+    "target_branch",
+    default="main",
+    help="Target branch to merge into (default: main)",
+)
+@click.option(
+    "--no-delete",
+    is_flag=True,
+    default=False,
+    help="Keep the branch after merging",
+)
+def merge(name: str, target_branch: str, no_delete: bool) -> None:
+    """Merge a workspace branch into target.
+
+    Merges the specified workspace branch into the target branch (default: main)
+    and optionally deletes the workspace branch.
+
+    NAME is the workspace/branch name to merge.
+
+    Examples:
+        fork workspace merge my-feature
+        fork workspace merge my-feature --target develop --no-delete
+    """
+    try:
+        manager = _create_workspace_manager(run_hooks=False)
+        manager.merge_workspace(
+            name=name,
+            target_branch=target_branch,
+            delete_branch=not no_delete,
+        )
+
+        action = "merged and branch deleted"
+        if no_delete:
+            action = "merged (branch kept)"
+        click.echo(f"Workspace '{name}' {action} into '{target_branch}'.")
+
+    except WorkspaceNotFoundError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except GitError as e:
+        click.echo(f"Git error: {e}", err=True)
+        sys.exit(1)
+    except WorkspaceError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@workspace.command()
 @click.option(
     "--edit",
     is_flag=True,
@@ -332,17 +388,21 @@ def config(edit: bool) -> None:
         fork workspace config --edit
     """
     if edit:
-        # Try to open the config file in editor
-        config_path = Path(__file__).parent.parent.parent / ".env"
+        from src.infrastructure.config.workspace_config import ForkAgentConfig
 
-        if not config_path.exists():
-            click.echo("No configuration file found.", err=True)
+        config_path = ForkAgentConfig._find_config_file()
+
+        if config_path is None or not config_path.exists():
+            click.echo(
+                "No configuration file found. Create .fork_agent.yaml in repo root "
+                "or ~/.config/fork_agent.yaml.",
+                err=True,
+            )
             sys.exit(1)
 
-        # Use the default editor
         editor = click.edit(filename=str(config_path))
         if editor is not None:
-            click.echo("Configuration updated.")
+            click.echo(f"Configuration updated ({config_path}).")
         return
 
     # Show current configuration

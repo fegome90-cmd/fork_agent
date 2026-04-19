@@ -1,31 +1,45 @@
-"""Dependencies para la API."""
+"""API dependencies — FastAPI-specific DI and auth.
+
+Service singletons are re-exported from the canonical container.
+This module only contains FastAPI-specific logic (auth, Depends wrappers).
+"""
 
 from __future__ import annotations
 
 import hmac
 import logging
-from threading import Lock
-from typing import Any
+from pathlib import Path
 
 from fastapi import Header, HTTPException, status
 
-from src.infrastructure.persistence.repositories.promise_repository import PromiseContractRepository
+from src.application.services.memory_service import MemoryService
+from src.application.services.orchestration.hook_service import HookService
+from src.infrastructure.persistence.container import (
+    get_hook_service as _get_hook_service,
+)
+from src.infrastructure.persistence.container import (
+    get_memory_service as _get_memory_service,
+)
+from src.infrastructure.persistence.container import (
+    get_promise_repository as _get_promise_repository,
+)
+from src.infrastructure.persistence.repositories.promise_repository import (
+    PromiseContractRepository,
+)
 
 logger = logging.getLogger(__name__)
 
-_memory_service: Any = None
-_memory_service_path: str | None = None
-_memory_lock = Lock()
 
-_hook_service: Any = None
-_hook_lock = Lock()
-
-_promise_repository: PromiseContractRepository | None = None
-_promise_repo_lock = Lock()
+# ---------------------------------------------------------------------------
+# FastAPI Authentication (API-specific — stays here)
+# ---------------------------------------------------------------------------
 
 
 async def verify_api_key(x_api_key: str = Header(...)) -> str:
-    from src.interfaces.api.config import api_settings
+    """Verify the API key from request headers."""
+    from src.interfaces.api.config import get_api_settings
+
+    api_settings = get_api_settings()
 
     if not api_settings.api_key:
         raise HTTPException(
@@ -43,71 +57,29 @@ async def verify_api_key(x_api_key: str = Header(...)) -> str:
     return x_api_key
 
 
-def get_memory_service(db_path: str = "data/memory.db") -> Any:
-    global _memory_service, _memory_service_path
-
-    with _memory_lock:
-        if _memory_service is not None:
-            if _memory_service_path != db_path:
-                raise ValueError(
-                    f"Memory service already initialized with path "
-                    f"{_memory_service_path}, cannot use {db_path}"
-                )
-            return _memory_service
-
-        try:
-            from pathlib import Path
-
-            from src.infrastructure.persistence.container import create_container
-
-            path = Path(db_path) if db_path else None
-            container = create_container(path)
-            _memory_service = container.memory_service()
-            _memory_service_path = db_path
-            logger.info("Initialized MemoryService singleton")
-        except Exception as e:
-            logger.exception(f"Failed to initialize MemoryService: {e}")
-            raise
-
-    return _memory_service
+# ---------------------------------------------------------------------------
+# Re-exports with proper typing (replaces Any-typed singletons)
+# ---------------------------------------------------------------------------
 
 
-def get_hook_service() -> Any:
-    global _hook_service
+def get_memory_service(db_path: str = "") -> MemoryService:
+    """Get MemoryService singleton — delegates to canonical container.
 
-    if _hook_service is not None:
-        return _hook_service
+    Maintains str-based db_path API for backward compatibility with routes.
+    """
+    if not db_path:
+        from src.infrastructure.persistence.container import get_default_db_path
 
-    with _hook_lock:
-        if _hook_service is None:
-            try:
-                from src.application.services.orchestration.hook_service import HookService
+        db_path = str(get_default_db_path())
+    path = Path(db_path) if db_path else None
+    return _get_memory_service(path)
 
-                _hook_service = HookService()
-                logger.info("Initialized HookService singleton")
-            except Exception as e:
-                logger.exception(f"Failed to initialize HookService: {e}")
-                raise
 
-    return _hook_service
+def get_hook_service() -> HookService:
+    """Get HookService singleton — delegates to canonical container."""
+    return _get_hook_service()
 
 
 def get_promise_repository() -> PromiseContractRepository:
-    global _promise_repository
-
-    if _promise_repository is not None:
-        return _promise_repository
-
-    with _promise_repo_lock:
-        if _promise_repository is None:
-            try:
-                from src.infrastructure.persistence.container import create_container
-
-                container = create_container()
-                _promise_repository = container.promise_contract_repository()
-                logger.info("Initialized PromiseContractRepository singleton")
-            except Exception as e:
-                logger.exception(f"Failed to initialize PromiseContractRepository: {e}")
-                raise
-
-    return _promise_repository
+    """Get PromiseContractRepository singleton — delegates to canonical container."""
+    return _get_promise_repository()
