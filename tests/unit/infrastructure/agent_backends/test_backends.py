@@ -136,7 +136,7 @@ class TestBackendRegistry:
         assert backend1 is backend2
 
     def test_get_available_backends_filters_by_availability(self) -> None:
-        with patch.object(OpencodeBackend, "is_available", return_value=True):
+        with patch.object(OpencodeBackend, "is_available", return_value=True):  # noqa: SIM117
             with patch.object(PiBackend, "is_available", return_value=False):
                 available = get_available_backends()
                 names = [b.name for b in available]
@@ -144,21 +144,21 @@ class TestBackendRegistry:
                 assert "pi" not in names
 
     def test_get_default_backend_prefers_opencode(self) -> None:
-        with patch.object(OpencodeBackend, "is_available", return_value=True):
+        with patch.object(OpencodeBackend, "is_available", return_value=True):  # noqa: SIM117
             with patch.object(PiBackend, "is_available", return_value=True):
                 default = get_default_backend()
                 assert default is not None
                 assert default.name == "opencode"
 
     def test_get_default_backend_falls_back_to_pi(self) -> None:
-        with patch.object(OpencodeBackend, "is_available", return_value=False):
+        with patch.object(OpencodeBackend, "is_available", return_value=False):  # noqa: SIM117
             with patch.object(PiBackend, "is_available", return_value=True):
                 default = get_default_backend()
                 assert default is not None
                 assert default.name == "pi"
 
     def test_get_default_backend_returns_none_when_none_available(self) -> None:
-        with patch.object(OpencodeBackend, "is_available", return_value=False):
+        with patch.object(OpencodeBackend, "is_available", return_value=False):  # noqa: SIM117
             with patch.object(PiBackend, "is_available", return_value=False):
                 default = get_default_backend()
                 assert default is None

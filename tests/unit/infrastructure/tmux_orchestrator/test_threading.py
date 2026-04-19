@@ -59,7 +59,7 @@ class TestConcurrentAccess:
         """Two concurrent send_commands SHALL NOT overlap."""
         call_order: list[str] = []
 
-        def slow_run(cmd: list[str], **kwargs: object) -> MagicMock:
+        def slow_run(cmd: list[str], **_kwargs: object) -> MagicMock:
             call_order.append(f"start-{cmd[-1]}")
             time.sleep(0.01)
             call_order.append(f"end-{cmd[-1]}")

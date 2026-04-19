@@ -68,7 +68,7 @@ def test_large_message_payload_preservation(messenger, tmp_path):
             assert decoded.payload == large_payload
             assert decoded.id == msg.id
 
-def test_expired_temp_files_cleanup_leak(messenger, tmp_path):
+def test_expired_temp_files_cleanup_leak(_messenger, tmp_path):
     """
     BUG HUNT: Do we leak temp files if they are not cleaned up?
     """

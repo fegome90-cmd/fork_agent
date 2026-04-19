@@ -286,7 +286,7 @@ class TestExecuteTask:
         executor: WorkflowExecutor,
         sample_task: Task,
         mock_tmux: MagicMock,
-        mock_workspace: MagicMock,
+        mock_workspace: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test task execution when tmux raises exception."""
         mock_tmux.create_session.side_effect = RuntimeError("Tmux not available")
@@ -335,8 +335,8 @@ class TestExecuteTask:
     def test_execute_task_truncates_long_slug(
         self,
         executor: WorkflowExecutor,
-        mock_tmux: MagicMock,
-        mock_workspace: MagicMock,
+        mock_tmux: MagicMock,  # noqa: ARG002
+        mock_workspace: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test that long slugs are truncated properly."""
         long_slug_task = Task(
@@ -366,10 +366,10 @@ class TestExecutePlan:
         self,
         executor: WorkflowExecutor,
         sample_plan: PlanState,
-        mock_tmux: MagicMock,
-        mock_workspace: MagicMock,
+        mock_tmux: MagicMock,  # noqa: ARG002
+        mock_workspace: MagicMock,  # noqa: ARG002
         mock_hooks: MagicMock,
-        mock_memory: MagicMock,
+        mock_memory: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test executing a plan with a single task."""
         result = executor.execute_plan(sample_plan)
@@ -386,8 +386,8 @@ class TestExecutePlan:
         self,
         executor: WorkflowExecutor,
         sample_plan: PlanState,
-        mock_tmux: MagicMock,
-        mock_workspace: MagicMock,
+        mock_tmux: MagicMock,  # noqa: ARG002
+        mock_workspace: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test executing a plan with multiple tasks."""
         task2 = Task(
@@ -439,7 +439,7 @@ class TestExecutePlan:
         self,
         executor: WorkflowExecutor,
         sample_plan: PlanState,
-        mock_tmux: MagicMock,
+        mock_tmux: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test executing a specific task by ID."""
         task2 = Task(
@@ -458,7 +458,7 @@ class TestExecutePlan:
         self,
         executor: WorkflowExecutor,
         sample_plan: PlanState,
-        mock_tmux: MagicMock,
+        mock_tmux: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test executing a nonexistent task ID returns empty result."""
         result = executor.execute_plan(sample_plan, task_id="nonexistent-id")
@@ -543,7 +543,7 @@ class TestCleanupWorktree:
     def test_cleanup_success(
         self,
         executor: WorkflowExecutor,
-        sample_task: Task,
+        sample_task: Task,  # noqa: ARG002
         mock_workspace: MagicMock,
         mock_hooks: MagicMock,
     ) -> None:
@@ -698,7 +698,7 @@ class TestCleanupWorktree:
     def test_cleanup_uses_task_branch_if_no_branch_field(
         self,
         executor: WorkflowExecutor,
-        mock_workspace: MagicMock,
+        mock_workspace: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test cleanup derives worktree name from slug if branch not set."""
         task_no_branch = Task(
@@ -717,7 +717,7 @@ class TestCleanupWorktree:
     def test_cleanup_dispatch_failure_logged(
         self,
         executor: WorkflowExecutor,
-        sample_task: Task,
+        sample_task: Task,  # noqa: ARG002
         mock_hooks: MagicMock,
     ) -> None:
         """Test that dispatch failure is logged but doesn't fail cleanup."""
@@ -747,7 +747,7 @@ class TestCleanupAllWorktrees:
     def test_cleanup_all_success(
         self,
         executor: WorkflowExecutor,
-        mock_workspace: MagicMock,
+        mock_workspace: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test cleaning up multiple worktrees."""
         tasks = (
@@ -989,7 +989,7 @@ class TestEdgeCases:
     def test_task_with_empty_slug(
         self,
         executor: WorkflowExecutor,
-        mock_tmux: MagicMock,
+        mock_tmux: MagicMock,  # noqa: ARG002
     ) -> None:
         """Test task with empty slug."""
         task = Task(

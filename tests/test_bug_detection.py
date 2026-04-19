@@ -32,7 +32,7 @@ def mock_promise_repo():
 def failing_promise_repo():
     mock = MagicMock()
 
-    def save_fails(*args, **kwargs):
+    def save_fails(*_args, **_kwargs):
         raise Exception("Database connection failed")
 
     mock.save = save_fails

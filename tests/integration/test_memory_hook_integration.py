@@ -42,7 +42,7 @@ class TestMemoryHookIntegration:
     def test_toggle_off_no_capture(
         self,
         container,
-        temp_db: Path,
+        _temp_db: Path,
     ) -> None:
         """With toggle OFF, IPC flow should produce 0 agent_message observations."""
         memory = container.memory_service()
@@ -75,7 +75,7 @@ class TestMemoryHookIntegration:
     def test_toggle_on_captures_important_command(
         self,
         container,
-        temp_db: Path,
+        _temp_db: Path,
     ) -> None:
         """With toggle ON, send 1 important COMMAND → 1 observation with complete metadata."""
         memory = container.memory_service()
@@ -125,7 +125,7 @@ class TestMemoryHookIntegration:
     def test_retry_same_message_id_no_duplicate(
         self,
         container,
-        temp_db: Path,
+        _temp_db: Path,
     ) -> None:
         """Re-send same message_id → still 1 observation (idempotency)."""
         memory = container.memory_service()
@@ -160,7 +160,7 @@ class TestMemoryHookIntegration:
     def test_full_flow_with_broadcast(
         self,
         container,
-        temp_db: Path,
+        _temp_db: Path,
     ) -> None:
         """Test broadcast message capture."""
         memory = container.memory_service()

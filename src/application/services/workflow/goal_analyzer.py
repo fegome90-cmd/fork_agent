@@ -159,9 +159,7 @@ class GoalAnalyzer:
                     explicit_ids = {slugify(m) for m in goal.must_haves}
                     explicit_ids |= {slugify(n) for n in goal.nice_to_haves}
 
-                    if req_id not in explicit_ids:
-                        # Check if not already added
-                        if not any(r.id == req_id for r in implicit):
+                    if req_id not in explicit_ids and not any(r.id == req_id for r in implicit):
                             implicit.append(
                                 DerivedRequirement(
                                     id=req_id,

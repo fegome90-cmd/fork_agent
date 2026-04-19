@@ -42,8 +42,7 @@ def update(
             meta_dict = json.loads(metadata)
         except json.JSONDecodeError:
             typer.echo("Error: Invalid JSON metadata", err=True)
-            raise typer.Exit(1)
-
+            raise typer.Exit(1)  # noqa: B904
     if (
         content is None
         and meta_dict is None
@@ -55,15 +54,13 @@ def update(
             "Error: At least one of --content, --metadata, --type, --topic-key, or --project must be provided",
             err=True,
         )
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     try:
         resolved = resolve_observation_id(memory_service, observation_id)
         actual_id = resolved.id
     except (ValueError, ObservationNotFoundError) as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     try:
         observation = memory_service.update(
             observation_id=actual_id,
@@ -82,4 +79,4 @@ def update(
             telemetry.flush()
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1)  # noqa: B904

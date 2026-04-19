@@ -63,7 +63,7 @@ class TestSearchScreen:
         mock_table = MagicMock()
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#search-input": MagicMock(value="hello"),
             "#type-filter": MagicMock(value=""),
             "#project-filter": MagicMock(value=""),
@@ -83,7 +83,7 @@ class TestSearchScreen:
 
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#search-input": MagicMock(value="  "),
             "#type-filter": MagicMock(value=""),
             "#project-filter": MagicMock(value=""),
@@ -109,7 +109,7 @@ class TestSearchScreen:
         mock_table = MagicMock()
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#search-input": MagicMock(value="test"),
             "#type-filter": MagicMock(value="decision"),
             "#project-filter": MagicMock(value=""),
@@ -136,7 +136,7 @@ class TestSearchScreen:
         mock_table = MagicMock()
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#search-input": MagicMock(value="test"),
             "#type-filter": MagicMock(value=""),
             "#project-filter": MagicMock(value=""),

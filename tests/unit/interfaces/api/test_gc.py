@@ -84,7 +84,7 @@ class TestGcStatusEndpoint:
     """Tests for GET /sessions/gc/status."""
 
     def test_gc_status_never_run(self, client):
-        with patch("src.interfaces.api.main._gc_state_lock"):
+        with patch("src.interfaces.api.main._gc_state_lock"):  # noqa: SIM117
             with patch("src.interfaces.api.main._gc_state") as mock_state:
                 mock_state.last_run_at = None
 
@@ -95,7 +95,7 @@ class TestGcStatusEndpoint:
                 assert data["last_run_at"] is None
 
     def test_gc_status_ok(self, client):
-        with patch("src.interfaces.api.main._gc_state_lock"):
+        with patch("src.interfaces.api.main._gc_state_lock"):  # noqa: SIM117
             with patch("src.interfaces.api.main._gc_state") as mock_state:
                 mock_state.last_run_at = datetime.now()
                 mock_state.cleaned_count = 5

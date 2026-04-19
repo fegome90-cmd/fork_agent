@@ -49,7 +49,7 @@ def failing_promise_repository():
     """Mock PromiseContractRepository that always fails on save."""
     mock = MagicMock()
 
-    def save_fails(*args, **kwargs):
+    def save_fails(*_args, **_kwargs):
         raise Exception("Database connection failed")
 
     mock.save = save_fails

@@ -42,8 +42,7 @@ def encode_message(msg: AgentMessage) -> str:
         temp_file.write_text(json.dumps(data))
     except OSError as e:
         # Re-raise to let the messenger know the protocol failed
-        raise RuntimeError(f"Failed to write message to temp storage: {e}")
-
+        raise RuntimeError(f"Failed to write message to temp storage: {e}") from None
     return f"# F:{msg.id[:8]}"
 
 

@@ -109,7 +109,7 @@ def _check_plan_exists() -> PlanState:
     plan = PlanState.load(plan_path)
     if plan is None:
         typer.echo("Error: No plan found. Run 'memory workflow outline' first.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1)  # noqa: B904
     return plan
 
 
@@ -118,7 +118,7 @@ def _check_execute_exists() -> ExecuteState:
     state = ExecuteState.load(exec_path)
     if state is None:
         typer.echo("Error: No execution found. Run 'memory workflow execute' first.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1)  # noqa: B904
     return state
 
 
@@ -127,7 +127,7 @@ def _check_verify_exists() -> VerifyState:
     state = VerifyState.load(verify_path)
     if state is None:
         typer.echo("Error: No verification found. Run 'memory workflow verify' first.", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1)  # noqa: B904
     return state
 
 
@@ -238,8 +238,7 @@ def _merge_branch_via_temp_worktree(branch_name: str, target_branch: str) -> Non
     """Merge branch into target using temporary git worktree."""
     repo_root = _git_output(["rev-parse", "--show-toplevel"])
     if repo_root is None:
-        raise RuntimeError("Unable to detect git repository root")
-
+        raise RuntimeError("Unable to detect git repository root") from None
     temp_dir = Path(tempfile.mkdtemp(prefix="workflow-ship-"))
     try:
         add_result = subprocess.run(
@@ -531,8 +530,7 @@ def ship(
 
     if inplace and used_target_flag:
         typer.echo("Error: --inplace cannot be used with --target/--branch", err=True)
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     if used_legacy_branch:
         typer.echo("Warning: --branch is deprecated, use --target", err=True)
 
@@ -540,15 +538,14 @@ def ship(
         current = _get_current_branch()
         if current is None:
             typer.echo("Error: Cannot resolve current branch for --inplace", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1)  # noqa: B904
         target_branch = current
 
     # Handle --force: skip verification gate
     if force:
         if not reason.strip():
             typer.echo("Error: --force requires --reason", err=True)
-            raise typer.Exit(1)
-
+            raise typer.Exit(1)  # noqa: B904
         # Create minimal verify_state for forced ship
         verify_state = VerifyState(
             session_id=f"forced-{uuid.uuid4().hex[:8]}",
@@ -571,8 +568,7 @@ def ship(
 
         if not passed and exit_code != 0:
             typer.echo("Error: Tests failed, cannot ship", err=True)
-            raise typer.Exit(1)
-
+            raise typer.Exit(1)  # noqa: B904
     # Validate phase transition: ship requires verified phase
     _validate_phase_transition(
         current_phase=verify_state.phase,
@@ -584,8 +580,7 @@ def ship(
         typer.echo(
             "Error: Verification not complete. Run 'memory workflow verify' first.", err=True
         )
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     # Safety preflight: block cross-branch shipping when local changes are dirty
     try:
         _enforce_ship_checkout_preflight(target_branch, use_worktree)
@@ -603,8 +598,7 @@ def ship(
                 "forced": force,
             },
         )
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     current_branch = _get_current_branch() or "unknown"
     dirty_files_count = len(_get_dirty_files())
     cross_branch = current_branch != target_branch
@@ -731,8 +725,7 @@ def ship(
             },
         )
         typer.echo("Error: Ship failed during runtime operations", err=True)
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     typer.echo(f"✓ Shipping to {target_branch}")
     typer.echo(f"  Session: {verify_state.session_id}")
     typer.echo("Workflow complete!")

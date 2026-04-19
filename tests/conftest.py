@@ -52,7 +52,7 @@ def skip_if_no_tmux():
         pytest.skip("tmux not available (TMUX env or tmux binary required)")
 
 
-from src.domain.entities.terminal import PlatformType, TerminalConfig, TerminalResult
+from src.domain.entities.terminal import PlatformType, TerminalConfig, TerminalResult  # noqa: E402
 
 
 @pytest.fixture

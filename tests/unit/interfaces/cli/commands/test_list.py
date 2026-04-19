@@ -40,7 +40,7 @@ class TestListCommand:
         assert "No observations" in result.stdout
 
     @patch("src.interfaces.cli.commands.list.os.getcwd", return_value="/tmp/test-project")
-    def test_list_with_limit(self, mock_cwd: MagicMock) -> None:
+    def test_list_with_limit(self, _mock_cwd: MagicMock) -> None:
         from src.interfaces.cli.commands.list import app
 
         mock_memory = MagicMock()

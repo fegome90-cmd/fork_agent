@@ -160,8 +160,7 @@ def query(
                 cutoff_ms = int(dt.timestamp() * 1000)
             except ValueError:
                 typer.echo(f"Invalid --since format: {since}", err=True)
-                raise typer.Exit(1)
-
+                raise typer.Exit(1)  # noqa: B904
         if cutoff_ms:
             observations = [
                 obs for obs in observations if obs.timestamp >= cutoff_ms

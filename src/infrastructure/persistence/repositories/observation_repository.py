@@ -570,10 +570,7 @@ class ObservationRepository:
         # Normalize hyphenated type values to underscored (e.g. "file-ops" -> "file_ops")
         if type_ is not None and type_ not in Observation._ALLOWED_TYPES:
             normalized = type_.replace("-", "_")
-            if normalized in Observation._ALLOWED_TYPES:
-                type_ = normalized
-            else:
-                type_ = None  # Unknown type, discard
+            type_ = normalized if normalized in Observation._ALLOWED_TYPES else None  # Unknown type, discard
         if type_ is None and isinstance(metadata_dict, dict):
             meta_type = metadata_dict.get("type")
             if isinstance(meta_type, str):

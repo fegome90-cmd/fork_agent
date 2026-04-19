@@ -282,7 +282,7 @@ class GcStatusResponse(BaseModel):
 
 
 # Discovery card models
-from src.interfaces.api.models.discovery import (
+from src.interfaces.api.models.discovery import (  # noqa: E402
     AgentBackendInfo,
     AuthInfo,
     CardType,

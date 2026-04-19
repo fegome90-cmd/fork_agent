@@ -63,7 +63,7 @@ class TestCollectMetricsProcFs:
 
     @patch("src.infrastructure.tmux_orchestrator.process_metrics._PSUTIL_AVAILABLE", False)
     @patch("src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Linux")
-    def test_proc_stat_failure_returns_zeroed(self, mock_platform: MagicMock) -> None:
+    def test_proc_stat_failure_returns_zeroed(self, _mock_platform: MagicMock) -> None:
         """CPU parsed from /proc/{pid}/stat returns zeroed when process missing."""
         from src.infrastructure.tmux_orchestrator.process_metrics import collect_metrics
 
@@ -74,7 +74,7 @@ class TestCollectMetricsProcFs:
 
     @patch("src.infrastructure.tmux_orchestrator.process_metrics._PSUTIL_AVAILABLE", False)
     @patch("src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Darwin")
-    def test_non_linux_skips_proc(self, mock_platform: MagicMock) -> None:
+    def test_non_linux_skips_proc(self, _mock_platform: MagicMock) -> None:
         """Non-Linux systems skip /proc fallback."""
         from src.infrastructure.tmux_orchestrator.process_metrics import collect_metrics
 
@@ -91,7 +91,7 @@ class TestCollectMetricsProcFs:
     def test_proc_delegates_to_collect_via_proc(
         self,
         mock_collect_via_proc: MagicMock,
-        mock_platform: MagicMock,
+        _mock_platform: MagicMock,
     ) -> None:
         """collect_metrics delegates to _collect_via_proc on Linux without psutil."""
         from src.infrastructure.tmux_orchestrator.process_metrics import collect_metrics

@@ -116,17 +116,17 @@ def run_tmux(args: list[str], timeout: int = COMMAND_TIMEOUT) -> tuple[int, str,
         raise HTTPException(
             status_code=504,
             detail=f"Command timed out after {timeout}s",
-        )
+        ) from None
     except FileNotFoundError:
         raise HTTPException(
             status_code=500,
             detail="tmux not found",
-        )
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Command failed: {e}",
-        )
+        ) from None
 
 
 def validate_command(command: str) -> str:

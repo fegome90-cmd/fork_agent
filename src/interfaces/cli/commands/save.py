@@ -83,8 +83,7 @@ def save(
     # Validate content
     if not content or not content.strip():
         typer.echo("Error: Content cannot be empty", err=True)
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     # Build metadata from structured fields
     meta_dict: dict[str, Any] = {}
 
@@ -108,8 +107,7 @@ def save(
                 f"Allowed: {sorted(Observation._ALLOWED_TYPES)}",
                 err=True,
             )
-            raise typer.Exit(1)
-
+            raise typer.Exit(1)  # noqa: B904
     extracted_topic = meta_dict.pop("topic_key", None)
     if extracted_topic is not None and topic_key is None:
         topic_key = extracted_topic
@@ -153,8 +151,7 @@ def save(
         typer.echo(f"Saved: {observation.id}")
     except (ValueError, TypeError) as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
-
+        raise typer.Exit(1)  # noqa: B904
     # Flush telemetry to ensure events are persisted
     db_path = _get_db_path_from_context(ctx)
     if db_path:

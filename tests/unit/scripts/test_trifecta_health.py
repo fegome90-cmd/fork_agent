@@ -34,13 +34,13 @@ def mock_env(tmp_path, monkeypatch):
         "status_file": tmp_path / "_ctx" / "telemetry" / "daemon.status"
     }
 
-def test_daemon_healthy(mock_env, monkeypatch):
+def test_daemon_healthy(mock_env, _monkeypatch):
     """Scenario: Daemon is running and healthy."""
     pid = "12345"
     mock_env["pid_file"].write_text(pid)
 
     # Mock 'ps' to return success for this PID and include 'trifecta' in args
-    def mock_run(args, **kwargs):
+    def mock_run(args, **_kwargs):
         class MockProcess:
             returncode = 0
             stdout = "trifecta daemon"

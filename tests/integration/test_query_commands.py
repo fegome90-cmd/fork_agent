@@ -222,8 +222,8 @@ class TestTimelineCommand:
         assert "run-test-001" in result.output
 
         # Extract timestamps
-        lines = [l for l in result.output.split("\n") if "|" in l and "HH:MM" not in l]
-        timestamps = [l.split("|")[0].strip() for l in lines]
+        lines = [ln for ln in result.output.split("\n") if "|" in ln and "HH:MM" not in ln]
+        timestamps = [ln.split("|")[0].strip() for ln in lines]
 
         # Should be in ascending order
         assert timestamps == sorted(timestamps)

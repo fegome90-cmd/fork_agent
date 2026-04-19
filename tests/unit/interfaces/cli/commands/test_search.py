@@ -20,7 +20,7 @@ class TestSearchCommand:
     """Tests for search command."""
 
     @patch("src.interfaces.cli.commands.search.os.getcwd", return_value="/tmp/test-project")
-    def test_search_returns_results(self, mock_cwd: MagicMock) -> None:
+    def test_search_returns_results(self, _mock_cwd: MagicMock) -> None:
         from src.interfaces.cli.commands.search import app
 
         mock_memory = MagicMock()
@@ -47,7 +47,7 @@ class TestSearchCommand:
         assert "No results" in result.stdout
 
     @patch("src.interfaces.cli.commands.search.os.getcwd", return_value="/tmp/test-project")
-    def test_search_with_limit(self, mock_cwd: MagicMock) -> None:
+    def test_search_with_limit(self, _mock_cwd: MagicMock) -> None:
         from src.interfaces.cli.commands.search import app
 
         mock_memory = MagicMock()

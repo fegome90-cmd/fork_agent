@@ -112,7 +112,7 @@ class TestStatsScreen:
         for sid in ["#stats-summary", "#stats-by-type", "#stats-by-project", "#stats-activity"]:
             selector_map[sid] = mock_static
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: selector_map.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: selector_map.get(s if isinstance(s, str) else "", MagicMock())):
             screen._load_stats()
 
         mock_hc.get_stats.assert_called_once()
@@ -138,7 +138,7 @@ class TestStatsScreen:
 
         calls: list[tuple[str, str]] = []
 
-        def fake_query(selector, widget_type=None):
+        def fake_query(selector, _widget_type=None):
             s = selector if isinstance(selector, str) else ""
             mock = MagicMock()
             calls.append((s, ""))

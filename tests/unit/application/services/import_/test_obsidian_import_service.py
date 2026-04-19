@@ -173,7 +173,7 @@ class TestImportProjectOverride:
     def test_project_override(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_project: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(_content: str, **kwargs: object) -> str:
             nonlocal saved_project
             saved_project = kwargs.get("project")  # type: ignore[assignment]
             return "fake-id"
@@ -200,7 +200,7 @@ class TestImportDryRun:
 
         called = False
 
-        def save_should_not_call(content: str, **kwargs: object) -> str:
+        def save_should_not_call(_content: str, **_kwargs: object) -> str:
             nonlocal called
             called = True
             return "fake-id"
@@ -223,7 +223,7 @@ class TestImportDerivesTopicKeyFromPath:
     def test_derives_from_path(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_topic: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(_content: str, **kwargs: object) -> str:
             nonlocal saved_topic
             saved_topic = kwargs.get("topic_key")  # type: ignore[assignment]
             return "fake-id"
@@ -234,7 +234,7 @@ class TestImportDerivesTopicKeyFromPath:
         raw = path.read_text(encoding="utf-8")
         # Remove the topic_key line from YAML
         lines = raw.split("\n")
-        filtered = [l for l in lines if not l.startswith("topic_key:")]
+        filtered = [ln for ln in lines if not ln.startswith("topic_key:")]
         path.write_text("\n".join(filtered), encoding="utf-8")
 
         import_service.import_from_dir(
@@ -251,7 +251,7 @@ class TestImportStripsH1Title:
     def test_strips_h1_from_content(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_content: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(content: str, **_kwargs: object) -> str:
             nonlocal saved_content
             saved_content = content
             return "fake-id"
@@ -300,7 +300,7 @@ class TestImportMissingTypeDefaults:
     def test_default_type(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         saved_type: str | None = None
 
-        def capture_save(content: str, **kwargs: object) -> str:
+        def capture_save(_content: str, **kwargs: object) -> str:
             nonlocal saved_type
             saved_type = kwargs.get("type")  # type: ignore[assignment]
             return "fake-id"
@@ -314,7 +314,7 @@ class TestImportMissingTypeDefaults:
         path = tmp_path / "notype.md"
         raw = path.read_text(encoding="utf-8")
         lines = raw.split("\n")
-        filtered = [l for l in lines if not l.startswith("type:")]
+        filtered = [ln for ln in lines if not ln.startswith("type:")]
         path.write_text("\n".join(filtered), encoding="utf-8")
 
         import_service.import_from_dir(
@@ -354,5 +354,5 @@ class TestImportEmptyDir:
 # --- Helpers ---
 
 
-def _fake_save(content: str, **kwargs: object) -> str:
+def _fake_save(_content: str, **_kwargs: object) -> str:
     return "fake-id"

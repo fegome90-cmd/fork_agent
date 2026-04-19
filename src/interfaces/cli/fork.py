@@ -22,7 +22,7 @@ ForkTerminalFn = Callable[[str], TerminalResult]
 # Doctor app
 doctor_app = typer.Typer(name="doctor", help="Diagnóstico y reparación del sistema")
 
-from src.interfaces.cli.commands.message import app as message_app
+from src.interfaces.cli.commands.message import app as message_app  # noqa: E402
 
 # Root app that combines fork CLI and doctor commands
 root_app = typer.Typer(name="fork", help="Fork terminal operations and doctor diagnostics")

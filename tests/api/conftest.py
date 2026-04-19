@@ -19,12 +19,12 @@ db = DatabaseConnection(config=config)
 promise_repo = PromiseContractRepository(connection=db)
 
 # Inject via canonical container path
-from src.infrastructure.persistence import container as _container
+from src.infrastructure.persistence import container as _container  # noqa: E402
 
 _container._container_cache.clear()
 
-from src.interfaces.api.config import clear_api_settings_cache, set_test_mode
-from src.interfaces.api.main import app
+from src.interfaces.api.config import clear_api_settings_cache, set_test_mode  # noqa: E402
+from src.interfaces.api.main import app  # noqa: E402
 
 set_test_mode(True)
 clear_api_settings_cache()

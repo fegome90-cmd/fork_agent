@@ -68,7 +68,7 @@ class TestDetailScreen:
         mock_static = MagicMock()
         old_badge = MagicMock()
 
-        def query_one_side_effect(selector, widget_type=None):
+        def query_one_side_effect(selector, _widget_type=None):
             selector_map = {
                 "#detail-header": mock_static,
                 "#detail-project-info": mock_static,
@@ -97,7 +97,7 @@ class TestDetailScreen:
 
         captured_callback = None
 
-        def fake_push_screen(screen_obj, callback=None) -> None:
+        def fake_push_screen(_screen_obj, callback=None) -> None:
             nonlocal captured_callback
             captured_callback = callback
 
@@ -128,7 +128,7 @@ class TestDetailScreen:
 
         captured_callback = None
 
-        def fake_push_screen(screen_obj, callback=None) -> None:
+        def fake_push_screen(_screen_obj, callback=None) -> None:
             nonlocal captured_callback
             captured_callback = callback
 

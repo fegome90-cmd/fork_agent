@@ -17,7 +17,7 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#save-content": MagicMock(text="  "),
             "#save-type": MagicMock(value="decision"),
             "#save-topic-key": MagicMock(value=""),
@@ -31,7 +31,7 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#save-content": MagicMock(text="some content"),
             "#save-type": MagicMock(value="invalid_type"),
             "#save-topic-key": MagicMock(value=""),
@@ -45,7 +45,7 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#save-content": MagicMock(text="content"),
             "#save-type": MagicMock(value=""),
             "#save-topic-key": MagicMock(value="has spaces"),
@@ -59,7 +59,7 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#save-content": MagicMock(text="valid content"),
             "#save-type": MagicMock(value="decision"),
             "#save-topic-key": MagicMock(value="valid-key"),
@@ -84,7 +84,7 @@ class TestSaveScreen:
 
         token = active_app.set(mock_app)
         try:
-            with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+            with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
                 "#save-content": MagicMock(text="content here"),
                 "#save-type": MagicMock(value="decision"),
                 "#save-topic-key": MagicMock(value="my-key"),
@@ -115,7 +115,7 @@ class TestSaveScreen:
 
         token = active_app.set(MagicMock())
         try:
-            with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+            with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
                 "#save-content": MagicMock(text=""),
                 "#save-type": MagicMock(value=""),
                 "#save-topic-key": MagicMock(value=""),
@@ -135,7 +135,7 @@ class TestSaveScreen:
         screen = SaveScreen(db_path=None)
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, w=None: {
+        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
             "#save-content": MagicMock(text="hello world"),
             "#save-type": MagicMock(value="decision"),
             "#save-topic-key": MagicMock(value=""),

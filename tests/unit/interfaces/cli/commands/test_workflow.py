@@ -177,7 +177,7 @@ class TestWorkflowVerify:
             ),
             patch(
                 "src.interfaces.cli.commands.workflow._dispatch_event",
-                side_effect=lambda event, context="": dispatched.append(event),
+                side_effect=lambda event, _context="": dispatched.append(event),
             ),
         ):
             result = runner.invoke(get_app(), ["verify"])
@@ -254,7 +254,7 @@ class TestWorkflowShip:
             ),
             patch(
                 "src.interfaces.cli.commands.workflow._dispatch_event",
-                side_effect=lambda event, context="": dispatched.append(event),
+                side_effect=lambda event, _context="": dispatched.append(event),
             ),
         ):
             result = runner.invoke(get_app(), ["ship"])

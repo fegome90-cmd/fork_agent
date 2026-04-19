@@ -18,7 +18,7 @@ def _get_session_service(db_path: Path | None = None) -> SessionService:
 
 @app.command()
 def start(
-    ctx: typer.Context,
+    _ctx: typer.Context,
     project: str = typer.Option(None, "--project", "-p", help="Project name (auto-detected if not provided)"),
     goal: str = typer.Option(None, "--goal", "-g", help="Session goal/description"),
     instructions: str = typer.Option(
@@ -48,7 +48,7 @@ def start(
 
 @app.command()
 def end(
-    ctx: typer.Context,
+    _ctx: typer.Context,
     summary: str = typer.Option(None, "--summary", "-s", help="Summary of what was accomplished"),
     project: str = typer.Option(
         None, "--project", "-p", help="Project name (auto-detected if not provided)"
@@ -77,7 +77,7 @@ def end(
 
 @app.command()
 def list(
-    ctx: typer.Context,
+    _ctx: typer.Context,
     project: str = typer.Option(
         None, "--project", "-p", help="Project name (auto-detected if not provided)"
     ),
@@ -115,7 +115,7 @@ def list(
 
 @app.command()
 def context(
-    ctx: typer.Context,
+    _ctx: typer.Context,
     project: str = typer.Option(
         None, "--project", "-p", help="Project name (auto-detected if not provided)"
     ),

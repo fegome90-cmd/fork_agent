@@ -29,9 +29,7 @@ def send_message(
         mtype = MessageType[type.upper()]
     except KeyError:
         console.print(f"[red]Error: Invalid message type {type}[/red]")
-        raise typer.Exit(1)
-
-
+        raise typer.Exit(1)  # noqa: B904
     msg = AgentMessage.create(
         from_agent=from_agent,
         to_agent=to_agent,
