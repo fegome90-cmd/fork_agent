@@ -154,13 +154,19 @@ async def query_memory(
                 hours = int(since[:-1])
                 since_ms = int((now - timedelta(hours=hours)).timestamp() * 1000)
             except ValueError:
-                pass
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid hours format in since: {since}",
+                ) from None
         elif since.endswith("d"):
             try:
                 days = int(since[:-1])
                 since_ms = int((now - timedelta(days=days)).timestamp() * 1000)
             except ValueError:
-                pass
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid days format in since: {since}",
+                ) from None
         else:
             try:
                 dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
