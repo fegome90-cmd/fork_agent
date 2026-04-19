@@ -1,7 +1,7 @@
 # Engram Parity Roadmap
 > Generated: 2026-04-17 | Updated: 2026-04-18
 > Baseline: docs/engram-vs-ours-memory-diff-2026-04-17.md
-> Bug tracking: 19+27 found, 19+27 fixed, 0 open (+ 2 minor UX fixed)
+> Bug tracking: 43 found, 43 fixed, 0 open (+ 3 tmux-live runtime bugs fixed + 8 skill audit bugs fixed)
 
 ## Score Evolution
 
@@ -244,7 +244,16 @@
 | 2026-04-18 | 3-agent audit + real-world test | Content 8/8 PASS, CLI 19/19, MCP 16/16, E2E 9/9 |
 | 2026-04-18 | Minor fixes | session end auto-detect (get_active_any), MCP handshake documented |
 | 2026-04-18 | Git: 10 atomic commits pushed | 170+ files, 18K+ insertions. Branch pushed to origin |
-| **Total** | **29 bugs fixed, 0 open** | **Score 94/100 (Engram: 69, +25)** |
+| 2026-04-18 | Compact system audit | 8 bugs: bridge/CLI/repository. Fixed + 14 tests |
+| 2026-04-18 | 3-agent compact verification | 6 additional repo-layer bugs found+fixed. 40/40 tests GREEN |
+| 2026-04-18 | Skill audit: 12 bugs found | H1 drain_queue, H2 cmd_send, H3 fork init, M1-M5, L1-L4 |
+| 2026-04-18 | Batch 1: script fixes (3) | H1 drain warning, M1 chain_timeout, M2 PIPESTATUS |
+| 2026-04-18 | Batch 2: doc fixes (5) | H3 fork init refs, M4 fork doctor, M5 DB path, L1 fork-api, L2 mcp path |
+| 2026-04-18 | Real usage test (10 tests) | 8/10 PASS, 3 new runtime bugs found |
+| 2026-04-18 | Runtime fixes verified | NEW-1 queue drain, NEW-2 timestamp, NEW-3 registry cleanup — all PASS |
+| 2026-04-18 | Trifecta integration confirmed | Installed + primary context resolver in orchestrator |
+| 2026-04-18 | G21 added to P3 roadmap | Autonomous post-compact v2 (gentle-ai parity) |
+| **Total** | **43 bugs fixed, 0 open** | **Score 94/100 (Engram: 69, +25)** |
 
 ---
 
@@ -257,9 +266,10 @@
 | G15 | PyPI package | S | **TODO** | `pip install fork-agent`. Public package. |
 | G16 | CI/CD pipeline | S | **EXISTS** | `.github/workflows/ci.yml` exists. Needs: test matrix, lint, type-check, publish job. |
 | G17 | n8n workflow templates | S | **TODO** | Ready-to-use n8n workflows: save+search, compact, export. |
-| G18 | Test staleness fix | XS | **TODO** | test_main.py expects `data/memory.db`, now XDG default. 1 line fix. |
-| G19 | Obsidian import | M | **TODO** | Reverse of G10: `memory import obsidian -i DIR` → parse frontmatter → save. |
+| G18 | Test staleness fix | XS | **DONE** | test_main.py now uses get_default_db_path() instead of hardcoded `data/memory.db`. |
+| G19 | Obsidian import | M | **DONE** | `memory import obsidian -i DIR` — YAML frontmatter → Observation. Roundtrip verified. 14 tests. |
 | G20 | API pagination | S | **TODO** | Cursor-based pagination for list/search endpoints. |
+| G21 | Autonomous post-compact v2 | M | **DONE** | Directive changed from MANDATORY→AUTONOMOUS. Agent recovers → parses next_steps → executes → saves → repeats. artifacts-index now stores JSON with next_steps[]. |
 
 ### P3 Priority
 
@@ -269,6 +279,7 @@
 4. **G14/G15** — Distribution (Docker + PyPI)
 5. **G17** — Templates for n8n adoption
 6. **G19/G20** — Feature additions
+7. **G21** — Autonomous post-compact (full gentle-ai parity)
 
 ---
 
