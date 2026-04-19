@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.application.services.output_caps import (
     CHARS_PER_TOKEN,
     cap_response,

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 
 from src.domain.entities.observation import Observation
 from src.domain.ports.observation_repository import ObservationRepository
-from src.infrastructure.retrieval.reranker import detect_intention
 from src.infrastructure.retrieval.sanitizer import sanitize_fts5
 from src.infrastructure.retrieval.v2.bridge_logger import log_query_expansions
 from src.infrastructure.retrieval.v2.query_planner import plan_query

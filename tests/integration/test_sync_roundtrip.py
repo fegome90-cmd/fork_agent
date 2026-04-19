@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.infrastructure.persistence.container import create_container
 from src.domain.entities.observation import Observation
+from src.infrastructure.persistence.container import create_container
 
 
 def _make_obs(

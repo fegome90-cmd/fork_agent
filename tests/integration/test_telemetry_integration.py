@@ -154,7 +154,7 @@ class TestTelemetryIntegration:
 
         # Perform multiple operations
         obs1 = memory_service.save("observation 1")
-        obs2 = memory_service.save("observation 2")
+        memory_service.save("observation 2")
         memory_service.search("observation")
         memory_service.delete(obs1.id)
 

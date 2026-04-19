@@ -17,7 +17,6 @@ from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
     FORK_MSG_SHORT_PREFIX,
-    decode_message,
 )
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection

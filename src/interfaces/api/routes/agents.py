@@ -17,10 +17,9 @@ from src.interfaces.api.models import (
     AgentSession,
     AgentSessionCreate,
     AgentSessionResponse,
-    SessionListResponse,
     GcStatusResponse,
+    SessionListResponse,
 )
-
 
 logger = logging.getLogger(__name__)
 

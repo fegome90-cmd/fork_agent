@@ -11,7 +11,6 @@ import pytest
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
     FORK_MSG_SHORT_PREFIX,
-    FORK_MSG_TEMP_DIR,
     create_command,
     create_handoff,
     create_reply,
@@ -54,7 +53,7 @@ class TestEncodeMessage:
 
             assert encoded.startswith(FORK_MSG_SHORT_PREFIX)
             assert msg.id[:8] in encoded
-            
+
             # Should have created a temp file
             temp_file = tmp_path / f"fork_msg_{msg.id[:8]}.json"
             assert temp_file.exists()
@@ -73,7 +72,7 @@ class TestEncodeMessage:
         with patch("src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR", tmp_path):
             encode_message(msg)
             temp_file = tmp_path / f"fork_msg_{msg.id[:8]}.json"
-            
+
             data = json.loads(temp_file.read_text())
             assert data["id"] == "test-id-long-enough"
 

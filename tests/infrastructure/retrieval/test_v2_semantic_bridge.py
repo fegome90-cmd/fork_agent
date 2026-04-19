@@ -44,7 +44,6 @@ class TestQueryPlanning:
 
 class TestEnhancedSearch:
     def test_finds_observation_with_natural_language(self, tmp_path: object) -> None:
-        import uuid
         from pathlib import Path
 
         db_path = Path(str(tmp_path)) / "test_semantic.db"

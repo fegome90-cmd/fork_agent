@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from src.interfaces.api.main import app, _run_gc, get_gc_state
-from src.interfaces.api.routes.agents import SessionStore, _restore_sessions_from_disk
 from src.application.services.agent.agent_manager import CleanupResult
+from src.interfaces.api.main import _run_gc, app, get_gc_state
+from src.interfaces.api.routes.agents import SessionStore, _restore_sessions_from_disk
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ class TestRestoreSessionsFromDisk:
         # Setup mock sessions directory
         sessions_dir = tmp_path / "api-sessions"
         sessions_dir.mkdir()
-        
+
         session_data = {
             "session_id": "test-session",
             "agent_type": "opencode",
@@ -42,7 +42,7 @@ class TestRestoreSessionsFromDisk:
             # Clear memory only, don't use SessionStore.delete() as it hits disk
             with patch("src.interfaces.api.routes.agents._sessions", {}):
                 count = _restore_sessions_from_disk()
-                
+
                 assert count == 1
                 assert SessionStore.exists("test-session")
             session = SessionStore.get("test-session")
@@ -73,7 +73,7 @@ class TestRunGc:
 
         assert cleaned == 2
         assert failed == 1
-        
+
         state = get_gc_state()
         assert state.cleaned_count == 2
         assert state.failed_count == 1
@@ -87,7 +87,7 @@ class TestGcStatusEndpoint:
         with patch("src.interfaces.api.main._gc_state_lock"):
             with patch("src.interfaces.api.main._gc_state") as mock_state:
                 mock_state.last_run_at = None
-                
+
                 response = client.get("/api/v1/agents/sessions/gc/status")
                 assert response.status_code == 200
                 data = response.json()
@@ -100,7 +100,7 @@ class TestGcStatusEndpoint:
                 mock_state.last_run_at = datetime.now()
                 mock_state.cleaned_count = 5
                 mock_state.failed_count = 0
-                
+
                 response = client.get("/api/v1/agents/sessions/gc/status")
                 assert response.status_code == 200
                 data = response.json()

@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.domain.entities.message import AgentMessage, MessageType
-from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.persistence.database import DatabaseConnection
+from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxSession, TmuxWindow
 
 
@@ -80,12 +80,12 @@ class TestAgentMessengerSend:
             # 1. has-session
             # 2. set-option (side-channel)
             # 3. display-message (alert)
-            
+
             # Check for set-option call
             set_opt_call = next((c for c in mock_run.call_args_list if "set-option" in c[0][0]), None)
             assert set_opt_call is not None
             assert "@last_fork_msg" in set_opt_call[0][0]
-            
+
             # Check for display-message call (discreet)
             display_msg_call = next((c for c in mock_run.call_args_list if "display-message" in c[0][0]), None)
             assert display_msg_call is not None

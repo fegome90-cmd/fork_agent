@@ -7,10 +7,8 @@ once the source file formatting is fixed. They import the service layer only.
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from src.domain.entities.session import Session
@@ -20,32 +18,32 @@ runner = CliRunner()
 
 def _make_active_session(**overrides) -> Session:
     """Create a sample active session for testing."""
-    defaults = dict(
-        id="test-session-001",
-        project="test-proj",
-        directory="/tmp/test-proj",
-        started_at=1000000,
-        ended_at=None,
-        goal="Test goal",
-        instructions=None,
-        summary=None,
-    )
+    defaults = {
+        "id": "test-session-001",
+        "project": "test-proj",
+        "directory": "/tmp/test-proj",
+        "started_at": 1000000,
+        "ended_at": None,
+        "goal": "Test goal",
+        "instructions": None,
+        "summary": None,
+    }
     defaults.update(overrides)
     return Session(**defaults)
 
 
 def _make_ended_session(**overrides) -> Session:
     """Create a sample ended session for testing."""
-    defaults = dict(
-        id="test-session-002",
-        project="test-proj",
-        directory="/tmp/test-proj",
-        started_at=1000000,
-        ended_at=2000000,
-        goal="Test goal",
-        instructions=None,
-        summary="Completed work",
-    )
+    defaults = {
+        "id": "test-session-002",
+        "project": "test-proj",
+        "directory": "/tmp/test-proj",
+        "started_at": 1000000,
+        "ended_at": 2000000,
+        "goal": "Test goal",
+        "instructions": None,
+        "summary": "Completed work",
+    }
     defaults.update(overrides)
     return Session(**defaults)
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
 
 import pytest
@@ -40,10 +39,7 @@ def _write_obsidian_md(
 
     fm_str = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
     body = ""
-    if title:
-        body = f"# {title}\n\n{content}\n"
-    else:
-        body = f"{content}\n"
+    body = f"# {title}\n\n{content}\n" if title else f"{content}\n"
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"---\n{fm_str}---\n{body}", encoding="utf-8")

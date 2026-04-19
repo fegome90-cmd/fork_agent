@@ -40,7 +40,7 @@ def encode_message(msg: AgentMessage) -> str:
         FORK_MSG_TEMP_DIR.mkdir(parents=True, exist_ok=True)
         temp_file = FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}.json"
         temp_file.write_text(json.dumps(data))
-    except (OSError, IOError) as e:
+    except OSError as e:
         # Re-raise to let the messenger know the protocol failed
         raise RuntimeError(f"Failed to write message to temp storage: {e}")
 
@@ -56,10 +56,10 @@ def decode_message(raw: str) -> AgentMessage | None:
         suffix = raw[start_index + 4:].strip()
         if not suffix:
             return None
-            
+
         id_part = suffix.split()[0] # Take until whitespace
         id_short = id_part[:8]
-        
+
         temp_file = FORK_MSG_TEMP_DIR / f"fork_msg_{id_short}.json"
         if temp_file.exists():
             try:

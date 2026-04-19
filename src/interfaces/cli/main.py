@@ -6,9 +6,8 @@ import logging
 import uuid
 from pathlib import Path
 
-import typer
-
 import click
+import typer
 
 from src.application.services.orchestration.events import SessionStartEvent
 from src.infrastructure.persistence.container import get_default_db_path
@@ -25,11 +24,12 @@ from src.interfaces.cli.commands import (
     tui,
     update,
 )
-from src.interfaces.cli.commands.export import app as export_app
-from src.interfaces.cli.commands.import_ import app as import_app
 from src.interfaces.cli.commands.cleanup import cleanup
 from src.interfaces.cli.commands.compact import app as compact_app
+from src.interfaces.cli.commands.export import app as export_app
 from src.interfaces.cli.commands.health import health
+from src.interfaces.cli.commands.import_ import app as import_app
+from src.interfaces.cli.commands.message import app as message_app
 from src.interfaces.cli.commands.project import app as project_app
 from src.interfaces.cli.commands.prompt import app as prompt_app
 from src.interfaces.cli.commands.query import app as query_app
@@ -37,14 +37,13 @@ from src.interfaces.cli.commands.schedule import app as schedule_app
 from src.interfaces.cli.commands.session import app as session_app
 from src.interfaces.cli.commands.sync import app as sync_app
 from src.interfaces.cli.commands.telemetry import app as telemetry_app
-from src.interfaces.cli.commands.message import app as message_app
 from src.interfaces.cli.commands.workflow import app as workflow_app
-from src.interfaces.cli.workspace_commands import workspace as workspace_click_group
 from src.interfaces.cli.dependencies import (
     get_hook_service,
     get_memory_service,
     get_telemetry_service,
 )
+from src.interfaces.cli.workspace_commands import workspace as workspace_click_group
 
 logger = logging.getLogger(__name__)
 

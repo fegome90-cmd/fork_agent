@@ -6,8 +6,8 @@ from pathlib import Path
 
 import typer
 
-from src.domain.entities.session import Session
 from src.application.services.session_service import SessionService
+
 app = typer.Typer()
 
 
@@ -64,7 +64,7 @@ def end(
 
     active = service.get_active(proj)
     if active is None:
-        typer.echo(f"No active session found" + (f" for project: {proj}" if proj else ""), err=True)
+        typer.echo("No active session found" + (f" for project: {proj}" if proj else ""), err=True)
         raise typer.Exit(1)
 
     session = service.end_session(active.id, summary)

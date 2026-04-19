@@ -69,7 +69,7 @@ def rerank_by_intention(
     query: str,
 ) -> list[Observation]:
     return sorted(
-        list(results),
+        results,
         key=lambda obs: (score_result(obs, intention, query), obs.timestamp),
         reverse=True,
     )

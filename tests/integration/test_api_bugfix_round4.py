@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,9 +20,9 @@ def api_key():
 
 @pytest.fixture()
 def client(api_key, tmp_path):
+    from src.infrastructure.persistence.container import create_container
     from src.interfaces.api.config import clear_api_settings_cache, set_test_mode
     from src.interfaces.api.dependencies import get_memory_service, verify_api_key
-    from src.infrastructure.persistence.container import create_container
 
     set_test_mode(True)
     clear_api_settings_cache()

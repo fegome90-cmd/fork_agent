@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from src.application.services.messaging.message_protocol import encode_message, cleanup_temp_files
+from src.application.services.messaging.message_protocol import cleanup_temp_files, encode_message
 from src.domain.entities.message import AgentMessage, MessageType
 
 if TYPE_CHECKING:
@@ -93,12 +93,12 @@ class AgentMessenger:
 
             # Set the message ID as a pane option (Side-channel)
             subprocess.run([
-                "tmux", "set-option", "-p", "-t", f"{target_session}:{window_index}", 
+                "tmux", "set-option", "-p", "-t", f"{target_session}:{window_index}",
                 "@last_fork_msg", encoded_msg
             ], capture_output=True)
 
             # 5. UI Notification (Optional/Discreet)
-            # To avoid "hiding sessions", we ONLY send display-message if the target 
+            # To avoid "hiding sessions", we ONLY send display-message if the target
             # is NOT our current session. Even then, we use a very short message.
             current_session = self._get_current_session()
             if target_session != current_session:
@@ -108,7 +108,7 @@ class AgentMessenger:
                     "tmux", "display-message", "-t", target_session,
                     f"FORK: Msg from {msg.from_agent}"
                 ], capture_output=True, timeout=1)
-            
+
             return True
         except Exception as e:
             logging.error(f"Failed to send tmux notification: {e}")
@@ -116,8 +116,8 @@ class AgentMessenger:
 
     def _get_current_session(self) -> str | None:
         """Identify current tmux session name safely."""
-        import subprocess
         import os
+        import subprocess
         if "TMUX" not in os.environ:
             return None
         try:

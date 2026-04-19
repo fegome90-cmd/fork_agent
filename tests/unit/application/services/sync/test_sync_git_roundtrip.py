@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import gzip
 import subprocess
-import tempfile
 from pathlib import Path
 
 from src.infrastructure.sync.git_sync import GitSyncBackend
@@ -22,7 +21,6 @@ def _write_chunk(path: Path, data: dict) -> None:
 class TestGitPushPullRoundtrip:
     def test_push_then_pull_roundtrip(self, tmp_path: Path) -> None:
         """Push 2 chunks to bare remote, clone pulls them back."""
-        import json
 
         # Setup bare remote
         bare = tmp_path / "remote.git"
@@ -70,7 +68,6 @@ class TestGitPushPullRoundtrip:
 
     def test_push_with_invalid_remote_returns_false(self, tmp_path: Path) -> None:
         """Push to a non-existent remote path returns False."""
-        import json
 
         sync_dir = tmp_path / "sync"
         sync_dir.mkdir()
@@ -96,7 +93,6 @@ class TestGitPushPullRoundtrip:
 
     def test_push_pull_with_manifest_file(self, tmp_path: Path) -> None:
         """Push chunks+manifest, pull returns only .jsonl.gz files."""
-        import json
 
         # Setup bare remote
         bare = tmp_path / "remote.git"

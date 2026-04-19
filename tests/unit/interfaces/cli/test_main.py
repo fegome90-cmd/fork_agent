@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
-from src.interfaces.cli import main
 from src.infrastructure.persistence.container import get_default_db_path
+from src.interfaces.cli import main
 
 runner = CliRunner()
 

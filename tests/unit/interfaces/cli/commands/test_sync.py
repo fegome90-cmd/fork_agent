@@ -53,7 +53,7 @@ class TestExportCommand:
     def test_export_with_custom_output_dir(self) -> None:
         """Custom output dir triggers create_container with export_dir."""
         with patch("src.interfaces.cli.commands.sync.create_container") as mock_container, \
-             patch("src.interfaces.cli.commands.sync.get_sync_service") as mock_get:
+             patch("src.interfaces.cli.commands.sync.get_sync_service"):
             mock_svc = MagicMock()
             mock_svc.export_observations.return_value = [Path("/custom/chunk.jsonl.gz")]
             mock_container.return_value.sync_service.return_value = mock_svc

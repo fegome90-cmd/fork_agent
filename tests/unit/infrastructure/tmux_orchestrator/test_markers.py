@@ -41,9 +41,7 @@ class TestMarkers:
         marker_content = MagicMock()
         marker_content.returncode = 0
         marker_content.stdout = (
-            "before\nFORK_START:{mid}\necho hello output\nFORK_END:{mid}\nafter".format(
-                mid=marker_id
-            )
+            f"before\nFORK_START:{marker_id}\necho hello output\nFORK_END:{marker_id}\nafter"
         )
         mock_run.return_value = marker_content
         result = orch.capture_between_markers("session", 0, marker_id)

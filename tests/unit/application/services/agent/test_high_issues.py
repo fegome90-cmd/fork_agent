@@ -1,13 +1,11 @@
 """Tests for HIGH issues #5 (idempotent spawn) and #6 (Agent RLock)."""
 from __future__ import annotations
 
-import subprocess
 import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from src.application.services.agent.agent_manager import (
-    Agent,
     AgentConfig,
     AgentManager,
     TmuxAgent,
@@ -89,9 +87,8 @@ class TestAgentRLock:
             working_dir=Path("/tmp"),
         )
         agent = TmuxAgent(config)
-        with agent._lock:
-            with agent._lock:
-                pass  # Should not deadlock
+        with agent._lock, agent._lock:
+            pass  # Should not deadlock
 
 
 class TestAgentManagerThreadSafeReads:

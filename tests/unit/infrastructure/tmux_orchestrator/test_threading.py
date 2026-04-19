@@ -5,8 +5,6 @@ import threading
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
@@ -48,9 +46,8 @@ class TestRLockFoundation:
     def test_rlock_is_reentrant(self) -> None:
         """RLock SHALL allow reentrant acquisition (no self-deadlock)."""
         orch = TmuxOrchestrator()
-        with orch._lock:
-            with orch._lock:
-                pass  # Should not deadlock
+        with orch._lock, orch._lock:
+            pass  # Should not deadlock
         # If we get here, reentrant lock works
 
 

@@ -35,18 +35,18 @@ def service(mock_repo: MagicMock):
 
 def _make_observation(**overrides) -> Observation:
     """Helper to create a test Observation with sensible defaults."""
-    defaults = dict(
-        id="obs-001",
-        timestamp=1700000000000,
-        content="Original content",
-        metadata={"key": "value"},
-        idempotency_key=None,
-        project=None,
-        type=None,
-        topic_key=None,
-        revision_count=1,
-        session_id=None,
-    )
+    defaults = {
+        "id": "obs-001",
+        "timestamp": 1700000000000,
+        "content": "Original content",
+        "metadata": {"key": "value"},
+        "idempotency_key": None,
+        "project": None,
+        "type": None,
+        "topic_key": None,
+        "revision_count": 1,
+        "session_id": None,
+    }
     defaults.update(overrides)
     return Observation(**defaults)
 

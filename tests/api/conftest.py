@@ -1,7 +1,8 @@
 """Pytest fixtures para tests de API."""
+import os
+
 import pytest
 from fastapi.testclient import TestClient
-import os
 
 # Set env to use REAL database
 os.environ["API_KEY"] = "559f4341b1277fe62ca2bab328370959c6f622e7d1dd1a10a80160f031ac7897"
@@ -19,10 +20,11 @@ promise_repo = PromiseContractRepository(connection=db)
 
 # Inject via canonical container path
 from src.infrastructure.persistence import container as _container
+
 _container._container_cache.clear()
 
+from src.interfaces.api.config import clear_api_settings_cache, set_test_mode
 from src.interfaces.api.main import app
-from src.interfaces.api.config import set_test_mode, clear_api_settings_cache
 
 set_test_mode(True)
 clear_api_settings_cache()

@@ -12,17 +12,19 @@ from pathlib import Path
 
 import pytest
 
-from src.application.services.messaging.agent_messenger import AgentMessenger, ALLOWED_SESSION_PREFIXES
+from src.application.services.messaging.agent_messenger import (
+    ALLOWED_SESSION_PREFIXES,
+    AgentMessenger,
+)
 from src.application.services.messaging.message_protocol import (
     FORK_MSG_PREFIX,
     FORK_MSG_SHORT_PREFIX,
-    FORK_MSG_TEMP_DIR,
     decode_message,
     encode_message,
 )
 from src.domain.entities.message import AgentMessage, MessageType
-from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.persistence.database import DatabaseConnection
+from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
@@ -230,10 +232,10 @@ class TestMessageProtocolE2E:
         with patch("src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR", tmp_path):
             encoded = encode_message(msg)
             assert encoded.startswith(FORK_MSG_SHORT_PREFIX)
-            
+
             temp_file = tmp_path / f"fork_msg_{msg.id[:8]}.json"
             assert temp_file.exists()
-            
+
             data = json.loads(temp_file.read_text())
             assert data["from_agent"] == "sender:0"
 
@@ -244,7 +246,7 @@ class TestMessageProtocolE2E:
     ) -> None:
         """Decode a v2 message that was sent to tmux and captured back."""
         from unittest.mock import patch
-        
+
         original = AgentMessage.create(
             from_agent="sender:0",
             to_agent=f"{tmux_session}:0",
@@ -270,7 +272,7 @@ class TestMessageProtocolE2E:
 
             # Decode using the same temp dir
             decoded = decode_message(result.stdout)
-            
+
             assert decoded is not None
             assert decoded.id == original.id
             assert decoded.payload == "test payload for v2"

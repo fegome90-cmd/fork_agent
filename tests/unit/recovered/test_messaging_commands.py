@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
 
+from src.domain.entities.message import AgentMessage, MessageType
 from src.interfaces.cli.commands.message import app as message_app
-from src.domain.entities.message import MessageType, AgentMessage
 
 
 @pytest.fixture
@@ -35,7 +34,7 @@ class TestMessageCommands:
         mock_get_messenger.return_value = mock_messenger
 
         result = runner.invoke(message_app, ["send", "agent1:0", "hello world"])
-        
+
         assert result.exit_code == 0
         assert "Message sent successfully" in result.stdout
         mock_messenger.send.assert_called_once()
@@ -48,7 +47,7 @@ class TestMessageCommands:
         mock_get_messenger.return_value = mock_messenger
 
         result = runner.invoke(message_app, ["broadcast", "update everyone"])
-        
+
         assert result.exit_code == 0
         assert "Broadcast sent to 3 windows" in result.stdout
         mock_messenger.broadcast.assert_called_once()
@@ -63,7 +62,7 @@ class TestMessageCommands:
         mock_get_messenger.return_value = mock_messenger
 
         result = runner.invoke(message_app, ["history", "agent1:0"])
-        
+
         assert result.exit_code == 0
         assert "Message History for agent1:0" in result.stdout
         assert "test payload" in result.stdout
@@ -79,7 +78,7 @@ class TestMessageCommands:
         mock_cleanup_fs.return_value = 10
 
         result = runner.invoke(message_app, ["cleanup"])
-        
+
         assert result.exit_code == 0
         assert "Cleanup complete" in result.stdout
         assert "Database: 5" in result.stdout

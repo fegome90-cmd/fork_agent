@@ -15,6 +15,7 @@ from src.application.exceptions import (
     ObservationNotFoundError,
     SessionNotFoundError,
 )
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -205,7 +206,11 @@ def memory_search(query: str, limit: int | None = None, max_tokens: int | None =
         JSON array of matching observations.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_memory_service()
         results = service.search(query=query, limit=limit)
@@ -241,7 +246,11 @@ def memory_retrieve(
         JSON array of matching observations ranked by multi-signal score.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_enhanced_search_service()
         results = service.search(query=query, limit=limit, project=project, type=type)
@@ -268,7 +277,11 @@ def memory_get(id: str, max_tokens: int | None = None) -> str:
         JSON with full observation details.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_memory_service()
         observation = service.get_by_id(id)
@@ -302,7 +315,11 @@ def memory_list(
         JSON array of observations.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_memory_service()
         results = service.get_recent(limit=limit, offset=offset, type=type)
@@ -350,7 +367,11 @@ def memory_context(limit: int = 5, max_tokens: int | None = None) -> str:
         JSON array of context observations.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_memory_service()
         results = service.get_recent(limit=limit, offset=0, type="session-summary")
@@ -396,7 +417,11 @@ def memory_update(
         JSON with the updated observation details.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_memory_service()
         observation = service.update(
@@ -447,7 +472,11 @@ def memory_timeline(start: int, end: int, max_tokens: int | None = None) -> str:
         JSON array of observations in the time range.
     """
     try:
-        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+        from src.application.services.output_caps import (
+            DEFAULT_MAX_TOKENS,
+            cap_response,
+            estimate_tokens,
+        )
 
         service = _get_memory_service()
         results = service.get_by_time_range(start, end)

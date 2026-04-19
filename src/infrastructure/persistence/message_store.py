@@ -72,8 +72,8 @@ class MessageStore:
             conn.execute(
                 """
                 DELETE FROM messages WHERE id IN (
-                    SELECT id FROM messages 
-                    ORDER BY created_at ASC 
+                    SELECT id FROM messages
+                    ORDER BY created_at ASC
                     LIMIT MAX(0, (SELECT COUNT(*) FROM messages) - ?)
                 )
                 """,

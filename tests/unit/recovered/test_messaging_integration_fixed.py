@@ -10,19 +10,16 @@ import contextlib
 import subprocess
 import time
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
-from src.application.services.messaging.agent_messenger import AgentMessenger, ALLOWED_SESSION_PREFIXES
-from src.application.services.messaging.message_protocol import (
-    FORK_MSG_PREFIX,
-    FORK_MSG_SHORT_PREFIX,
-    decode_message,
+from src.application.services.messaging.agent_messenger import (
+    ALLOWED_SESSION_PREFIXES,
+    AgentMessenger,
 )
 from src.domain.entities.message import AgentMessage, MessageType
-from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.persistence.database import DatabaseConnection
+from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
@@ -202,7 +199,7 @@ class TestMessageBroadcast:
         orchestrator = TmuxOrchestrator(safety_mode=False)
         conn = DatabaseConnection.from_path(temp_db)
         store = MessageStore(connection=conn)
-        
+
         # Create session
         session_name = "fork-test-e2e-bc-store"
         orchestrator.create_session(session_name)

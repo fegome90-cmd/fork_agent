@@ -50,7 +50,7 @@ class TestWorkflowVerifyContract:
             from src.interfaces.api.main import app
 
             client = TestClient(app)
-            response = client.post(
+            client.post(
                 "/api/v1/workflow/test-plan/verify",
                 headers={"x-api-key": "test-key"},
             )
@@ -82,7 +82,7 @@ class TestWorkflowVerifyContract:
             from src.interfaces.api.main import app
 
             client = TestClient(app)
-            response = client.post(
+            client.post(
                 "/api/v1/workflow/plan-fields/verify",
                 headers={"x-api-key": "test-key"},
             )

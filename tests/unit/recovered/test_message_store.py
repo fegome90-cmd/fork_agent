@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.domain.entities.message import AgentMessage, MessageType
+from src.infrastructure.persistence.database import DatabaseConnection
 from src.infrastructure.persistence.message_store import MessageStore
-from src.infrastructure.persistence.database import DatabaseConnection, DatabaseConfig
 
 
 class TestMessageStoreInit:

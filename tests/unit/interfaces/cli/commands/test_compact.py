@@ -6,12 +6,10 @@ patching at the function level rather than importing session_app.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 runner = CliRunner()

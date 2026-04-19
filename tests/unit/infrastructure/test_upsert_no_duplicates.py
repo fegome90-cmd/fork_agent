@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from src.domain.entities.observation import Observation
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.migrations import run_migrations
 

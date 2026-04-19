@@ -50,8 +50,8 @@ class TestGetCommand:
         assert "found by short id" in result.stdout
 
     def test_get_observation_not_found(self) -> None:
-        from src.interfaces.cli.commands.get import app
         from src.application.exceptions import ObservationNotFoundError
+        from src.interfaces.cli.commands.get import app
 
         mock_memory = MagicMock()
         mock_memory.get_by_id.side_effect = ObservationNotFoundError("Not found")

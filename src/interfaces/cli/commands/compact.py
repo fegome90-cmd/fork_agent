@@ -25,7 +25,6 @@ def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
 
 def _get_project_name(project: str | None = None) -> str | None:
     """Get project name from option or auto-detect from CWD."""
-    import os
 
     if project:
         return project

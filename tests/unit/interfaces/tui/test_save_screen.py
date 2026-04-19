@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from src.domain.entities.observation import Observation
-
 
 class TestSaveScreen:
     def test_instantiation(self) -> None:

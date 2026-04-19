@@ -337,7 +337,7 @@ async def delete_observation(
     from src.application.exceptions import ObservationNotFoundError
 
     try:
-        observation = memory.get_by_id(obs_id)
+        memory.get_by_id(obs_id)
         memory.delete(obs_id)
     except ObservationNotFoundError:
         raise HTTPException(status_code=404, detail="Observation not found") from None

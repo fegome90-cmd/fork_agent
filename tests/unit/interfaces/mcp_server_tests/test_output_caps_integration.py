@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Fake Observation entity (matches domain Observation dataclass shape)
 # ---------------------------------------------------------------------------

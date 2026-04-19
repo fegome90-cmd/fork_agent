@@ -285,7 +285,7 @@ _ERROR_GUIDANCE: dict[int, ErrorGuidance] = {
             "Check that the API key has the required permissions",
             "Request a new API key if the current one is invalid",
         ],
-        example_curl=f"curl -H 'X-API-Key: your-api-key' {{base_url}}/api/v1/agents/sessions",
+        example_curl="curl -H 'X-API-Key: your-api-key' {base_url}/api/v1/agents/sessions",
     ),
     404: ErrorGuidance(
         status_code=404,
@@ -341,7 +341,7 @@ _ERROR_GUIDANCE: dict[int, ErrorGuidance] = {
             "Verify agent backends are installed (for agent endpoints)",
             "Contact administrator if issue persists",
         ],
-        example_curl=f"curl {{base_url}}/api/v1/health",
+        example_curl="curl {base_url}/api/v1/health",
     ),
 }
 

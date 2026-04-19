@@ -266,7 +266,7 @@ find . -name "*.inactive" -delete
 
 ## 🏛️ Gobernanza Agéntica
 
-Este repositorio opera bajo la **Constitucion de Codigo Agentico v1.1**. 
+Este repositorio opera bajo la **Constitucion de Codigo Agentico v1.1**.
 Source of Truth: `https://github.com/fegome90-cmd/constitucion-ai`
 
 ### Las 13 Leyes (Destiladas)

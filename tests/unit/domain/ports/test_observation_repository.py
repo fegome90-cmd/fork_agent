@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 from src.domain.ports.observation_repository import ObservationRepository
 
 

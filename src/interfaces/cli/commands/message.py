@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from typing import Annotated
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.container import get_agent_messenger
 
@@ -24,7 +24,7 @@ def send_message(
 
     """Send a message to another agent."""
     messenger = get_agent_messenger()
-    
+
     try:
         mtype = MessageType[type.upper()]
     except KeyError:
@@ -38,11 +38,11 @@ def send_message(
         message_type=mtype,
         payload=payload
     )
-    
+
     if messenger.send(msg):
         console.print(f"[green]Message sent successfully to {to_agent}[/green]")
     else:
-        console.print(f"[red]Failed to send message via tmux[/red] (stored in history)")
+        console.print("[red]Failed to send message via tmux[/red] (stored in history)")
 
 @app.command("broadcast")
 def broadcast_message(
@@ -62,13 +62,13 @@ def cleanup_messages(
     """Cleanup expired messages from DB and temp files."""
     from src.application.services.messaging.message_protocol import cleanup_temp_files
     messenger = get_agent_messenger()
-    
+
     # 1. Clean DB
     db_count = messenger.store.cleanup_expired()
     # 2. Clean /tmp
     fs_count = cleanup_temp_files(max_age_seconds=max_age)
-    
-    console.print(f"[green]Cleanup complete:[/green]")
+
+    console.print("[green]Cleanup complete:[/green]")
     console.print(f" - Database: {db_count} messages removed")
     console.print(f" - Filesystem: {fs_count} files removed")
 
@@ -84,7 +84,7 @@ def show_history(
     """Show message history for an agent."""
     messenger = get_agent_messenger()
     history = messenger.get_history(agent_id, limit=limit)
-    
+
     if not history:
         console.print(f"No messages found for {agent_id}")
         return
@@ -104,5 +104,5 @@ def show_history(
             msg.message_type.name,
             msg.payload[:50] + ("..." if len(msg.payload) > 50 else "")
         )
-    
+
     console.print(table)

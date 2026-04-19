@@ -9,9 +9,9 @@ from __future__ import annotations
 import pytest
 
 from src.application.services.output_caps import (
+    _TRUNCATION_MARKER,
     CHARS_PER_TOKEN,
     DEFAULT_MAX_TOKENS,
-    _TRUNCATION_MARKER,
     cap_response,
     estimate_tokens,
     truncate_content,
@@ -335,7 +335,7 @@ class TestTruncationMarkerInContent:
         # The result should end with exactly ONE marker
         assert result.endswith(marker)
         # Count occurrences of the marker in result
-        count = result.count(marker)
+        result.count(marker)
         # The original had 5 markers in the prefix that fits; plus the appended one
         # We can't assert exact count without knowing how many fit in 120 chars
         # But we CAN assert the result doesn't end with two markers
@@ -373,7 +373,7 @@ class TestMutabilitySafety:
 
     def test_truncated_obs_not_mutated(self) -> None:
         obs = [{"content": "x" * 200, "id": "2"}]
-        result = cap_response(obs, max_tokens=10)
+        cap_response(obs, max_tokens=10)
         assert "_truncated" not in obs[0]
         assert "content" in obs[0]
         assert len(obs[0]["content"]) == 200  # original unchanged

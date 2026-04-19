@@ -104,7 +104,7 @@ class TestEventSpineTaskExecution:
             description="Test task description",
         )
 
-        result = executor.execute_task(task, model="test-model")
+        executor.execute_task(task, model="test-model")
 
         # Verify task started event
         observations = memory_service.search("task_started")
@@ -129,7 +129,7 @@ class TestEventSpineTaskExecution:
             description="Test agent spawn",
         )
 
-        result = executor.execute_task(task, model="test-model")
+        executor.execute_task(task, model="test-model")
 
         # Verify agent spawned event
         observations = memory_service.search("agent_spawned")
@@ -154,7 +154,7 @@ class TestEventSpineTaskExecution:
             description="Test task completion",
         )
 
-        result = executor.execute_task(task, model="test-model")
+        executor.execute_task(task, model="test-model")
 
         # Verify task completed event
         observations = memory_service.search("task_completed")
@@ -189,7 +189,7 @@ class TestEventSpineTaskExecution:
             description="Test task failure",
         )
 
-        result = executor.execute_task(task, model="test-model")
+        executor.execute_task(task, model="test-model")
 
         # Verify task failed event
         observations = memory_service.search("task_failed")
@@ -220,7 +220,7 @@ class TestEventSpineShip:
             session_name="test-session",
         )
 
-        result = executor.cleanup_worktree(task, merge=True, target_branch="main")
+        executor.cleanup_worktree(task, merge=True, target_branch="main")
 
         # Verify ship started event
         observations = memory_service.search("ship_started")
@@ -246,7 +246,7 @@ class TestEventSpineShip:
             session_name="test-session",
         )
 
-        result = executor.cleanup_worktree(task, merge=True, target_branch="main")
+        executor.cleanup_worktree(task, merge=True, target_branch="main")
 
         # Verify ship completed event
         observations = memory_service.search("ship_completed")
@@ -284,7 +284,7 @@ class TestEventSpineShip:
             session_name="test-session",
         )
 
-        result = executor.cleanup_worktree(task, merge=True, target_branch="main")
+        executor.cleanup_worktree(task, merge=True, target_branch="main")
 
         # Verify ship failed event
         observations = memory_service.search("ship_failed")
@@ -314,8 +314,8 @@ class TestEventIdempotency:
 
         # Execute twice with same run_id
         run_id = "run-dedup-test"
-        result1 = executor.execute_task(task, model="test-model", run_id=run_id)
-        result2 = executor.execute_task(task, model="test-model", run_id=run_id)
+        executor.execute_task(task, model="test-model", run_id=run_id)
+        executor.execute_task(task, model="test-model", run_id=run_id)
 
         # Should have only 1 of each event type (idempotency working)
         observations = memory_service.search("task_started")
@@ -341,7 +341,7 @@ class TestEventIdempotency:
             description="Test required fields",
         )
 
-        result = executor.execute_task(task, model="test-model")
+        executor.execute_task(task, model="test-model")
 
         # Get all events
         observations = memory_service.search("task_")
@@ -382,7 +382,7 @@ class TestEventInvariants:
         )
 
         run_id = "run-invariant-test"
-        result = executor.execute_task(task, model="test-model", run_id=run_id)
+        executor.execute_task(task, model="test-model", run_id=run_id)
 
         # Get all terminal events for this run_id/task_id
         all_observations = memory_service.get_recent(limit=100)
@@ -431,7 +431,7 @@ class TestEventInvariants:
         )
 
         run_id = "run-fail-invariant"
-        result = executor.execute_task(task, model="test-model", run_id=run_id)
+        executor.execute_task(task, model="test-model", run_id=run_id)
 
         # Verify task_failed exists
         all_observations = memory_service.get_recent(limit=100)
@@ -481,7 +481,7 @@ class TestEventPrivacy:
             session_name="test-session",
         )
 
-        result = executor.cleanup_worktree(task, merge=True, target_branch="main")
+        executor.cleanup_worktree(task, merge=True, target_branch="main")
 
         # Get ship_failed event
         observations = memory_service.search("ship_failed")
