@@ -3,20 +3,24 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sqlite3
 from typing import Any
 
 from src.application.exceptions import ObservationNotFoundError, RepositoryError
 from src.domain.entities.observation import Observation
+from src.domain.ports.sync_repository import SyncRepository
 from src.infrastructure.persistence.database import DatabaseConnection
 
+logger = logging.getLogger(__name__)
+
 _SELECT_COLUMNS = (
-    "id, timestamp, content, metadata, idempotency_key, "
+    "id, timestamp, content, title, metadata, idempotency_key, "
     "topic_key, project, type, revision_count, session_id"
 )
 _SELECT_COLUMNS_PREFIXED = (
-    "o.id, o.timestamp, o.content, o.metadata, o.idempotency_key, "
+    "o.id, o.timestamp, o.content, o.title, o.metadata, o.idempotency_key, "
     "o.topic_key, o.project, o.type, o.revision_count, o.session_id"
 )
 
@@ -27,17 +31,29 @@ class ObservationRepository:
     Provides CRUD operations and full-text search using SQLite with FTS5.
     """
 
-    __slots__ = ("_connection",)
+    __slots__ = ("_connection", "_sync_repo", "_mutation_recording_enabled")
 
-    def __init__(self, connection: DatabaseConnection) -> None:
+    def __init__(
+        self,
+        connection: DatabaseConnection,
+        sync_repo: SyncRepository | None = None,
+    ) -> None:
         self._connection = connection
+        self._sync_repo = sync_repo
+        self._mutation_recording_enabled = True
 
     @staticmethod
     def _normalize_project(project: str | None) -> str | None:
         if project is None:
             return None
-        normalized = project.lower().strip()
-        return normalized if normalized else None
+        from src.application.services.memory_service import MemoryService
+
+        return MemoryService._normalize_project_name(project)
+
+    @staticmethod
+    def _normalize_topic_key(topic_key: str) -> str:
+        """Normalize topic_key for case-insensitive comparison."""
+        return topic_key.lower().strip()
 
     def create(self, observation: Observation) -> None:
         """Store a new observation in the database.
@@ -55,11 +71,12 @@ class ObservationRepository:
             with self._connection as conn:
                 conn.execute(
                     f"""INSERT INTO observations ({_SELECT_COLUMNS})
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         observation.id,
                         observation.timestamp,
                         observation.content,
+                        observation.title,
                         metadata_json,
                         observation.idempotency_key,
                         observation.topic_key,
@@ -76,6 +93,19 @@ class ObservationRepository:
             ) from e
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to create observation: {e}", e) from e
+
+        self._record_mutation(
+            "insert",
+            observation.id,
+            observation.project,
+            {
+                "id": observation.id,
+                "content": observation.content,
+                "metadata": observation.metadata,
+                "type": observation.type,
+                "topic_key": observation.topic_key,
+            },
+        )
 
     def save_event(
         self,
@@ -215,6 +245,41 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observations: {e}", e) from e
 
+    def _record_mutation(
+        self,
+        op: str,
+        entity_key: str,
+        project: str | None,
+        payload: dict[str, Any],
+    ) -> None:
+        """Record a mutation in the sync journal if sync_repo is configured."""
+        if not self._mutation_recording_enabled or self._sync_repo is None:
+            return
+        try:
+            self._sync_repo.record_mutation(
+                entity="observation",
+                entity_key=entity_key,
+                op=op,
+                payload=json.dumps(payload),
+                source="local",
+                project=project or "",
+            )
+        except Exception:
+            logger.debug(
+                "Mutation recording failed for %s: %s",
+                entity_key,
+                op,
+                exc_info=True,
+            )
+
+    def disable_mutation_recording(self) -> None:
+        """Disable mutation recording (for import operations)."""
+        self._mutation_recording_enabled = False
+
+    def enable_mutation_recording(self) -> None:
+        """Enable mutation recording (default state)."""
+        self._mutation_recording_enabled = True
+
     def update(self, observation: Observation) -> None:
         metadata_json = self._serialize_metadata(observation.metadata)
         project = self._normalize_project(observation.project)
@@ -223,19 +288,21 @@ class ObservationRepository:
             with self._connection as conn:
                 cursor = conn.execute(
                     """UPDATE observations
-                       SET timestamp = ?, content = ?, metadata = ?, topic_key = ?,
+                       SET timestamp = ?, content = ?, title = ?, metadata = ?, topic_key = ?,
                            project = ?, type = ?, revision_count = ?,
-                           session_id = ?
+                           session_id = ?, idempotency_key = ?
                        WHERE id = ?""",
                     (
                         observation.timestamp,
                         observation.content,
+                        observation.title,
                         metadata_json,
                         observation.topic_key,
                         project,
                         observation.type,
                         observation.revision_count,
                         observation.session_id,
+                        observation.idempotency_key,
                         observation.id,
                     ),
                 )
@@ -246,6 +313,19 @@ class ObservationRepository:
             raise
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to update observation: {e}", e) from e
+
+        self._record_mutation(
+            "update",
+            observation.id,
+            observation.project,
+            {
+                "id": observation.id,
+                "content": observation.content,
+                "metadata": observation.metadata,
+                "type": observation.type,
+                "topic_key": observation.topic_key,
+            },
+        )
 
     def delete(self, observation_id: str) -> None:
         """Delete an observation by its ID.
@@ -270,6 +350,8 @@ class ObservationRepository:
             raise
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to delete observation: {e}", e) from e
+
+        self._record_mutation("delete", observation_id, None, {"id": observation_id})
 
     def search(self, query: str, limit: int | None = None) -> list[Observation]:
         """Search observations using full-text search.
@@ -332,29 +414,40 @@ class ObservationRepository:
             raise RepositoryError(f"Failed to get observations by range: {e}", e) from e
 
     def upsert_topic_key(self, observation: Observation) -> Observation:
-        """Update an existing observation matched by topic_key+project.
+        """Update an existing observation matched by topic_key only.
 
         The caller (service) must verify the record exists before calling this.
-        Uses UPDATE directly since partial unique indexes don't support ON CONFLICT.
+        Project and type are updated to new values to prevent duplicates.
 
         Args:
             observation: The observation with updated fields.
 
         Returns:
             The updated observation with incremented revision_count.
+
+        Raises:
+            RepositoryError: If topic_key is None/empty or database error occurs.
         """
+        if observation.topic_key is None:
+            raise RepositoryError("topic_key is required for upsert")
+        normalized_key = self._normalize_topic_key(observation.topic_key)
+        if not normalized_key:
+            raise RepositoryError("topic_key cannot be empty for upsert")
+
         project = self._normalize_project(observation.project)
         metadata_json = json.dumps(observation.metadata) if observation.metadata else "{}"
 
         sql = f"""
             UPDATE observations SET
                 content = ?,
+                title = ?,
                 metadata = ?,
                 timestamp = ?,
                 type = ?,
                 session_id = ?,
+                project = ?,
                 revision_count = revision_count + 1
-            WHERE topic_key = ? AND project = ?
+            WHERE LOWER(topic_key) = ?
             RETURNING {_SELECT_COLUMNS}
         """
         try:
@@ -363,39 +456,55 @@ class ObservationRepository:
                     sql,
                     (
                         observation.content,
+                        observation.title,
                         metadata_json,
                         observation.timestamp,
                         observation.type,
                         observation.session_id,
-                        observation.topic_key,
                         project,
+                        normalized_key,
                     ),
                 )
                 row = cursor.fetchone()
                 if row is None:
                     raise RepositoryError(
-                        f"No observation found for topic_key={observation.topic_key} "
-                        f"project={project}"
+                        f"No observation found for topic_key={observation.topic_key}"
                     )
-                return self._row_to_observation(row)
+                result = self._row_to_observation(row)
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to upsert topic_key: {e}", e) from e
 
+        self._record_mutation(
+            "update",
+            observation.topic_key or "",
+            observation.project,
+            {
+                "id": result.id,
+                "content": observation.content,
+                "metadata": observation.metadata,
+                "type": observation.type,
+                "topic_key": observation.topic_key,
+            },
+        )
+
+        return result
+
     def get_by_topic_key(self, topic_key: str, project: str | None) -> Observation | None:
-        """Get an observation by topic_key and project.
+        """Get an observation by topic_key only (project-agnostic).
 
         Args:
             topic_key: The topic key to search for.
-            project: The project scope (None for cross-project lookup).
+            project: Ignored — lookup is by topic_key only to prevent duplicates
+                     when project changes across saves.
 
         Returns:
             Observation if found, None otherwise.
         """
-        normalized_project = self._normalize_project(project)
-        sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE topic_key = ? AND project = ?"
+        normalized_topic = self._normalize_topic_key(topic_key)
+        sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE LOWER(topic_key) = ?"
         try:
             with self._connection as conn:
-                cursor = conn.execute(sql, (topic_key, normalized_project))
+                cursor = conn.execute(sql, (normalized_topic,))
                 row = cursor.fetchone()
                 return self._row_to_observation(row) if row else None
         except sqlite3.Error as e:
@@ -411,7 +520,11 @@ class ObservationRepository:
         project = (row["project"] if "project" in column_names else None) or metadata_dict.get(
             "project"
         )
-        type_ = (row["type"] if "type" in column_names else None) or metadata_dict.get("type")
+        type_ = row["type"] if "type" in column_names else None
+        if type_ is None and isinstance(metadata_dict, dict):
+            meta_type = metadata_dict.get("type")
+            if isinstance(meta_type, str) and meta_type in Observation._ALLOWED_TYPES:
+                type_ = meta_type
         revision_count = (row["revision_count"] if "revision_count" in column_names else None) or 1
         session_id = row["session_id"] if "session_id" in column_names else None
 
@@ -419,6 +532,7 @@ class ObservationRepository:
             id=row["id"],
             timestamp=row["timestamp"],
             content=row["content"],
+            title=row["title"],
             metadata=metadata_dict,
             idempotency_key=row["idempotency_key"] if "idempotency_key" in column_names else None,
             project=project,
@@ -439,7 +553,67 @@ class ObservationRepository:
     def _sanitize_fts_query(self, query: str) -> str:
         if not query or not query.strip():
             return ""
-        sanitized = re.sub(r'[\*\^"\'\(\)\-]', " ", query)
+        # Strip characters that break FTS5 syntax
+        sanitized = re.sub(r'[\*\^"\'\'\(\)\-\/\\\:\.\{\}\[\]\~\!\<\>\+\=\@\,\;]', " ", query)
         reserved = {"AND", "OR", "NOT", "NEAR", "COLUMN"}
         words = sanitized.split()
-        return " ".join(w for w in words if w.upper() not in reserved)
+        # Append * to each token for prefix matching (e.g. "FastAP" -> "FastAP*")
+        return " ".join(f"{w}*" for w in words if w.upper() not in reserved)
+
+    def save_prompt(
+        self,
+        content: str,
+        session_id: str | None,
+        role: str | None = None,
+        model: str | None = None,
+        provider: str | None = None,
+    ) -> int:
+        """Insert a prompt into the prompts table. Returns the prompt ID."""
+        _role = role or ""
+        _model = model or ""
+        _provider = provider or ""
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    "INSERT INTO prompts (prompt_text, role, model, provider, session_id) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (content, _role, _model, _provider, session_id),
+                )
+                return cursor.lastrowid or 0
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to save prompt: {e}", e) from e
+
+    def merge_projects(
+        self,
+        canonical: str,
+        sources: list[str],
+    ) -> dict[str, Any]:
+        """Merge observations and sessions from source projects into canonical.
+
+        Transactional: all or nothing. Returns stats dict.
+        """
+        obs_updated = 0
+        sessions_updated = 0
+        try:
+            with self._connection as conn:
+                canonical_normalized = self._normalize_project(canonical)
+                for src in sources:
+                    src_normalized = self._normalize_project(src)
+                    cur = conn.execute(
+                        "UPDATE observations SET project = ? WHERE project = ?",
+                        (canonical_normalized, src_normalized),
+                    )
+                    obs_updated += cur.rowcount
+                    cur = conn.execute(
+                        "UPDATE sessions SET project = ? WHERE project = ?",
+                        (canonical_normalized, src_normalized),
+                    )
+                    sessions_updated += cur.rowcount
+            return {
+                "canonical": canonical,
+                "sources_merged": sources,
+                "observations_updated": obs_updated,
+                "sessions_updated": sessions_updated,
+            }
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to merge projects: {e}", e) from e

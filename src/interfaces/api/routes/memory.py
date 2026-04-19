@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.interfaces.api.dependencies import get_memory_service, verify_api_key
 from src.interfaces.api.models import (
-    Observation,
     ObservationCreate,
     ObservationListResponse,
+    ObservationOut,
     ObservationResponse,
+    ObservationUpdate,
     QueryResponse,
 )
 
@@ -29,22 +29,34 @@ async def create_observation(
 ) -> ObservationResponse:
     """Save an observation."""
     try:
-        observation = memory.save(content=request.content)
+        observation = memory.save(
+            content=request.content,
+            type=request.type,
+            project=request.project,
+            topic_key=request.topic_key,
+            metadata=request.metadata,
+            title=request.title,
+        )
         return ObservationResponse(
-            data=Observation(
+            data=ObservationOut(
                 id=observation.id,
                 content=observation.content,
                 timestamp=observation.timestamp,
                 metadata=observation.metadata,
                 idempotency_key=observation.idempotency_key,
+                project=observation.project,
+                type=observation.type,
+                topic_key=observation.topic_key,
+                revision_count=observation.revision_count,
+                session_id=observation.session_id,
             )
         )
     except Exception as e:
         logger.error(f"Failed to create observation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save observation: {e}",
-        ) from None
+            detail="Failed to save observation",
+        ) from e
 
 
 @router.get("", response_model=ObservationListResponse)
@@ -59,12 +71,17 @@ async def list_observations(
         observations = memory.get_recent(limit=limit, offset=offset)
         return ObservationListResponse(
             data=[
-                Observation(
+                ObservationOut(
                     id=obs.id,
                     content=obs.content,
                     timestamp=obs.timestamp,
                     metadata=obs.metadata,
                     idempotency_key=obs.idempotency_key,
+                    project=obs.project,
+                    type=obs.type,
+                    topic_key=obs.topic_key,
+                    revision_count=obs.revision_count,
+                    session_id=obs.session_id,
                 )
                 for obs in observations
             ],
@@ -74,8 +91,8 @@ async def list_observations(
         logger.error(f"Failed to list observations: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list observations: {e}",
-        ) from None
+            detail="Failed to list observations",
+        ) from e
 
 
 @router.get("/search", response_model=ObservationListResponse)
@@ -90,12 +107,17 @@ async def search_observations(
         results = memory.search(q, limit=limit)
         return ObservationListResponse(
             data=[
-                Observation(
+                ObservationOut(
                     id=obs.id,
                     content=obs.content,
                     timestamp=obs.timestamp,
                     metadata=obs.metadata,
                     idempotency_key=obs.idempotency_key,
+                    project=obs.project,
+                    type=obs.type,
+                    topic_key=obs.topic_key,
+                    revision_count=obs.revision_count,
+                    session_id=obs.session_id,
                 )
                 for obs in results
             ],
@@ -105,8 +127,8 @@ async def search_observations(
         logger.error(f"Failed to search observations: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Search failed: {e}",
-        ) from None
+            detail="Search failed",
+        ) from e
 
 
 @router.get("/query", response_model=QueryResponse)
@@ -146,7 +168,7 @@ async def query_memory(
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid --since format: {since}",
+                    detail="Invalid --since format",
                 ) from None
 
     try:
@@ -180,8 +202,8 @@ async def query_memory(
         logger.error(f"Query failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Query failed: {e}",
-        ) from None
+            detail="Query failed",
+        ) from e
 
 
 @router.get("/timeline/{run_id}", response_model=QueryResponse)
@@ -222,8 +244,8 @@ async def get_timeline(
         logger.error(f"Timeline failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Timeline failed: {e}",
-        ) from None
+            detail="Timeline failed",
+        ) from e
 
 
 @router.get("/{obs_id}", response_model=ObservationResponse)
@@ -233,27 +255,76 @@ async def get_observation(
     memory=Depends(get_memory_service),
 ) -> ObservationResponse:
     """Get an observation by ID."""
+    from src.application.exceptions import ObservationNotFoundError
+
     try:
         observation = memory.get_by_id(obs_id)
-        if not observation:
-            raise HTTPException(status_code=404, detail="Observation not found")
         return ObservationResponse(
-            data=Observation(
+            data=ObservationOut(
                 id=observation.id,
                 content=observation.content,
                 timestamp=observation.timestamp,
                 metadata=observation.metadata,
                 idempotency_key=observation.idempotency_key,
+                project=observation.project,
+                type=observation.type,
+                topic_key=observation.topic_key,
+                revision_count=observation.revision_count,
+                session_id=observation.session_id,
             )
         )
-    except HTTPException:
-        raise
+    except ObservationNotFoundError:
+        raise HTTPException(status_code=404, detail="Observation not found") from None
     except Exception as e:
         logger.error(f"Failed to get observation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving observation: {e}",
-        ) from None
+            detail="Error retrieving observation",
+        ) from e
+
+
+@router.put("/{obs_id}", response_model=ObservationResponse)
+async def update_observation(
+    obs_id: str,
+    request: ObservationUpdate,
+    _: str = Depends(verify_api_key),
+    memory=Depends(get_memory_service),
+) -> ObservationResponse:
+    """Update an existing observation."""
+    from src.application.exceptions import ObservationNotFoundError
+
+    try:
+        observation = memory.update(
+            observation_id=obs_id,
+            content=request.content,
+            type=request.type,
+            project=request.project,
+            topic_key=request.topic_key,
+            metadata=request.metadata,
+            title=request.title,
+        )
+        return ObservationResponse(
+            data=ObservationOut(
+                id=observation.id,
+                content=observation.content,
+                timestamp=observation.timestamp,
+                metadata=observation.metadata,
+                idempotency_key=observation.idempotency_key,
+                project=observation.project,
+                type=observation.type,
+                topic_key=observation.topic_key,
+                revision_count=observation.revision_count,
+                session_id=observation.session_id,
+            )
+        )
+    except ObservationNotFoundError:
+        raise HTTPException(status_code=404, detail="Observation not found") from None
+    except Exception as e:
+        logger.error(f"Failed to update observation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating observation",
+        ) from e
 
 
 @router.delete("/{obs_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -263,16 +334,16 @@ async def delete_observation(
     memory=Depends(get_memory_service),
 ) -> None:
     """Delete an observation."""
+    from src.application.exceptions import ObservationNotFoundError
+
     try:
         observation = memory.get_by_id(obs_id)
-        if not observation:
-            raise HTTPException(status_code=404, detail="Observation not found")
         memory.delete(obs_id)
-    except HTTPException:
-        raise
+    except ObservationNotFoundError:
+        raise HTTPException(status_code=404, detail="Observation not found") from None
     except Exception as e:
         logger.error(f"Failed to delete observation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting observation: {e}",
-        ) from None
+            detail="Error deleting observation",
+        ) from e

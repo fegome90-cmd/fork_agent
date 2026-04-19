@@ -192,6 +192,29 @@ class SessionRepositoryImpl:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get active session: {e}", e) from e
 
+    def get_active_any(self) -> Session | None:
+        """Get the most recent active session across all projects.
+
+        Returns:
+            The most recent active session if one exists, None otherwise.
+        """
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    """SELECT id, project, directory, started_at, ended_at,
+                        goal, instructions, summary
+                        FROM sessions
+                        WHERE ended_at IS NULL
+                        ORDER BY started_at DESC
+                        LIMIT 1""",
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    return None
+                return self._row_to_session(row)
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to get active session: {e}", e) from e
+
     def _row_to_session(self, row: sqlite3.Row) -> Session:
         """Convert a database row to a Session entity."""
         return Session(

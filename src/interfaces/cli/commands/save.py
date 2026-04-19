@@ -9,9 +9,21 @@ from typing import Any
 
 import typer
 
+from src.domain.entities.observation import Observation
 from src.interfaces.cli.dependencies import get_telemetry_service
 
 app = typer.Typer()
+
+
+def _detect_git_project() -> str | None:
+    """Try to detect project name from git remote origin."""
+    try:
+        from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
+
+        git = GitCommandExecutor()
+        return git.detect_project_from_remote()
+    except Exception:
+        return None
 
 
 class ObservationType(StrEnum):
@@ -28,6 +40,7 @@ class ObservationType(StrEnum):
     PERFORMANCE = "performance"
     LEARNING = "learning"
     SESSION_SUMMARY = "session-summary"
+    MANUAL = "manual"
 
 
 def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
@@ -58,6 +71,7 @@ def save(
         None, "--where", help="Where (files, components) (structured field)"
     ),
     learned: str | None = typer.Option(None, "--learned", help="Key takeaway (structured field)"),
+    title: str | None = typer.Option(None, "--title", "-T", help="Optional title for the observation"),
 ) -> None:
     """Save an observation to memory.
 
@@ -80,7 +94,38 @@ def save(
             meta_dict = json.loads(metadata)
         except json.JSONDecodeError:
             typer.echo("Error: Invalid JSON metadata", err=True)
-            raise
+            raise typer.Exit(1) from None
+
+    # Extract entity fields from metadata JSON (BUG-8/BUG-9)
+    # Always pop to avoid duplication; CLI flags take precedence
+    extracted_type = meta_dict.pop("type", None)
+    if extracted_type is not None and obs_type is None:
+        if isinstance(extracted_type, str) and extracted_type in Observation._ALLOWED_TYPES:
+            obs_type = ObservationType(extracted_type)
+        else:
+            typer.echo(
+                f"Error: Invalid type '{extracted_type}'. "
+                f"Allowed: {sorted(Observation._ALLOWED_TYPES)}",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+    extracted_topic = meta_dict.pop("topic_key", None)
+    if extracted_topic is not None and topic_key is None:
+        topic_key = extracted_topic
+
+    extracted_project = meta_dict.pop("project", None)
+    if extracted_project is not None and project is None:
+        project = extracted_project
+
+    # Auto-detect project from git remote if not provided
+    if project is None:
+        try:
+            detected = _detect_git_project()
+            if detected is not None:
+                project = detected
+        except Exception:
+            pass
 
     # Add structured fields as nested metadata (Engram parity)
     structured_fields = {}
@@ -102,6 +147,7 @@ def save(
         topic_key=topic_key,
         project=project,
         type=obs_type.value if obs_type else None,
+        title=title,
     )
     typer.echo(f"Saved: {observation.id}")
 

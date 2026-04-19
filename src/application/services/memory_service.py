@@ -8,9 +8,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from src.domain.entities.observation import Observation
-from src.infrastructure.persistence.repositories.observation_repository import (
-    ObservationRepository,
-)
+from src.domain.ports.observation_repository import ObservationRepository
 
 if TYPE_CHECKING:
     from src.application.services.telemetry.telemetry_service import TelemetryService
@@ -36,6 +34,7 @@ class MemoryService:
         topic_key: str | None = None,
         project: str | None = None,
         type: str | None = None,
+        title: str | None = None,
     ) -> Observation:
         existing_for_topic = None
         if topic_key:
@@ -45,6 +44,7 @@ class MemoryService:
             id=str(uuid.uuid4()),
             timestamp=int(time.time() * 1000),
             content=content,
+            title=title,
             metadata=metadata,
             topic_key=topic_key,
             project=project,
@@ -73,13 +73,16 @@ class MemoryService:
         type: str | None = None,
         topic_key: str | None = None,
         project: str | None = None,
+        title: str | None = None,
     ) -> Observation:
         existing = self._repository.get_by_id(observation_id)
 
         updates: dict[str, Any] = {"revision_count": existing.revision_count + 1}
         if content is not None:
             updates["content"] = content
-        if metadata is not None:
+            if metadata is not None:
+                updates["metadata"] = metadata
+        elif metadata is not None:
             updates["metadata"] = metadata
         if type is not None:
             updates["type"] = type
@@ -87,6 +90,8 @@ class MemoryService:
             updates["topic_key"] = topic_key
         if project is not None:
             updates["project"] = project
+        if title is not None:
+            updates["title"] = title
 
         updated = dataclasses.replace(existing, **updates)
         self._repository.update(updated)
@@ -250,3 +255,50 @@ class MemoryService:
 
         # Apply limit
         return observations[:limit]
+
+    def save_prompt(
+        self,
+        content: str,
+        project: str | None = None,
+        session_id: str | None = None,
+        role: str | None = None,
+        model: str | None = None,
+        provider: str | None = None,
+    ) -> int:
+        if session_id is not None:
+            effective_session = session_id
+        elif project is not None:
+            effective_session = f"manual-save-{project}"
+        else:
+            effective_session = None
+        return self._repository.save_prompt(
+            content=content,
+            session_id=effective_session,
+            role=role,
+            model=model,
+            provider=provider,
+        )
+
+    def merge_projects(self, from_projects: str, to_project: str) -> dict[str, Any]:
+        canonical = self._normalize_project_name(to_project)
+        if not canonical:
+            return {
+                "canonical": "",
+                "sources_merged": [],
+                "observations_updated": 0,
+                "sessions_updated": 0,
+            }
+        sources = [self._normalize_project_name(s) for s in from_projects.split(",")]
+        sources = [s for s in sources if s and s != canonical]
+        if not sources:
+            return {
+                "canonical": canonical,
+                "sources_merged": [],
+                "observations_updated": 0,
+                "sessions_updated": 0,
+            }
+        return self._repository.merge_projects(canonical=canonical, sources=sources)
+
+    @staticmethod
+    def _normalize_project_name(name: str) -> str:
+        return name.strip().lower().rstrip("/")

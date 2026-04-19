@@ -53,7 +53,14 @@ class AgentMessage:
     created_at: int
     correlation_id: str | None = None
 
+    @property
+    def created_at_iso(self) -> str:
+        """Get the creation time as an ISO-formatted string."""
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(self.created_at / 1000, tz=timezone.utc).isoformat()
+
     @classmethod
+
     def create(
         cls,
         from_agent: str,

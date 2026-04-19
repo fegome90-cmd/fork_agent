@@ -9,9 +9,7 @@ from typing import Any
 
 from src.application.exceptions import ServiceError, SessionNotFoundError
 from src.domain.entities.session import Session
-from src.infrastructure.persistence.repositories.session_repository import (
-    SessionRepositoryImpl,
-)
+from src.domain.ports.session_repository import SessionRepository
 
 
 class SessionService:
@@ -19,7 +17,7 @@ class SessionService:
 
     __slots__ = ("_repository",)
 
-    def __init__(self, repository: SessionRepositoryImpl) -> None:
+    def __init__(self, repository: SessionRepository) -> None:
         self._repository = repository
 
     def start_session(
@@ -112,19 +110,16 @@ class SessionService:
             raise ServiceError(f"Failed to get session context: {e}", e) from e
 
     def get_active(self, project: str) -> Session | None:
-        """Get the active session for a project.
-
-        Args:
-            project: The project name to check.
-
-        Returns:
-            The active Session if one exists, None otherwise.
-
-        Raises:
-            ServiceError: If fetching the session fails.
-        """
+        """Get the active session for a project."""
         try:
             return self._repository.get_active(project)
+        except Exception as e:
+            raise ServiceError(f"Failed to get active session: {e}", e) from e
+
+    def get_active_any(self) -> Session | None:
+        """Get the most recent active session across all projects."""
+        try:
+            return self._repository.get_active_any()
         except Exception as e:
             raise ServiceError(f"Failed to get active session: {e}", e) from e
 

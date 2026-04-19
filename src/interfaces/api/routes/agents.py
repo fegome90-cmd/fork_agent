@@ -350,7 +350,7 @@ async def create_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create session: {e}",
-        ) from None
+        ) from e
     finally:
         # BUG FIX: Always release semaphore to prevent leak
         _session_semaphore.release()

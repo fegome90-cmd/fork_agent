@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -104,7 +103,7 @@ def save_summary(
 
     typer.echo(f"Session summary saved: {observation.id}")
     typer.echo(f"  Project: {proj}")
-    typer.echo(f"  Topic: compact/session-summary")
+    typer.echo("  Topic: compact/session-summary")
 
     # Flush telemetry
     db_path = _get_db_path_from_context(ctx)
@@ -134,22 +133,27 @@ def recover(
     memory_service = ctx.obj
     proj = _get_project_name(project)
 
-    # Get recent observations
-    all_observations = memory_service.get_recent(limit=observation_limit + 20, offset=0)
-
-    # Filter for session summaries
+    # Use search for deterministic retrieval regardless of observation count
+    summaries_raw = memory_service.search("compact/session-summary", limit=summary_limit + 5)
     summaries = [
         obs
-        for obs in all_observations
+        for obs in summaries_raw
         if obs.metadata
         and obs.metadata.get("type") == "session-summary"
         and obs.metadata.get("topic_key") == "compact/session-summary"
     ][:summary_limit]
 
-    # Get regular observations (excluding session summaries)
-    observations = [obs for obs in all_observations if obs not in summaries][
-        :observation_limit
+    # Also fetch artifacts-index
+    artifacts_raw = memory_service.search("compact/artifacts-index", limit=1)
+    artifacts_index = [
+        obs for obs in artifacts_raw
+        if obs.metadata and obs.metadata.get("type") == "artifacts-index"
     ]
+
+    # Get recent observations (excluding session summaries)
+    all_observations = memory_service.get_recent(limit=observation_limit, offset=0)
+    summary_ids = {s.id for s in summaries}
+    observations = [obs for obs in all_observations if obs.id not in summary_ids]
 
     # Display session summaries
     if summaries:
@@ -173,6 +177,21 @@ def recover(
             typer.echo()
     else:
         typer.echo(f"\nNo session summaries found for project: {proj}")
+
+    # Display artifacts index
+    if artifacts_index:
+        typer.echo("\n=== Artifacts Index ===\n")
+        for artifact in artifacts_index:
+            meta = artifact.metadata or {}
+            structured = meta.get("structured", {})
+            if "files" in structured:
+                typer.echo("  Files:")
+                for f in structured["files"][:10]:
+                    typer.echo(f"    - {f}")
+            else:
+                content = artifact.content[:200]
+                typer.echo(f"  {content}")
+            typer.echo()
 
     # Display recent observations
     if observations:

@@ -44,12 +44,14 @@ class Observation:
             "security",
             "performance",
             "preference",
+            "file_ops",
         }
     )
 
     id: str
     timestamp: int
     content: str
+    title: str | None = None
     metadata: dict[str, Any] | None = None
     idempotency_key: str | None = None
     project: str | None = None

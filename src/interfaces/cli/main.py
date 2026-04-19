@@ -9,10 +9,14 @@ from pathlib import Path
 import typer
 
 from src.application.services.orchestration.events import SessionStartEvent
-from src.interfaces.cli.commands import context, delete, get, list, save, search, stats, sync, update
+from src.infrastructure.persistence.container import get_default_db_path
+from src.interfaces.cli.commands import context, delete, get, list, mcp, save, search, stats, tui, update
+from src.interfaces.cli.commands.export import app as export_app
 from src.interfaces.cli.commands.cleanup import cleanup
 from src.interfaces.cli.commands.compact import app as compact_app
 from src.interfaces.cli.commands.health import health
+from src.interfaces.cli.commands.project import app as project_app
+from src.interfaces.cli.commands.prompt import app as prompt_app
 from src.interfaces.cli.commands.query import app as query_app
 from src.interfaces.cli.commands.schedule import app as schedule_app
 from src.interfaces.cli.commands.session import app as session_app
@@ -50,19 +54,24 @@ app.add_typer(query_app, name="query")
 app.add_typer(session_app, name="session")
 app.add_typer(sync_app, name="sync")
 app.add_typer(compact_app, name="compact")
+app.add_typer(mcp.app, name="mcp")
+app.add_typer(project_app, name="project")
+app.add_typer(prompt_app, name="prompt")
+app.add_typer(export_app, name="export")
 
 app.command(name="stats")(stats.stats)
 app.command(name="clear-slow-queries")(stats.clear_slow_queries)
+app.command(name="tui")(tui.launch)
 
 
 @app.callback()
 def main(
     ctx: typer.Context,
     db_path: str = typer.Option(
-        "data/memory.db",
+        str(get_default_db_path()),
         "--db",
         "-d",
-        help="Path to memory database",
+        help="Path to memory database (default: XDG-compliant, env: FORK_MEMORY_DB)",
     ),
 ) -> None:
     ctx.obj = get_memory_service(Path(db_path))

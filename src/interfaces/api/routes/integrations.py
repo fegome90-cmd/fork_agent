@@ -41,7 +41,7 @@ async def get_branch_review_info(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"branch-review API unavailable: {e}",
-        ) from None
+        ) from e
 
 
 @router.get("/branch-review/run")
@@ -59,7 +59,7 @@ async def get_branch_review_run(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"branch-review API unavailable: {e}",
-        ) from None
+        ) from e
 
 
 @router.get("/branch-review/final/{run_id}")
@@ -78,7 +78,7 @@ async def get_branch_review_final(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"branch-review API unavailable: {e}",
-        ) from None
+        ) from e
 
 
 class CommandRequest:
@@ -126,7 +126,7 @@ async def execute_branch_review_command(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"branch-review API unavailable: {e}",
-        ) from None
+        ) from e
 
 
 @router.post("/branch-review/workflow")
@@ -151,4 +151,4 @@ async def run_branch_review_workflow(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"branch-review API unavailable: {e}",
-        ) from None
+        ) from e

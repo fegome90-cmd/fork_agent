@@ -143,28 +143,49 @@ class ObservationCreate(BaseModel):
     """Request para crear observacion."""
 
     content: str = Field(..., min_length=1, max_length=10000)
+    type: str | None = None
+    project: str | None = None
+    topic_key: str | None = None
+    metadata: dict[str, Any] | None = None
+    title: str | None = None
 
 
-class Observation(BaseModel):
-    """Observacion guardada."""
+class ObservationUpdate(BaseModel):
+    """Request para actualizar observacion."""
+
+    content: str | None = Field(None, min_length=1, max_length=10000)
+    type: str | None = None
+    project: str | None = None
+    topic_key: str | None = None
+    metadata: dict[str, Any] | None = None
+    title: str | None = None
+
+
+class ObservationOut(BaseModel):
+    """Observation returned by the API."""
 
     id: str
     content: str
     timestamp: int
     metadata: dict[str, Any] | None = None
     idempotency_key: str | None = None
+    project: str | None = None
+    type: str | None = None
+    topic_key: str | None = None
+    revision_count: int = 1
+    session_id: str | None = None
 
 
 class ObservationResponse(BaseModel):
     """Response de observacion."""
 
-    data: Observation
+    data: ObservationOut
 
 
 class ObservationListResponse(BaseModel):
     """Response para listar observaciones."""
 
-    data: list[Observation]
+    data: list[ObservationOut]
     count: int | None = None
 
 
@@ -295,7 +316,8 @@ __all__ = [
     "WorkflowResponse",
     # Observation models
     "ObservationCreate",
-    "Observation",
+    "ObservationOut",
+    "ObservationUpdate",
     "ObservationResponse",
     "ObservationListResponse",
     "QueryResponse",

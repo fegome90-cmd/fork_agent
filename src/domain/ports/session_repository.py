@@ -70,6 +70,14 @@ class SessionRepository(Protocol):
         """
         ...
 
+    def get_active_any(self) -> Session | None:
+        """Get the most recent active session across all projects.
+
+        Returns:
+            The most recent active session if one exists, None otherwise.
+        """
+        ...
+
     def update(self, session: Session) -> None:
         """Update an existing session.
 

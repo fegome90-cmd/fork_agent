@@ -7,6 +7,8 @@ from pathlib import Path
 
 import typer
 
+from src.application.exceptions import ObservationNotFoundError
+from src.interfaces.cli.commands._resolve_id import resolve_observation_id
 from src.interfaces.cli.dependencies import get_telemetry_service
 
 app = typer.Typer()
@@ -56,8 +58,15 @@ def update(
         raise typer.Exit(1)
 
     try:
+        resolved = resolve_observation_id(memory_service, observation_id)
+        actual_id = resolved.id
+    except (ValueError, ObservationNotFoundError) as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+    try:
         observation = memory_service.update(
-            observation_id=observation_id,
+            observation_id=actual_id,
             content=content,
             metadata=meta_dict,
             type=obs_type,

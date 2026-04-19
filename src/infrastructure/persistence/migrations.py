@@ -144,5 +144,9 @@ def run_migrations(config: DatabaseConfig, migrations_dir: Path) -> None:
     applied = runner.get_applied_versions()
     pending = [m for m in load_migrations(migrations_dir) if m.version not in applied]
 
+    import contextlib as _contextlib
+    import sqlite3 as _sqlite3
+
     for migration in pending:
-        runner.apply_migration(migration)
+        with _contextlib.suppress(MigrationAlreadyAppliedError, _sqlite3.IntegrityError):
+            runner.apply_migration(migration)

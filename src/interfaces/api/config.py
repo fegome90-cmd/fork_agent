@@ -15,7 +15,7 @@ class APISettings(BaseSettings):
     debug: bool = False
     pm2_host: str = "localhost"
     pm2_port: int = 9615
-    database_url: str = "./data/memory.db"
+    database_url: str = ""
     rate_limit: int = 100
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:8080"]
     branch_review_token: str = ""

@@ -82,7 +82,7 @@ async def verify_plan(
         logger.exception(f"Failed to persist verify evidence for plan {plan_id}")
         raise HTTPException(
             status_code=500, detail=f"Verification failed to persist evidence: {str(e)}"
-        )
+        ) from e
 
     data = {
         "verify_id": verify_id,
@@ -108,7 +108,7 @@ async def ship_plan(
         contract = repo.get_by_plan_id(plan_id)
     except RepositoryError as e:
         logger.error(f"Repository error: {e}")
-        raise HTTPException(status_code=500, detail="Database error") from None
+        raise HTTPException(status_code=500, detail="Database error") from e
 
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
@@ -160,4 +160,4 @@ async def get_plan_status(
         )
     except RepositoryError as e:
         logger.error(f"Repository error fetching contract: {e}")
-        raise HTTPException(status_code=500, detail="Database error") from None
+        raise HTTPException(status_code=500, detail="Database error") from e

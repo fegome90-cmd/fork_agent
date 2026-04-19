@@ -6,20 +6,21 @@ from pathlib import Path
 
 import typer
 
+from src.infrastructure.persistence.container import get_default_db_path
 from src.infrastructure.persistence.health_check import HealthCheckService
 from src.infrastructure.persistence.query_logger import get_query_logger
 from src.interfaces.cli.dependencies import get_health_check_service, get_telemetry_service
 
 app = typer.Typer()
 
-DEFAULT_DB_PATH = Path("data/memory.db")
+DEFAULT_DB_PATH = get_default_db_path()
 
 
 def _get_health_service_from_context(ctx: typer.Context) -> HealthCheckService:
     """Get health check service from typer context."""
-    db_path = DEFAULT_DB_PATH
+    db_path = get_default_db_path()
     if ctx.parent and ctx.parent.params:
-        db_path = Path(ctx.parent.params.get("db_path", DEFAULT_DB_PATH))
+        db_path = Path(ctx.parent.params.get("db_path", str(get_default_db_path())))
 
     return get_health_check_service(db_path)
 
@@ -27,8 +28,8 @@ def _get_health_service_from_context(ctx: typer.Context) -> HealthCheckService:
 def _get_db_path_from_context(ctx: typer.Context) -> Path:
     """Get database path from typer context."""
     if ctx.parent and ctx.parent.params:
-        return Path(ctx.parent.params.get("db_path", DEFAULT_DB_PATH))
-    return DEFAULT_DB_PATH
+        return Path(ctx.parent.params.get("db_path", str(get_default_db_path())))
+    return get_default_db_path()
 
 
 @app.command()

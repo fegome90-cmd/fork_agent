@@ -19,7 +19,7 @@ def _get_session_service(db_path: Path | None = None) -> SessionService:
 @app.command()
 def start(
     ctx: typer.Context,
-    project: str = typer.Option(..., "--project", "-p", help="Project name"),
+    project: str = typer.Option(None, "--project", "-p", help="Project name (auto-detected if not provided)"),
     goal: str = typer.Option(None, "--goal", "-g", help="Session goal/description"),
     instructions: str = typer.Option(
         None, "--instructions", "-i", help="Session instructions/constraints"
@@ -30,9 +30,10 @@ def start(
 
     service = _get_session_service()
     directory = os.getcwd()
+    proj = project or Path(directory).name
 
     session = service.start_session(
-        project=project,
+        project=proj,
         directory=directory,
         goal=goal,
         instructions=instructions,
@@ -58,13 +59,15 @@ def end(
 
     service = _get_session_service()
 
-    # Auto-detect project if not provided
-    proj = project or Path(os.getcwd()).name
+    proj = project
 
-    # Find active session
-    active = service.get_active(proj)
+    # Find active session: explicit project > any active > error
+    if proj:
+        active = service.get_active(proj)
+    else:
+        active = service.get_active_any()
     if active is None:
-        typer.echo(f"No active session found for project: {proj}", err=True)
+        typer.echo(f"No active session found" + (f" for project: {proj}" if proj else ""), err=True)
         raise typer.Exit(1)
 
     session = service.end_session(active.id, summary)

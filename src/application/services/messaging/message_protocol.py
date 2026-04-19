@@ -3,106 +3,27 @@
 This module defines the encoding/decoding protocol for messages sent
 between tmux sessions. Messages are encoded as JSON with a special prefix
 for detection in capture-pane output.
-
-Protocol v2 (Opción C): Ultra-short reference + temp file to minimize tokens.
 """
 
 from __future__ import annotations
 
-import glob
 import json
-import os
-import time
 from pathlib import Path
 from typing import Any
 
 from src.domain.entities.message import AgentMessage, MessageType
 
-# Protocol v1: Full JSON inline (deprecated, kept for backward compatibility)
+# Protocol prefix for detection in capture-pane output
+# Prefixed with "# " so shells (fish/zsh/bash) treat it as a comment
 FORK_MSG_PREFIX = "# FORK_MSG:"
-
-# Protocol v2: Ultra-short reference to temp file
 FORK_MSG_SHORT_PREFIX = "# F:"
-FORK_MSG_TEMP_DIR = Path(os.getenv("FORK_MSG_TEMP_DIR", "/tmp"))
-FORK_MSG_TTL_SECONDS = int(os.getenv("FORK_MSG_TTL", "300"))  # 5 min default
-
-
-def _get_temp_file_path(msg_id: str) -> Path:
-    """Get temp file path for a message ID.
-
-    Uses first 8 chars of ID for filename to keep terminal output short.
-    """
-    id_short = msg_id[:8] if len(msg_id) >= 8 else msg_id
-    return FORK_MSG_TEMP_DIR / f"fork_msg_{id_short}.json"
-
-
-def _write_temp_file(msg: AgentMessage, data: dict[str, Any]) -> None:
-    """Write message data to temp file.
-
-    Args:
-        msg: The message being encoded
-        data: The full JSON data to write
-    """
-    temp_path = _get_temp_file_path(msg.id)
-    temp_path.write_text(json.dumps(data))
-
-
-def _read_temp_file(msg_id_short: str) -> dict[str, Any] | None:
-    """Read message data from temp file.
-
-    Args:
-        msg_id_short: First 8 chars of message ID
-
-    Returns:
-        Parsed JSON data or None if file not found/invalid
-    """
-    # Glob to find file (in case ID was truncated)
-    pattern = str(FORK_MSG_TEMP_DIR / f"fork_msg_{msg_id_short}*.json")
-    matches = glob.glob(pattern)
-
-    if not matches:
-        return None
-
-    try:
-        # Use first match
-        data: dict[str, Any] = json.loads(Path(matches[0]).read_text())
-        return data
-    except (json.JSONDecodeError, OSError):
-        return None
-
-
-def cleanup_temp_files(max_age_seconds: int | None = None) -> int:
-    """Remove temp files older than TTL.
-
-    Args:
-        max_age_seconds: Override default TTL (for testing)
-
-    Returns:
-        Number of files removed
-    """
-    ttl = max_age_seconds or FORK_MSG_TTL_SECONDS
-    cutoff = time.time() - ttl
-    removed = 0
-
-    for path in FORK_MSG_TEMP_DIR.glob("fork_msg_*.json"):
-        if path.stat().st_mtime < cutoff:
-            path.unlink()
-            removed += 1
-
-    return removed
+FORK_MSG_TEMP_DIR = Path("/tmp/fork-messages")
 
 
 def encode_message(msg: AgentMessage) -> str:
-    """Encode message as ultra-short reference to temp file.
+    """Encode message using v2 short protocol for tmux send-keys.
 
-    Protocol v2: Write full JSON to temp file, return short reference.
-    This minimizes tokens consumed by LLM when processing terminal output.
-
-    Args:
-        msg: The message to encode
-
-    Returns:
-        String in format "# F:{id_short}" (~15 chars, ~3 tokens)
+    Writes full JSON to temp file, returns short reference.
     """
     data: dict[str, Any] = {
         "id": msg.id,
@@ -114,114 +35,75 @@ def encode_message(msg: AgentMessage) -> str:
         "correlation_id": msg.correlation_id,
     }
 
-    # Write full JSON to temp file
-    _write_temp_file(msg, data)
+    # v2: write full JSON to temp file, return short reference
+    try:
+        FORK_MSG_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        temp_file = FORK_MSG_TEMP_DIR / f"fork_msg_{msg.id[:8]}.json"
+        temp_file.write_text(json.dumps(data))
+    except (OSError, IOError) as e:
+        # Re-raise to let the messenger know the protocol failed
+        raise RuntimeError(f"Failed to write message to temp storage: {e}")
 
-    # Return ultra-short reference
-    id_short = msg.id[:8] if len(msg.id) >= 8 else msg.id
-    return f"{FORK_MSG_SHORT_PREFIX}{id_short}"
+    return f"# F:{msg.id[:8]}"
 
 
 def decode_message(raw: str) -> AgentMessage | None:
-    """Parse FORK_MSG from capture-pane output.
+    """Parse message from string, enforcing strict prefix rules."""
+    # 1. Try v2 short prefix (# F:) - MUST be present
+    start_index = raw.find("# F:")
+    if start_index != -1:
+        # Extract 8-char ID (securely)
+        suffix = raw[start_index + 4:].strip()
+        if not suffix:
+            return None
+            
+        id_part = suffix.split()[0] # Take until whitespace
+        id_short = id_part[:8]
+        
+        temp_file = FORK_MSG_TEMP_DIR / f"fork_msg_{id_short}.json"
+        if temp_file.exists():
+            try:
+                data = json.loads(temp_file.read_text())
+                return _create_from_dict(data)
+            except (json.JSONDecodeError, OSError):
+                return None
+        return None
 
-    Supports both protocols:
-    - v2: "# F:{id_short}" -> reads from temp file
-    - v1: "# FORK_MSG:{json}" -> parses inline (backward compatibility)
-
-    Args:
-        raw: Raw string that may contain a FORK_MSG
-
-    Returns:
-        AgentMessage if valid, None if invalid or malformed
-    """
-    # Try v2 protocol first (ultra-short reference)
-    short_index = raw.find(FORK_MSG_SHORT_PREFIX)
-    if short_index != -1:
-        id_short = raw[short_index + len(FORK_MSG_SHORT_PREFIX) :].strip()[:8]
-        data = _read_temp_file(id_short)
-        if data:
-            return _parse_message_data(data)
-
-    # Fall back to v1 protocol (inline JSON)
+    # 2. Try v1 full prefix (# FORK_MSG:) - Fallback for small messages
     start_index = raw.find(FORK_MSG_PREFIX)
-    if start_index == -1:
+    if start_index != -1:
+        try:
+            json_part = raw[start_index + len(FORK_MSG_PREFIX) :].strip()
+            data = json.loads(json_part)
+            return _create_from_dict(data)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    return None
+
+
+def _create_from_dict(data: dict[str, Any]) -> AgentMessage | None:
+    """Helper to create AgentMessage from dictionary with validation."""
+    required = ["id", "from_agent", "to_agent", "message_type", "payload", "created_at"]
+    if not all(field in data for field in required):
         return None
 
     try:
-        json_part = raw[start_index + len(FORK_MSG_PREFIX) :].strip()
-        data = json.loads(json_part)
-    except (json.JSONDecodeError, TypeError):
+        return AgentMessage(
+            id=data["id"],
+            from_agent=data["from_agent"],
+            to_agent=data["to_agent"],
+            message_type=MessageType[data["message_type"]],
+            payload=data["payload"],
+            created_at=data["created_at"],
+            correlation_id=data.get("correlation_id"),
+        )
+    except (KeyError, ValueError):
         return None
-
-    return _parse_message_data(data)
-
-
-def _parse_message_data(data: dict[str, Any]) -> AgentMessage | None:
-    """Parse AgentMessage from decoded JSON data.
-
-    Args:
-        data: Parsed JSON dictionary
-
-    Returns:
-        AgentMessage if valid, None if required fields missing
-    """
-    # Validate required fields
-    required_fields = [
-        "id",
-        "from_agent",
-        "to_agent",
-        "message_type",
-        "payload",
-        "created_at",
-    ]
-    if not all(field in data for field in required_fields):
-        return None
-
-    try:
-        message_type = MessageType[data["message_type"]]
-    except KeyError:
-        return None
-
-    return AgentMessage(
-        id=data["id"],
-        from_agent=data["from_agent"],
-        to_agent=data["to_agent"],
-        message_type=message_type,
-        payload=data["payload"],
-        created_at=data["created_at"],
-        correlation_id=data.get("correlation_id"),
-    )
-
-
-def is_self_message(msg: AgentMessage, self_agent_id: str) -> bool:
-    """Return True if the message was sent by this agent (loop guard).
-
-    Use this before processing an incoming message to avoid infinite
-    response loops where an agent reacts to its own output.
-
-    Args:
-        msg: The incoming AgentMessage to check
-        self_agent_id: This agent's own session:window identifier
-
-    Returns:
-        True if msg.from_agent == self_agent_id
-    """
-    return msg.from_agent == self_agent_id
 
 
 def create_command(from_: str, to: str, command: str, **kwargs: Any) -> AgentMessage:
-    """Create a COMMAND message.
-
-    Args:
-        from_: Source session:window
-        to: Target session:window (or "*" for broadcast)
-        command: Command name
-        **kwargs: Additional parameters to include in payload
-
-    Returns:
-        AgentMessage with COMMAND type
-    """
+    """Create a COMMAND message."""
     payload_data = {"command": command, **kwargs}
     return AgentMessage.create(
         from_agent=from_,
@@ -232,17 +114,7 @@ def create_command(from_: str, to: str, command: str, **kwargs: Any) -> AgentMes
 
 
 def create_reply(from_: str, to: str, correlation_id: str, response: str) -> AgentMessage:
-    """Create a REPLY message.
-
-    Args:
-        from_: Source session:window
-        to: Target session:window
-        correlation_id: ID of the original COMMAND message
-        response: Response content
-
-    Returns:
-        AgentMessage with REPLY type
-    """
+    """Create a REPLY message."""
     payload_data = {"response": response}
     return AgentMessage.create(
         from_agent=from_,
@@ -254,16 +126,7 @@ def create_reply(from_: str, to: str, correlation_id: str, response: str) -> Age
 
 
 def create_handoff(from_: str, to: str, handoff_path: str) -> AgentMessage:
-    """Create a HANDOFF message.
-
-    Args:
-        from_: Source session:window
-        to: Target session:window
-        handoff_path: Path to handoff context file
-
-    Returns:
-        AgentMessage with HANDOFF type
-    """
+    """Create a HANDOFF message."""
     payload_data = {"handoff_path": handoff_path}
     return AgentMessage.create(
         from_agent=from_,
@@ -271,3 +134,24 @@ def create_handoff(from_: str, to: str, handoff_path: str) -> AgentMessage:
         message_type=MessageType.HANDOFF,
         payload=json.dumps(payload_data),
     )
+
+
+def cleanup_temp_files(max_age_seconds: int = 60) -> int:
+    """Remove temp message files older than max_age_seconds.
+
+    Default is 60 seconds as these files are ephemeral handoffs.
+    """
+    import time
+    removed = 0
+    if not FORK_MSG_TEMP_DIR.exists():
+        return removed
+    now = time.time()
+    for f in FORK_MSG_TEMP_DIR.glob("fork_msg_*.json"):
+        try:
+            if f.is_file() and (now - f.stat().st_mtime) > max_age_seconds:
+                f.unlink()
+                removed += 1
+        except (OSError, FileNotFoundError):
+            # File might have been deleted by another process
+            pass
+    return removed

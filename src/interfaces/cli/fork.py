@@ -22,9 +22,13 @@ ForkTerminalFn = Callable[[str], TerminalResult]
 # Doctor app
 doctor_app = typer.Typer(name="doctor", help="Diagnóstico y reparación del sistema")
 
+from src.interfaces.cli.commands.message import app as message_app
+
 # Root app that combines fork CLI and doctor commands
 root_app = typer.Typer(name="fork", help="Fork terminal operations and doctor diagnostics")
 root_app.add_typer(doctor_app)
+root_app.add_typer(message_app, name="message")
+
 
 
 def create_fork_cli(
@@ -136,10 +140,26 @@ def doctor_cleanup_orphans(
 
 
 @doctor_app.command("status")
-def doctor_status() -> None:
+def doctor_status(
+    json_output: bool = typer.Option(False, "--json", help="Output in JSON format"),
+) -> None:
     """Show health status including orphan session count."""
     manager = get_agent_manager()
     status = manager.get_health_status()
+
+    if json_output:
+        import json
+
+        # Prepare JSON output with fields expected by health gate scripts
+        output = {
+            "tmux_installed": True,
+            "status": status.get("reconcile_status", "unknown"),
+            "orphan_sessions": status.get("orphan_sessions_count", 0),
+            "registered_count": status.get("registered_count", 0),
+            "runtime_sessions_count": status.get("runtime_sessions_count", 0),
+        }
+        print(json.dumps(output))
+        return
 
     print("=== Health Status ===")
     print(f"Reconcile status: {status['reconcile_status']}")

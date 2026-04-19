@@ -33,12 +33,23 @@ class ObservationRepository(Protocol):
 
     def upsert_topic_key(self, observation: Observation) -> Observation: ...
 
-    def update(
+    def update(self, observation: Observation) -> None: ...
+
+    def save_event(self, content: str, metadata: dict[str, Any], idempotency_key: str) -> str: ...
+
+    def get_by_idempotency_key(self, idempotency_key: str) -> Observation | None: ...
+
+    def save_prompt(
         self,
-        observation_id: str,
-        content: str | None = None,
-        metadata: dict[str, Any] | None = None,
-        type: str | None = None,
-        topic_key: str | None = None,
-        project: str | None = None,
-    ) -> Observation: ...
+        content: str,
+        session_id: str | None,
+        role: str | None = None,
+        model: str | None = None,
+        provider: str | None = None,
+    ) -> int: ...
+
+    def merge_projects(
+        self,
+        canonical: str,
+        sources: list[str],
+    ) -> dict[str, Any]: ...
