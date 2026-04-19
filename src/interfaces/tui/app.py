@@ -15,7 +15,13 @@ class TUIApp(App[None]):
 
     TITLE = "Memory TUI"
     SUB_TITLE = "fork_agent"
-    BINDINGS = [("q", "quit", "Quit"), ("s", "search", "Search")]
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("s", "push_search", "Search"),
+        ("/", "push_search_focus", "Search"),
+        ("a", "push_save", "Add"),
+        ("S", "push_stats", "Stats"),
+    ]
 
     def __init__(self, db_path: str | None = None) -> None:
         super().__init__()
@@ -26,6 +32,26 @@ class TUIApp(App[None]):
         yield ListScreen(db_path=self.db_path)
         yield Footer()
 
-    def action_search(self) -> None:
-        """Focus search input (future: inline search bar)."""
-        pass
+    def action_push_search(self) -> None:
+        """Open search screen."""
+        from src.interfaces.tui.screens.search_screen import SearchScreen
+
+        self.push_screen(SearchScreen(db_path=self.db_path))
+
+    def action_push_search_focus(self) -> None:
+        """Open search screen with input focused."""
+        from src.interfaces.tui.screens.search_screen import SearchScreen
+
+        self.push_screen(SearchScreen(db_path=self.db_path))
+
+    def action_push_save(self) -> None:
+        """Open save screen."""
+        from src.interfaces.tui.screens.save_screen import SaveScreen
+
+        self.push_screen(SaveScreen(db_path=self.db_path))
+
+    def action_push_stats(self) -> None:
+        """Open stats screen."""
+        from src.interfaces.tui.screens.stats_screen import StatsScreen
+
+        self.push_screen(StatsScreen(db_path=self.db_path))

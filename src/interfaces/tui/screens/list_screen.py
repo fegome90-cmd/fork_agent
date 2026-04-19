@@ -28,6 +28,7 @@ class ListScreen(Screen[None]):
         self._db_path = db_path
         self._page = 0
         self._service: object | None = None  # lazy init, cached
+        self._result_ids: list[str] = []
 
     def compose(self) -> ComposeResult:
         table = DataTable()
@@ -59,6 +60,7 @@ class ListScreen(Screen[None]):
 
         table = self.query_one(DataTable)
         table.clear()
+        self._result_ids = []
 
         for obs in observations:
             ts = (
@@ -75,6 +77,7 @@ class ListScreen(Screen[None]):
                 title,
                 ts,
             )
+            self._result_ids.append(obs.id)
 
         self.query_one("#status", Static).update(
             f"Page {self._page + 1} | {len(observations)} observations"
@@ -90,9 +93,18 @@ class ListScreen(Screen[None]):
             self._load_data()
 
     def action_detail(self) -> None:
-        """Show detail for selected row (future: detail screen)."""
-        pass
+        """Show detail for selected row."""
+        table = self.query_one(DataTable)
+        row_index = table.cursor_row
+        if 0 <= row_index < len(self._result_ids):
+            from src.interfaces.tui.screens.detail_screen import DetailScreen
+
+            self.app.push_screen(
+                DetailScreen(db_path=self._db_path, obs_id=self._result_ids[row_index])
+            )
 
     def action_search(self) -> None:
-        """Activate search (future: search screen)."""
-        pass
+        """Open search screen."""
+        from src.interfaces.tui.screens.search_screen import SearchScreen
+
+        self.app.push_screen(SearchScreen(db_path=self._db_path))
