@@ -94,4 +94,27 @@ data/
 examples/
 .kilocode/
 .sisyphus/
-temp_engram/
+_ctx/telemetry/daemon.status
+
+# AI tool state
+.atl/
+.fork/
+.opencode/
+.pi/
+
+# Local context
+_ctx/
+
+# External apps
+apps/
+openspec/
+
+# Workspace artifacts
+TRIFECTA_USAGE.md
+readme_tf.md
+skill.md
+
+# Test DBs outside data/
+another/
+custom/
+
