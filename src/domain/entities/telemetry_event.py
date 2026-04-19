@@ -237,6 +237,8 @@ class SessionSummary:
     cli_errors: int = 0
 
     # Environment
+
+    # Environment
     platform: str | None = None
     python_version: str | None = None
     fork_agent_version: str | None = None
