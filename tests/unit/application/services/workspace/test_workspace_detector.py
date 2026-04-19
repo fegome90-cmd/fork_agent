@@ -18,7 +18,8 @@ def mock_git_executor() -> MagicMock:
 @pytest.fixture
 def mock_workspace_manager(mock_git_executor: MagicMock) -> MagicMock:
     manager = MagicMock(spec=WorkspaceManager)
-    manager._git = mock_git_executor
+    manager.git_executor = mock_git_executor
+    manager.detect_layout.return_value = LayoutType.NESTED
     return manager
 
 
@@ -252,101 +253,70 @@ class TestWorkspaceDetectorGetWorkspaceName:
 
 
 class TestWorkspaceDetectorDetectLayout:
-    def test_detect_layout_nested(self, workspace_detector: WorkspaceDetector) -> None:
+    def test_detect_layout_delegates_to_manager(
+        self, workspace_detector: WorkspaceDetector, mock_workspace_manager: MagicMock
+    ) -> None:
+        """Detector delegates layout detection to the manager."""
         worktree_path = Path("/test/repo/.worktrees/feature")
         repo_root = Path("/test/repo")
 
-        with (
-            patch.object(Path, "resolve", lambda self: self),
-            patch.object(
-                Path, "is_relative_to", lambda self, other: str(self).startswith(str(other) + "/")
-            ),
-        ):
-            layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        mock_workspace_manager.detect_layout.return_value = LayoutType.NESTED
+        layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.NESTED
+        mock_workspace_manager.detect_layout.assert_called_once_with(worktree_path, repo_root)
 
-    def test_detect_layout_outer_nested(self, workspace_detector: WorkspaceDetector) -> None:
+    def test_detect_layout_passes_through_outer_nested(
+        self, workspace_detector: WorkspaceDetector, mock_workspace_manager: MagicMock
+    ) -> None:
+        """Detector passes args through for outer nested layout."""
         worktree_path = Path("/test/repo.worktrees/feature")
         repo_root = Path("/test/repo")
 
-        call_count = 0
-
-        def mock_is_relative_to_outer(self: Path, other: Path) -> bool:
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return False
-            return str(self).startswith(str(other) + "/")
-
-        with (
-            patch.object(Path, "resolve", lambda self: self),
-            patch.object(Path, "is_relative_to", mock_is_relative_to_outer),
-        ):
-            layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        mock_workspace_manager.detect_layout.return_value = LayoutType.OUTER_NESTED
+        layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.OUTER_NESTED
+        mock_workspace_manager.detect_layout.assert_called_once_with(worktree_path, repo_root)
 
-    def test_detect_layout_sibling(self, workspace_detector: WorkspaceDetector) -> None:
+    def test_detect_layout_passes_through_sibling(
+        self, workspace_detector: WorkspaceDetector, mock_workspace_manager: MagicMock
+    ) -> None:
+        """Detector passes args through for sibling layout."""
         worktree_path = Path("/test/repo-feature")
         repo_root = Path("/test/repo")
 
-        call_count = 0
-
-        def mock_is_relative_to(self: Path, other: Path) -> bool:
-            nonlocal call_count
-            call_count += 1
-            if call_count <= 2:
-                return False
-            return str(self).startswith(str(other) + "/")
-
-        with (
-            patch.object(Path, "resolve", lambda self: self),
-            patch.object(Path, "is_relative_to", mock_is_relative_to),
-        ):
-            layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        mock_workspace_manager.detect_layout.return_value = LayoutType.SIBLING
+        layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.SIBLING
+        mock_workspace_manager.detect_layout.assert_called_once_with(worktree_path, repo_root)
 
     def test_detect_layout_falls_back_to_nested(
-        self, workspace_detector: WorkspaceDetector
+        self, workspace_detector: WorkspaceDetector, mock_workspace_manager: MagicMock
     ) -> None:
+        """Detector passes args through for fallback to nested."""
         worktree_path = Path("/some/other/location/feature")
         repo_root = Path("/test/repo")
 
-        with (
-            patch.object(Path, "resolve", lambda self: self),
-            patch.object(Path, "is_relative_to", lambda _self, _other: False),
-        ):
-            layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        mock_workspace_manager.detect_layout.return_value = LayoutType.NESTED
+        layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.NESTED
+        mock_workspace_manager.detect_layout.assert_called_once_with(worktree_path, repo_root)
 
     def test_detect_layout_handles_oserror_nested(
-        self, workspace_detector: WorkspaceDetector
+        self, workspace_detector: WorkspaceDetector, mock_workspace_manager: MagicMock
     ) -> None:
+        """Detector delegates OSError handling to the manager."""
         worktree_path = Path("/test/repo/.worktrees/feature")
         repo_root = Path("/test/repo")
 
-        call_count = 0
-
-        def mock_resolve_err(self: Path) -> Path:  # noqa: ARG001
-            raise OSError("Cannot resolve")
-
-        def mock_is_relative_to(self: Path, other: Path) -> bool:  # noqa: ARG001
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                raise OSError("Path error")
-            return True
-
-        with (
-            patch.object(Path, "resolve", mock_resolve_err),
-            patch.object(Path, "is_relative_to", mock_is_relative_to),
-        ):
-            layout = workspace_detector._detect_layout(worktree_path, repo_root)
+        mock_workspace_manager.detect_layout.return_value = LayoutType.NESTED
+        layout = workspace_detector._detect_layout(worktree_path, repo_root)
 
         assert layout == LayoutType.NESTED
+        mock_workspace_manager.detect_layout.assert_called_once_with(worktree_path, repo_root)
 
 
 class TestWorkspaceDetectorGit:
@@ -355,4 +325,4 @@ class TestWorkspaceDetectorGit:
     ) -> None:
         git = workspace_detector._git
 
-        assert git is mock_workspace_manager._git
+        assert git is mock_workspace_manager.git_executor

@@ -111,6 +111,10 @@ class SyncService:
     ) -> list[Path]:
         """Export observations to chunked JSONL files.
 
+        When a watermark exists (last_export_seq > 0), exports only
+        observations changed since the last export by reconstructing
+        from the mutation journal.  Otherwise performs a full dump.
+
         Args:
             project: Optional project filter
             chunk_size: Number of observations per chunk
@@ -120,10 +124,20 @@ class SyncService:
         """
         self._export_dir.mkdir(parents=True, exist_ok=True)
 
-        observations = self._observation_repo.get_all()
+        status = self._sync_repo.get_status()
+        last_export_seq = status.last_export_seq or 0
 
-        if project:
-            observations = [o for o in observations if o.project == project]
+        if last_export_seq > 0:
+            # Incremental: reconstruct observations from mutations
+            observations, export_max_seq = self._reconstruct_from_mutations(
+                last_export_seq, project
+            )
+        else:
+            # Full dump
+            observations = self._observation_repo.get_all()
+            if project:
+                observations = [o for o in observations if o.project == project]
+            export_max_seq = None
 
         if not observations:
             logger.info("No observations to export")
@@ -146,10 +160,12 @@ class SyncService:
 
         self._write_manifest(chunk_paths, total_observations, timestamp)
 
-        latest_seq = self._sync_repo.get_latest_seq()
+        # Advance watermark — use export_max_seq for incremental,
+        # global latest_seq for full dump.
+        watermark_seq = export_max_seq if export_max_seq is not None else self._sync_repo.get_latest_seq()
         self._sync_repo.update_status(
             last_export_at=timestamp,
-            last_export_seq=latest_seq,
+            last_export_seq=watermark_seq,
         )
 
         logger.info(
@@ -160,6 +176,89 @@ class SyncService:
         )
 
         return chunk_paths
+
+    def _reconstruct_from_mutations(
+        self,
+        since_seq: int,
+        project: str | None = None,
+    ) -> tuple[list[Observation], int]:
+        """Reconstruct current observation state from mutations.
+
+        Walks the mutation journal from *since_seq* (exclusive) to build
+        the latest snapshot of each observation.  Delete mutations remove
+        entries; the last insert/update wins per entity_key.
+
+        Args:
+            since_seq: Sequence number to start from (exclusive).
+            project: Optional project filter applied to mutations.
+
+        Returns:
+            Tuple of (observations, max_seq) where *max_seq* is the
+            highest sequence number of the **processed** mutations.
+        """
+        mutations = self._sync_repo.get_mutations_since(since_seq)
+
+        obs_data: dict[str, dict[str, Any]] = {}
+        deleted_ids: set[str] = set()
+        max_seq = since_seq
+
+        for m in mutations:
+            # Apply project filter before counting the seq
+            if project and m.project != project:
+                continue
+
+            max_seq = max(max_seq, m.seq)
+
+            if m.op == "delete":
+                deleted_ids.add(m.entity_key)
+                obs_data.pop(m.entity_key, None)
+            elif m.op in ("insert", "update"):
+                try:
+                    payload = (
+                        json.loads(m.payload)
+                        if isinstance(m.payload, str)
+                        else m.payload
+                    )
+                    obs_data[m.entity_key] = payload
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning(
+                        "Failed to parse mutation payload for seq %d: %s",
+                        m.seq,
+                        e,
+                    )
+
+        # Reconstruct Observation objects
+        observations: list[Observation] = []
+        for obs_id, payload in obs_data.items():
+            if obs_id in deleted_ids:
+                continue
+            try:
+                obs_type = payload.get("type")
+                if obs_type is not None:
+                    from src.domain.entities.observation import Observation as _Obs
+
+                    if obs_type not in _Obs._ALLOWED_TYPES:
+                        logger.warning(
+                            "Skipping obs %s with invalid type: %s", obs_id, obs_type
+                        )
+                        obs_type = None
+                obs = Observation(
+                    id=payload.get("id", obs_id),
+                    timestamp=payload.get("timestamp", 0),
+                    content=payload.get("content", ""),
+                    metadata=payload.get("metadata"),
+                    idempotency_key=payload.get("idempotency_key"),
+                    project=payload.get("project"),
+                    type=obs_type,
+                    topic_key=payload.get("topic_key"),
+                    revision_count=payload.get("revision_count", 1),
+                    session_id=payload.get("session_id"),
+                )
+                observations.append(obs)
+            except (KeyError, TypeError) as e:
+                logger.warning("Failed to reconstruct observation %s: %s", obs_id, e)
+
+        return observations, max_seq
 
     def _write_chunk(self, observations: list[Observation], index: int, timestamp: int) -> Path:
         """Write a single chunk to a gzipped JSONL file."""
@@ -467,11 +566,20 @@ class SyncService:
         self,
         _project: str | None = None,
         chunk_size: int = 100,
+        commit_watermark: bool = True,
     ) -> list[Path]:
         """Export only mutations since last export.
 
         Writes mutations as JSONL.gz chunks. Each line is a mutation with
         its payload (full observation data for insert/update, id-only for delete).
+
+        Args:
+            _project: Reserved for future per-project incremental export.
+            chunk_size: Mutations per chunk.
+            commit_watermark: If True (default), advance the export watermark
+                immediately.  Set to False when the caller needs to defer
+                watermark advancement (e.g. until after a git push succeeds).
+                Use ``commit_export_watermark()`` to advance later.
 
         Returns:
             List of chunk file paths.
@@ -481,6 +589,7 @@ class SyncService:
         mutations = self._sync_repo.get_mutations_since(last_seq)
 
         if not mutations:
+            self._last_export_max_seq = 0
             return []
 
         self._export_dir.mkdir(parents=True, exist_ok=True)
@@ -497,11 +606,15 @@ class SyncService:
         # Write manifest
         self._write_manifest(paths, len(mutations), timestamp)
 
-        # Update status
-        self._sync_repo.update_status(
-            last_export_at=timestamp,
-            last_export_seq=max_seq,
-        )
+        # Store max_seq so the caller can commit later if needed
+        self._last_export_max_seq = max_seq
+        self._last_export_timestamp = timestamp
+
+        if commit_watermark:
+            self._sync_repo.update_status(
+                last_export_at=timestamp,
+                last_export_seq=max_seq,
+            )
 
         logger.info(
             "Exported %d mutations (seq %d-%d) to %d chunks",
@@ -511,6 +624,23 @@ class SyncService:
             len(paths),
         )
         return paths
+
+    def commit_export_watermark(self) -> None:
+        """Advance the export watermark to the last exported seq.
+
+        Call this only after the exported chunks have been successfully
+        delivered (e.g. after a successful git push).  If no export has
+        been performed, this is a no-op.
+        """
+        max_seq = getattr(self, "_last_export_max_seq", 0)
+        if max_seq <= 0:
+            return
+        timestamp = getattr(self, "_last_export_timestamp", 0) or int(time.time() * 1000)
+        self._sync_repo.update_status(
+            last_export_at=timestamp,
+            last_export_seq=max_seq,
+        )
+        logger.info("Committed export watermark to seq %d", max_seq)
 
     def _write_mutation_chunk(
         self,

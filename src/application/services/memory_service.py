@@ -7,6 +7,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from src.application.services.redaction import redact_observation_data
 from src.domain.entities.observation import Observation
 from src.domain.ports.observation_repository import ObservationRepository
 
@@ -36,6 +37,9 @@ class MemoryService:
         type: str | None = None,
         title: str | None = None,
     ) -> Observation:
+        # Redact PII before storage (covers all entrypoints: MCP, CLI, import, compact)
+        content, metadata, _was_redacted = redact_observation_data(content, metadata)
+
         existing_for_topic = None
         if topic_key:
             existing_for_topic = self._repository.get_by_topic_key(topic_key, project=project)
@@ -75,6 +79,16 @@ class MemoryService:
         project: str | None = None,
         title: str | None = None,
     ) -> Observation:
+        # Redact PII before update (covers all entrypoints)
+        if content is not None or metadata is not None:
+            redacted_content, redacted_metadata, _was_redacted = redact_observation_data(
+                content or "", metadata
+            )
+            if content is not None:
+                content = redacted_content
+            if metadata is not None:
+                metadata = redacted_metadata
+
         existing = self._repository.get_by_id(observation_id)
 
         updates: dict[str, Any] = {"revision_count": existing.revision_count + 1}
@@ -143,9 +157,9 @@ class MemoryService:
             idempotency_key=idempotency_key,
         )
 
-    def search(self, query: str, limit: int | None = None) -> list[Observation]:
+    def search(self, query: str, limit: int | None = None, project: str | None = None) -> list[Observation]:
         start_ms = int(time.time() * 1000)
-        results = self._repository.search(query, limit=limit)
+        results = self._repository.search(query, limit=limit, project=project)
         duration_ms = int(time.time() * 1000) - start_ms
 
         # Track telemetry if available
@@ -160,7 +174,11 @@ class MemoryService:
         return results
 
     def get_recent(
-        self, limit: int = 10, offset: int = 0, type: str | None = None
+        self,
+        limit: int = 10,
+        offset: int = 0,
+        type: str | None = None,
+        project: str | None = None,
     ) -> list[Observation]:
         """Get recent observations with pagination.
 
@@ -168,6 +186,7 @@ class MemoryService:
             limit: Maximum number of observations to return. Must be >= 0.
             offset: Number of observations to skip. Must be >= 0.
             type: Optional type filter to narrow results.
+            project: Optional project filter to narrow results.
 
         Returns:
             List of observations.
@@ -180,7 +199,7 @@ class MemoryService:
         if offset < 0:
             raise ValueError(f"offset must be >= 0, got {offset}")
 
-        return self._repository.get_all(limit=limit, offset=offset, type=type)
+        return self._repository.get_all(limit=limit, offset=offset, type=type, project=project)
 
     def get_by_id(self, observation_id: str) -> Observation:
         return self._repository.get_by_id(observation_id)

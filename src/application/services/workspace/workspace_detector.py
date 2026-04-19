@@ -29,8 +29,8 @@ class WorkspaceDetector:
 
     @property
     def _git(self) -> GitCommandExecutor:
-        # Access the private _git attribute from WorkspaceManager
-        return self._manager._git
+        # Access git executor through the manager's public interface
+        return self._manager.git_executor
 
     def detect(self, path: Path | None = None) -> Workspace | None:
         """Detect workspace from current directory or given path.
@@ -115,7 +115,7 @@ class WorkspaceDetector:
         return workspace.name if workspace else None
 
     def _detect_layout(self, worktree_path: Path, repo_root: Path) -> LayoutType:
-        """Detect the layout type based on worktree path.
+        """Delegate layout detection to the workspace manager.
 
         Args:
             worktree_path: Path to the worktree.
@@ -124,31 +124,4 @@ class WorkspaceDetector:
         Returns:
             Detected LayoutType.
         """
-        # Check nested layout: .worktrees/<name>/
-        expected_nested = repo_root / ".worktrees"
-        try:
-            if worktree_path.resolve().is_relative_to(expected_nested.resolve()):
-                return LayoutType.NESTED
-        except (OSError, ValueError):
-            pass
-
-        # Check outer nested: ../<repo>.worktrees/<name>/
-        repo_name = repo_root.name
-        expected_outer = repo_root.parent / f"{repo_name}.worktrees"
-        try:
-            if worktree_path.resolve().is_relative_to(expected_outer.resolve()):
-                return LayoutType.OUTER_NESTED
-        except (OSError, ValueError):
-            pass
-
-        # Check sibling: ../<repo>-<name>/
-        expected_sibling_prefix = repo_root.parent / f"{repo_name}-"
-        try:
-            resolved = worktree_path.resolve()
-            if str(resolved).startswith(str(expected_sibling_prefix.resolve())):
-                return LayoutType.SIBLING
-        except (OSError, ValueError):
-            pass
-
-        # Default to nested
-        return LayoutType.NESTED
+        return self._manager.detect_layout(worktree_path, repo_root)
