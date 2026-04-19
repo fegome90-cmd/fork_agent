@@ -50,7 +50,7 @@ class TestObservation:
 
     def test_observation_validates_id_type(self) -> None:
         """Test that id must be a string."""
-        with pytest.raises(TypeError, match="id debe ser un string"):
+        with pytest.raises(TypeError, match="id must be a string"):
             Observation(
                 id=123,  # type: ignore[arg-type]
                 timestamp=1700000000000,
@@ -59,7 +59,7 @@ class TestObservation:
 
     def test_observation_validates_id_not_empty(self) -> None:
         """Test that id cannot be empty."""
-        with pytest.raises(ValueError, match="id no puede estar vacío"):
+        with pytest.raises(ValueError, match="id must not be empty"):
             Observation(
                 id="",
                 timestamp=1700000000000,
@@ -68,7 +68,7 @@ class TestObservation:
 
     def test_observation_validates_timestamp_type(self) -> None:
         """Test that timestamp must be an integer."""
-        with pytest.raises(TypeError, match="timestamp debe ser un entero"):
+        with pytest.raises(TypeError, match="timestamp must be an integer"):
             Observation(
                 id="test-id",
                 timestamp="not-an-int",  # type: ignore[arg-type]
@@ -77,7 +77,7 @@ class TestObservation:
 
     def test_observation_validates_timestamp_not_negative(self) -> None:
         """Test that timestamp cannot be negative."""
-        with pytest.raises(ValueError, match="timestamp debe ser no negativo"):
+        with pytest.raises(ValueError, match="timestamp must be non-negative"):
             Observation(
                 id="test-id",
                 timestamp=-1,
@@ -86,7 +86,7 @@ class TestObservation:
 
     def test_observation_validates_content_type(self) -> None:
         """Test that content must be a string."""
-        with pytest.raises(TypeError, match="content debe ser un string"):
+        with pytest.raises(TypeError, match="content must be a string"):
             Observation(
                 id="test-id",
                 timestamp=1700000000000,
@@ -95,7 +95,7 @@ class TestObservation:
 
     def test_observation_validates_content_not_empty(self) -> None:
         """Test that content cannot be empty."""
-        with pytest.raises(ValueError, match="content no puede estar vacío"):
+        with pytest.raises(ValueError, match="content must not be empty"):
             Observation(
                 id="test-id",
                 timestamp=1700000000000,
@@ -104,7 +104,7 @@ class TestObservation:
 
     def test_observation_validates_metadata_type(self) -> None:
         """Test that metadata must be a dict or None."""
-        with pytest.raises(TypeError, match="metadata debe ser un diccionario o None"):
+        with pytest.raises(TypeError, match="metadata must be a dict or None"):
             Observation(
                 id="test-id",
                 timestamp=1700000000000,

@@ -60,40 +60,47 @@ class Observation:
     revision_count: int = 1
     session_id: str | None = None
 
+    _MAX_TOPIC_KEY_LENGTH: ClassVar[int] = 128
+
     def __post_init__(self) -> None:
         if not isinstance(self.id, str):
-            raise TypeError("id debe ser un string")
+            raise TypeError("id must be a string")
         if not self.id:
-            raise ValueError("id no puede estar vacío")
+            raise ValueError("id must not be empty")
         if not isinstance(self.timestamp, int):
-            raise TypeError("timestamp debe ser un entero")
+            raise TypeError("timestamp must be an integer")
         if self.timestamp < 0:
-            raise ValueError("timestamp debe ser no negativo")
+            raise ValueError("timestamp must be non-negative")
         if not isinstance(self.content, str):
-            raise TypeError("content debe ser un string")
+            raise TypeError("content must be a string")
         if not self.content:
-            raise ValueError("content no puede estar vacío")
+            raise ValueError("content must not be empty")
         if self.metadata is not None and not isinstance(self.metadata, dict):
-            raise TypeError("metadata debe ser un diccionario o None")
+            raise TypeError("metadata must be a dict or None")
         if self.idempotency_key is not None and not isinstance(self.idempotency_key, str):
-            raise TypeError("idempotency_key debe ser un string o None")
+            raise TypeError("idempotency_key must be a string or None")
         if self.idempotency_key is not None and not self.idempotency_key:
-            raise ValueError("idempotency_key no puede estar vacío")
+            raise ValueError("idempotency_key must not be empty")
         if self.topic_key is not None and not isinstance(self.topic_key, str):
-            raise TypeError("topic_key debe ser un string o None")
+            raise TypeError("topic_key must be a string or None")
         if self.topic_key is not None and not self.topic_key:
-            raise ValueError("topic_key no puede estar vacío")
+            raise ValueError("topic_key must not be empty")
         if self.topic_key is not None and " " in self.topic_key:
-            raise ValueError("topic_key no puede contener espacios")
+            raise ValueError("topic_key must not contain spaces")
+        if self.topic_key is not None and len(self.topic_key) > self._MAX_TOPIC_KEY_LENGTH:
+            raise ValueError(
+                f"topic_key must not exceed {self._MAX_TOPIC_KEY_LENGTH} characters "
+                f"(got {len(self.topic_key)})"
+            )
         if not isinstance(self.revision_count, int):
-            raise TypeError("revision_count debe ser un entero")
+            raise TypeError("revision_count must be an integer")
         if self.revision_count < 1:
-            raise ValueError("revision_count debe ser al menos 1")
+            raise ValueError("revision_count must be at least 1")
         if self.type is not None and not isinstance(self.type, str):
-            raise TypeError("type debe ser un string o None")
+            raise TypeError("type must be a string or None")
         if self.type is not None and self.type not in self._ALLOWED_TYPES:
-            raise ValueError(f"type debe ser uno de {sorted(self._ALLOWED_TYPES)} o None")
+            raise ValueError(f"type must be one of {sorted(self._ALLOWED_TYPES)} or None")
         if self.project is not None and not isinstance(self.project, str):
-            raise TypeError("project debe ser un string o None")
+            raise TypeError("project must be a string or None")
         if self.project is not None and not self.project.strip():
-            raise ValueError("project no puede estar vacío o solo espacios")
+            raise ValueError("project must not be empty or whitespace-only")

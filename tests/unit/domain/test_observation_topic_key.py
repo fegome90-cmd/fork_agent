@@ -32,7 +32,7 @@ class TestObservationTopicKey:
         assert observation.topic_key is None
 
     def test_observation_validates_topic_key_type(self) -> None:
-        with pytest.raises(TypeError, match="topic_key debe ser un string o None"):
+        with pytest.raises(TypeError, match="topic_key must be a string or None"):
             Observation(
                 id="test-tk-003",
                 timestamp=1700000000000,
@@ -41,7 +41,7 @@ class TestObservationTopicKey:
             )
 
     def test_observation_validates_topic_key_not_empty(self) -> None:
-        with pytest.raises(ValueError, match="topic_key no puede estar vacío"):
+        with pytest.raises(ValueError, match="topic_key must not be empty"):
             Observation(
                 id="test-tk-004",
                 timestamp=1700000000000,
@@ -69,3 +69,21 @@ class TestObservationTopicKey:
 
         with pytest.raises(FrozenInstanceError):
             observation.topic_key = "fork/other/key"  # type: ignore[misc]
+
+    def test_observation_validates_topic_key_max_length(self) -> None:
+        with pytest.raises(ValueError, match="topic_key must not exceed 128 characters"):
+            Observation(
+                id="test-tk-007",
+                timestamp=1700000000000,
+                content="test",
+                topic_key="a" * 129,
+            )
+
+    def test_observation_accepts_topic_key_at_max_length(self) -> None:
+        observation = Observation(
+            id="test-tk-008",
+            timestamp=1700000000000,
+            content="test",
+            topic_key="a" * 128,
+        )
+        assert len(observation.topic_key) == 128

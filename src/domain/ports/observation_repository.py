@@ -19,9 +19,12 @@ class ObservationRepository(Protocol):
         limit: int | None = None,
         offset: int | None = None,
         type: str | None = None,
+        project: str | None = None,
     ) -> list[Observation]: ...
 
-    def search(self, query: str, limit: int | None) -> list[Observation]: ...
+    def search(
+        self, query: str, limit: int | None = None, project: str | None = None
+    ) -> list[Observation]: ...
 
     def delete(self, observation_id: str) -> None: ...
 

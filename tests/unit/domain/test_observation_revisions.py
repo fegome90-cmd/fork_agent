@@ -43,7 +43,7 @@ class TestObservationRevisionCount:
 
     def test_observation_validates_revision_count_type(self) -> None:
         """Test that revision_count must be an integer."""
-        with pytest.raises(TypeError, match="revision_count debe ser un entero"):
+        with pytest.raises(TypeError, match="revision_count must be an integer"):
             Observation(
                 id="test-id",
                 timestamp=1700000000000,
@@ -53,7 +53,7 @@ class TestObservationRevisionCount:
 
     def test_observation_validates_revision_count_not_zero(self) -> None:
         """Test that revision_count cannot be zero."""
-        with pytest.raises(ValueError, match="revision_count debe ser al menos 1"):
+        with pytest.raises(ValueError, match="revision_count must be at least 1"):
             Observation(
                 id="test-id",
                 timestamp=1700000000000,
@@ -63,7 +63,7 @@ class TestObservationRevisionCount:
 
     def test_observation_validates_revision_count_not_negative(self) -> None:
         """Test that revision_count cannot be negative."""
-        with pytest.raises(ValueError, match="revision_count debe ser al menos 1"):
+        with pytest.raises(ValueError, match="revision_count must be at least 1"):
             Observation(
                 id="test-id",
                 timestamp=1700000000000,

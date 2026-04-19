@@ -57,7 +57,7 @@ class TestObservationScoping:
         assert observation.type is None
 
     def test_observation_validates_project_type(self) -> None:
-        with pytest.raises(TypeError, match="project debe ser un string o None"):
+        with pytest.raises(TypeError, match="project must be a string or None"):
             Observation(
                 id="test-scp-006",
                 timestamp=1700000000000,
@@ -66,7 +66,7 @@ class TestObservationScoping:
             )
 
     def test_observation_validates_type_type(self) -> None:
-        with pytest.raises(TypeError, match="type debe ser un string o None"):
+        with pytest.raises(TypeError, match="type must be a string or None"):
             Observation(
                 id="test-scp-007",
                 timestamp=1700000000000,
@@ -75,7 +75,7 @@ class TestObservationScoping:
             )
 
     def test_observation_validates_project_not_empty(self) -> None:
-        with pytest.raises(ValueError, match="project no puede estar vacío"):
+        with pytest.raises(ValueError, match="project must not be empty"):
             Observation(
                 id="test-scp-008",
                 timestamp=1700000000000,
@@ -84,7 +84,7 @@ class TestObservationScoping:
             )
 
     def test_observation_validates_type_not_empty(self) -> None:
-        with pytest.raises(ValueError, match="type debe ser uno de"):
+        with pytest.raises(ValueError, match="type must be one of"):
             Observation(
                 id="test-scp-009",
                 timestamp=1700000000000,

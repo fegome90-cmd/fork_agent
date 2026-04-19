@@ -211,6 +211,7 @@ class ObservationRepository:
         limit: int | None = None,
         offset: int | None = None,
         type: str | None = None,
+        project: str | None = None,
     ) -> list[Observation]:
         """Retrieve observations ordered by timestamp descending with optional pagination.
 
@@ -218,17 +219,26 @@ class ObservationRepository:
             limit: Optional maximum number of observations to return. If None, no limit is applied.
             offset: Optional number of observations to skip before starting to return results.
             type: Optional type filter to narrow results.
+            project: Optional project filter to narrow results.
 
         Returns:
             List of observation entities.
         """
         try:
+            conditions: list[str] = []
+            params: list[str | int] = []
+
             if type is not None:
-                sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE type = ? ORDER BY timestamp DESC"
-                params: list[str | int] = [type]
-            else:
-                sql = f"SELECT {_SELECT_COLUMNS} FROM observations ORDER BY timestamp DESC"
-                params = []
+                conditions.append("type = ?")
+                params.append(type)
+            if project is not None:
+                normalized = self._normalize_project(project)
+                if normalized:
+                    conditions.append("project = ?")
+                    params.append(normalized)
+
+            where_clause = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+            sql = f"SELECT {_SELECT_COLUMNS} FROM observations{where_clause} ORDER BY timestamp DESC"
 
             if limit is not None:
                 sql += " LIMIT ?"
@@ -353,12 +363,13 @@ class ObservationRepository:
 
         self._record_mutation("delete", observation_id, None, {"id": observation_id})
 
-    def search(self, query: str, limit: int | None = None) -> list[Observation]:
+    def search(self, query: str, limit: int | None = None, project: str | None = None) -> list[Observation]:
         """Search observations using full-text search.
 
         Args:
             query: The search query string.
             limit: Optional maximum number of results to return.
+            project: Optional project filter to narrow results.
 
         Returns:
             List of matching observation entities, ordered by timestamp descending.
@@ -372,9 +383,16 @@ class ObservationRepository:
                 FROM observations o
                 JOIN observations_fts fts ON o.rowid = fts.rowid
                 WHERE observations_fts MATCH ?
-                ORDER BY o.timestamp DESC
             """
             params: list[str | int] = [sanitized_query]
+
+            if project is not None:
+                normalized = self._normalize_project(project)
+                if normalized:
+                    sql += " AND o.project = ?"
+                    params.append(normalized)
+
+            sql += " ORDER BY o.timestamp DESC"
 
             if limit is not None:
                 sql += " LIMIT ?"
@@ -414,10 +432,12 @@ class ObservationRepository:
             raise RepositoryError(f"Failed to get observations by range: {e}", e) from e
 
     def upsert_topic_key(self, observation: Observation) -> Observation:
-        """Update an existing observation matched by topic_key only.
+        """Update an existing observation matched by topic_key and project.
 
         The caller (service) must verify the record exists before calling this.
-        Project and type are updated to new values to prevent duplicates.
+        When project is provided, matches both topic_key and project to avoid
+        UNIQUE constraint violations on the (topic_key, project) index.
+        When project is None, matches topic_key only (project-agnostic upsert).
 
         Args:
             observation: The observation with updated fields.
@@ -437,6 +457,22 @@ class ObservationRepository:
         project = self._normalize_project(observation.project)
         metadata_json = json.dumps(observation.metadata) if observation.metadata else "{}"
 
+        # Use a subquery to pick exactly ONE row to update, avoiding
+        # UNIQUE constraint violations when multiple rows share the same
+        # topic_key with different projects.
+        # Prefer same-project match, fall back to project=NULL.
+        if project:
+            where_clause = """id = (
+                SELECT id FROM observations
+                WHERE LOWER(topic_key) = ? AND (project = ? OR project IS NULL)
+                ORDER BY project = ? DESC
+                LIMIT 1
+            )"""
+            where_params: tuple[str, ...] = (normalized_key, project, project)
+        else:
+            where_clause = "LOWER(topic_key) = ?"
+            where_params = (normalized_key,)
+
         sql = f"""
             UPDATE observations SET
                 content = ?,
@@ -446,8 +482,9 @@ class ObservationRepository:
                 type = ?,
                 session_id = ?,
                 project = ?,
+                topic_key = ?,
                 revision_count = revision_count + 1
-            WHERE LOWER(topic_key) = ?
+            WHERE {where_clause}
             RETURNING {_SELECT_COLUMNS}
         """
         try:
@@ -463,6 +500,7 @@ class ObservationRepository:
                         observation.session_id,
                         project,
                         normalized_key,
+                        *where_params,
                     ),
                 )
                 row = cursor.fetchone()
@@ -490,22 +528,30 @@ class ObservationRepository:
         return result
 
     def get_by_topic_key(self, topic_key: str, project: str | None) -> Observation | None:
-        """Get an observation by topic_key only (project-agnostic).
+        """Get an observation by topic_key, preferring same-project match.
+
+        When project is provided, first tries to match both topic_key and project.
+        Falls back to project-agnostic match if no same-project entry exists.
 
         Args:
             topic_key: The topic key to search for.
-            project: Ignored — lookup is by topic_key only to prevent duplicates
-                     when project changes across saves.
+            project: Preferred project for matching.
 
         Returns:
             Observation if found, None otherwise.
         """
         normalized_topic = self._normalize_topic_key(topic_key)
-        sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE LOWER(topic_key) = ?"
         try:
             with self._connection as conn:
-                cursor = conn.execute(sql, (normalized_topic,))
-                row = cursor.fetchone()
+                if project:
+                    # Prefer same-project match first
+                    sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE LOWER(topic_key) = ? AND (project = ? OR project IS NULL) ORDER BY project = ? DESC"
+                    cursor = conn.execute(sql, (normalized_topic, project, project))
+                    row = cursor.fetchone()
+                else:
+                    sql = f"SELECT {_SELECT_COLUMNS} FROM observations WHERE LOWER(topic_key) = ?"
+                    cursor = conn.execute(sql, (normalized_topic,))
+                    row = cursor.fetchone()
                 return self._row_to_observation(row) if row else None
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observation by topic_key: {e}", e) from e
@@ -521,10 +567,22 @@ class ObservationRepository:
             "project"
         )
         type_ = row["type"] if "type" in column_names else None
+        # Normalize hyphenated type values to underscored (e.g. "file-ops" -> "file_ops")
+        if type_ is not None and type_ not in Observation._ALLOWED_TYPES:
+            normalized = type_.replace("-", "_")
+            if normalized in Observation._ALLOWED_TYPES:
+                type_ = normalized
+            else:
+                type_ = None  # Unknown type, discard
         if type_ is None and isinstance(metadata_dict, dict):
             meta_type = metadata_dict.get("type")
-            if isinstance(meta_type, str) and meta_type in Observation._ALLOWED_TYPES:
-                type_ = meta_type
+            if isinstance(meta_type, str):
+                if meta_type in Observation._ALLOWED_TYPES:
+                    type_ = meta_type
+                else:
+                    normalized = meta_type.replace("-", "_")
+                    if normalized in Observation._ALLOWED_TYPES:
+                        type_ = normalized
         revision_count = (row["revision_count"] if "revision_count" in column_names else None) or 1
         session_id = row["session_id"] if "session_id" in column_names else None
 
