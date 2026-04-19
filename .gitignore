@@ -109,6 +109,10 @@ _ctx/
 apps/
 openspec/
 
+# Local state files
+memory.db
+.fork_agent.yaml
+
 # Workspace artifacts
 TRIFECTA_USAGE.md
 readme_tf.md
