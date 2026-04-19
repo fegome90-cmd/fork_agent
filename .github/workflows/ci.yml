@@ -56,7 +56,7 @@ jobs:
           pip install -e ".[dev,tui]"
       
       - name: Run tests
-        run: pytest tests/ --ignore=tests/unit/recovered -v --tb=short
+        run: pytest tests/ -v --tb=short
       
       - name: Upload coverage report
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
