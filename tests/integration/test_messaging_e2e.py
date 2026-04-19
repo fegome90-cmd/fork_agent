@@ -25,7 +25,6 @@ from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
-
 # Check if tmux is available
 def tmux_available() -> bool:
     """Check if tmux is installed and available."""
@@ -208,7 +207,6 @@ class TestMessageSendAndCapture:
         assert FORK_MSG_SHORT_PREFIX not in content
 
 
-
 class TestMessageBroadcast:
     """Tests for broadcasting messages to all sessions."""
 
@@ -220,11 +218,11 @@ class TestMessageBroadcast:
         store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
-        # Create multiple sessions with unique names
+        # Use agent- prefixed names so broadcast() actually targets them
         sessions = [
-            "test_e2e_bc_unique_1",
-            "test_e2e_bc_unique_2",
-            "test_e2e_bc_unique_3",
+            "agent-test-bc-1",
+            "agent-test-bc-2",
+            "agent-test-bc-3",
         ]
         for session_name in sessions:
             success = orchestrator.create_session(session_name)
@@ -233,9 +231,10 @@ class TestMessageBroadcast:
 
         time.sleep(0.5)
 
-        # Get count of sessions before broadcast
+        # Count only windows in OUR test sessions (not all system tmux sessions)
         all_sessions = orchestrator.get_sessions()
-        total_windows = sum(len(s.windows) for s in all_sessions)
+        our_session_names = set(sessions)
+        our_windows = sum(len(s.windows) for s in all_sessions if s.name in our_session_names)
 
         # Broadcast message
         count = messenger.broadcast(
@@ -243,10 +242,8 @@ class TestMessageBroadcast:
             payload="broadcast test message",
         )
 
-        # Should send to at least our 3 test sessions
-        assert count >= 3, f"Expected at least 3 broadcasts, got {count}"
-        # And should match total windows in all sessions
-        assert count == total_windows, f"Broadcast count {count} != total windows {total_windows}"
+        # Should send to at least our 3 test session windows
+        assert count >= our_windows, f"Expected at least {our_windows} broadcasts, got {count}"
 
     def test_broadcast_stores_messages(self, tmux_cleanup, temp_db: Path) -> None:
         """Should store broadcast messages in the database."""
@@ -256,8 +253,8 @@ class TestMessageBroadcast:
         store = MessageStore(connection=conn)
         messenger = AgentMessenger(orchestrator=orchestrator, store=store)
 
-        # Create session
-        session_name = "test_e2e_bc_store_unique_1"
+        # Use agent- prefix so broadcast() targets this session
+        session_name = "agent-test-bc-store-1"
         orchestrator.create_session(session_name)
         tmux_cleanup(session_name)
 
@@ -333,7 +330,6 @@ class TestMessageProtocolE2E:
 
 
 class TestMessageHistory:
-
     """Tests for message history functionality."""
 
     def test_history_includes_sent_and_received(self, tmux_cleanup, temp_db: Path) -> None:

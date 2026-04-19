@@ -15,6 +15,7 @@ from src.application.exceptions import (
     ObservationNotFoundError,
     SessionNotFoundError,
 )
+from src.application.services.redaction import redact_observation_data
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -32,6 +33,7 @@ logger = logging.getLogger("memory-mcp")
 _memory_service: Any | None = None
 _session_service: Any | None = None
 _health_service: Any | None = None
+_enhanced_search_service: Any | None = None
 _custom_db_path: Any | None = None  # Path | None, stored as Any to avoid top-level import
 
 
@@ -60,6 +62,17 @@ def _get_health_service() -> Any:
 
         _health_service = get_health_service(_custom_db_path)
     return _health_service
+
+
+def _get_enhanced_search_service() -> Any:
+    global _enhanced_search_service
+    if _enhanced_search_service is None:
+        from src.infrastructure.persistence.container import get_repository
+        from src.infrastructure.retrieval.v2.enhanced_search import EnhancedRetrievalSearchService
+
+        repository = get_repository(_custom_db_path)
+        _enhanced_search_service = EnhancedRetrievalSearchService(repository)
+    return _enhanced_search_service
 
 
 def init_service(db_path: str | None = None) -> None:
@@ -163,6 +176,10 @@ def memory_save(
     if not content or not content.strip():
         raise McpError(ErrorData(code=INVALID_PARAMS, message="content must not be empty"))
     try:
+        content, metadata, was_redacted = redact_observation_data(content, metadata)
+        if was_redacted:
+            logger.info("PII redacted from memory_save (topic_key=%s)", topic_key)
+
         service = _get_memory_service()
         observation = service.save(
             content=content,
@@ -180,7 +197,7 @@ def memory_save(
         raise _map_error(e) from e
 
 
-def memory_search(query: str, limit: int | None = None) -> str:
+def memory_search(query: str, limit: int | None = None, max_tokens: int | None = None) -> str:
     """Search memory for observations matching a query.
 
     Uses FTS5 full-text search. Returns observations sorted by relevance.
@@ -188,32 +205,72 @@ def memory_search(query: str, limit: int | None = None) -> str:
     Args:
         query: Search terms to find matching observations (required).
         limit: Maximum number of results to return (default: 10).
+        max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
 
     Returns:
         JSON array of matching observations.
     """
     try:
+        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+
         service = _get_memory_service()
         results = service.search(query=query, limit=limit)
-        return json.dumps(_serialize_observations(results))
+        serialized = _serialize_observations(results)
+        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
+        if estimate_tokens(json.dumps(serialized)) > effective_max:
+            serialized = cap_response(serialized, effective_max)
+        return json.dumps(serialized)
     except Exception as e:
         logger.error("memory_search failed: %s", e, exc_info=True)
         raise _map_error(e) from e
 
 
-def memory_get(id: str) -> str:
+def memory_retrieve(
+    query: str,
+    limit: int | None = None,
+    project: str | None = None,
+    type: str | None = None,
+) -> str:
+    """Enhanced retrieval search using multi-signal scoring (concept overlap, semantic bridges, keyword density). Returns more relevant results than memory_search for complex queries.
+
+    Args:
+        query: Search terms to find matching observations (required).
+        limit: Maximum number of results to return (default: 5).
+        project: Optional project name for scoping.
+        type: Optional observation type filter (e.g., 'decision', 'bugfix').
+
+    Returns:
+        JSON array of matching observations ranked by multi-signal score.
+    """
+    try:
+        service = _get_enhanced_search_service()
+        results = service.search(query=query, limit=limit, project=project, type=type)
+        return json.dumps(_serialize_observations(results))
+    except Exception as e:
+        logger.error("memory_retrieve failed: %s", e, exc_info=True)
+        raise _map_error(e) from e
+
+
+def memory_get(id: str, max_tokens: int | None = None) -> str:
     """Retrieve a specific observation by its ID.
 
     Args:
         id: The UUID of the observation to retrieve (required).
+        max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
 
     Returns:
         JSON with full observation details.
     """
     try:
+        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+
         service = _get_memory_service()
         observation = service.get_by_id(id)
-        return json.dumps(_serialize_observation(observation))
+        serialized = [_serialize_observation(observation)]
+        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
+        if estimate_tokens(json.dumps(serialized)) > effective_max:
+            serialized = cap_response(serialized, effective_max)
+        return json.dumps(serialized[0] if serialized else {})
     except Exception as e:
         logger.error("memory_get failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -223,6 +280,7 @@ def memory_list(
     limit: int = 10,
     offset: int = 0,
     type: str | None = None,
+    max_tokens: int | None = None,
 ) -> str:
     """List recent observations with optional filtering and pagination.
 
@@ -230,14 +288,21 @@ def memory_list(
         limit: Maximum number of observations to return (default: 10).
         offset: Number of observations to skip (default: 0).
         type: Optional type filter (e.g., 'decision', 'session-summary').
+        max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
 
     Returns:
         JSON array of observations.
     """
     try:
+        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+
         service = _get_memory_service()
         results = service.get_recent(limit=limit, offset=offset, type=type)
-        return json.dumps(_serialize_observations(results))
+        serialized = _serialize_observations(results)
+        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
+        if estimate_tokens(json.dumps(serialized)) > effective_max:
+            serialized = cap_response(serialized, effective_max)
+        return json.dumps(serialized)
     except Exception as e:
         logger.error("memory_list failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -261,7 +326,7 @@ def memory_delete(id: str) -> str:
         raise _map_error(e) from e
 
 
-def memory_context(limit: int = 5) -> str:
+def memory_context(limit: int = 5, max_tokens: int | None = None) -> str:
     """Get recent session summaries and context observations.
 
     Tries to return session-summary type first, falls back to all recent
@@ -269,18 +334,25 @@ def memory_context(limit: int = 5) -> str:
 
     Args:
         limit: Maximum observations to return (default: 5).
+        max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
 
     Returns:
         JSON array of context observations.
     """
     try:
+        from src.application.services.output_caps import DEFAULT_MAX_TOKENS, cap_response, estimate_tokens
+
         service = _get_memory_service()
         results = service.get_recent(limit=limit, offset=0, type="session-summary")
 
         if not results:
             results = service.get_recent(limit=limit, offset=0, type=None)
 
-        return json.dumps(_serialize_observations(results))
+        serialized = _serialize_observations(results)
+        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
+        if estimate_tokens(json.dumps(serialized)) > effective_max:
+            serialized = cap_response(serialized, effective_max)
+        return json.dumps(serialized)
     except Exception as e:
         logger.error("memory_context failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -310,6 +382,17 @@ def memory_update(
         JSON with the updated observation details.
     """
     try:
+        redacted_content = content or ""
+        was_redacted = False
+        if content or metadata:
+            redacted_content, metadata, was_redacted = redact_observation_data(
+                redacted_content, metadata
+            )
+            if content:
+                content = redacted_content
+        if was_redacted:
+            logger.info("PII redacted from memory_update (id=%s)", id)
+
         service = _get_memory_service()
         observation = service.update(
             observation_id=id,
@@ -757,6 +840,7 @@ def register_tools(mcp_server: FastMCP) -> None:
     """Register all tool handlers with the FastMCP server instance."""
     mcp_server.tool()(memory_save)
     mcp_server.tool()(memory_search)
+    mcp_server.tool()(memory_retrieve)
     mcp_server.tool()(memory_get)
     mcp_server.tool()(memory_list)
     mcp_server.tool()(memory_delete)

@@ -8,10 +8,25 @@ from pathlib import Path
 
 import typer
 
+import click
+
 from src.application.services.orchestration.events import SessionStartEvent
 from src.infrastructure.persistence.container import get_default_db_path
-from src.interfaces.cli.commands import context, delete, get, list, mcp, save, search, stats, tui, update
+from src.interfaces.cli.commands import (
+    context,
+    delete,
+    get,
+    list,
+    mcp,
+    retrieve,
+    save,
+    search,
+    stats,
+    tui,
+    update,
+)
 from src.interfaces.cli.commands.export import app as export_app
+from src.interfaces.cli.commands.import_ import app as import_app
 from src.interfaces.cli.commands.cleanup import cleanup
 from src.interfaces.cli.commands.compact import app as compact_app
 from src.interfaces.cli.commands.health import health
@@ -22,6 +37,9 @@ from src.interfaces.cli.commands.schedule import app as schedule_app
 from src.interfaces.cli.commands.session import app as session_app
 from src.interfaces.cli.commands.sync import app as sync_app
 from src.interfaces.cli.commands.telemetry import app as telemetry_app
+from src.interfaces.cli.commands.message import app as message_app
+from src.interfaces.cli.commands.workflow import app as workflow_app
+from src.interfaces.cli.workspace_commands import workspace as workspace_click_group
 from src.interfaces.cli.dependencies import (
     get_hook_service,
     get_memory_service,
@@ -37,6 +55,7 @@ app = typer.Typer(
 
 app.command(name="save")(save.save)
 app.command(name="search")(search.search)
+app.command(name="retrieve")(retrieve.retrieve)
 app.command(name="list")(list.list_observations)
 app.command(name="get")(get.get)
 app.command(name="delete")(delete.delete)
@@ -58,6 +77,10 @@ app.add_typer(mcp.app, name="mcp")
 app.add_typer(project_app, name="project")
 app.add_typer(prompt_app, name="prompt")
 app.add_typer(export_app, name="export")
+app.add_typer(import_app, name="import")
+app.add_typer(workflow_app, name="workflow")
+app.add_typer(message_app, name="message")
+
 
 app.command(name="stats")(stats.stats)
 app.command(name="clear-slow-queries")(stats.clear_slow_queries)
@@ -89,5 +112,16 @@ def main(
         logger.debug("Hook dispatch failed [session_start]: %s", e)
 
 
+def _build_cli() -> click.Command:
+    """Build the final Click command with all sub-apps including Click-based workspace."""
+    click_app = typer.main.get_command(app)
+    if isinstance(click_app, click.Group):
+        click_app.add_command(workspace_click_group, name="workspace")
+    return click_app
+
+
+cli = _build_cli()
+
+
 if __name__ == "__main__":
-    app()
+    cli()

@@ -11,7 +11,10 @@ from src.infrastructure.retrieval.reranker import detect_intention
 from src.infrastructure.retrieval.sanitizer import sanitize_fts5
 from src.infrastructure.retrieval.v2.bridge_logger import log_query_expansions
 from src.infrastructure.retrieval.v2.query_planner import plan_query
-from src.infrastructure.retrieval.v2.semantic_bridge import RETRIEVAL_BRIDGES, expand_query_with_bridge
+from src.infrastructure.retrieval.v2.semantic_bridge import (
+    RETRIEVAL_BRIDGES,
+    expand_query_with_bridge,
+)
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,9 @@ def _question_type_boost(question_type: str, observation: Observation) -> float:
     topic_key = str((observation.metadata or {}).get("topic_key", "")).casefold()
     if question_type == "where" and (obs_type == "reference" or "endpoint" in topic_key):
         return 2.0
-    if question_type == "when" and (obs_type in {"policy", "lifecycle"} or "lifecycle" in topic_key):
+    if question_type == "when" and (
+        obs_type in {"policy", "lifecycle"} or "lifecycle" in topic_key
+    ):
         return 2.0
     if question_type in {"what", "should", "general"} and any(
         marker in topic_key for marker in {"policy", "precedence", "fallback", "archive"}
@@ -82,9 +87,7 @@ def _score_observation(observation: Observation, query: str) -> float:
     search_overlap = len(query_terms & search_blob_terms)
     concept_overlap = len(set(plan.concepts.concepts) & search_blob_terms)
     synonym_overlap = sum(
-        1
-        for values in plan.concepts.synonyms.values()
-        if set(values) & search_blob_terms
+        1 for values in plan.concepts.synonyms.values() if set(values) & search_blob_terms
     )
 
     density_denominator = max(len(search_blob_terms), 1)
@@ -143,9 +146,7 @@ class EnhancedRetrievalSearchService:
 
         collected: list[tuple[Observation, str]] = []
         for index, candidate in enumerate(candidates):
-            results = self._repository.search(
-                candidate, limit=candidate_limit, project=project, type_=type, session_id=session_id
-            )
+            results = self._repository.search(candidate, limit=candidate_limit)
             if not results:
                 continue
             source = "bridge" if index >= len(plan.fts5_queries) else "expanded"
@@ -158,7 +159,14 @@ class EnhancedRetrievalSearchService:
             key=lambda item: (_score_observation(item[0], query), item[0].timestamp),
             reverse=True,
         )
-        return [observation for observation, _source in ranked[:effective_limit]]
+        filtered = [
+            observation
+            for observation, _source in ranked
+            if (project is None or observation.project == project)
+            and (type is None or observation.type == type)
+            and (session_id is None or observation.session_id == session_id)
+        ]
+        return filtered[:effective_limit]
 
 
 def enhanced_search(

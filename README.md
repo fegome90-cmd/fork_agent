@@ -166,12 +166,13 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### Available MCP Tools (16)
+### Available MCP Tools (17)
 
 | Tool | Description |
 |------|-------------|
 | `memory_save` | Save observation with metadata |
 | `memory_search` | FTS5 full-text search |
+| `memory_retrieve` | Enhanced retrieval with pipeline v2 (dedup, ranking, bridges) |
 | `memory_get` | Get by ID |
 | `memory_list` | List with pagination |
 | `memory_update` | Update existing observation |
