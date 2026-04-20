@@ -283,6 +283,50 @@
 
 ---
 
+## P4 — Trifecta Full Integration
+
+**Full roadmap**: `docs/trifecta-full-integration-roadmap.md` (8 WOs, ~28-40h)
+
+| # | WO | Effort | Status | Depends | Blocks |
+|---|-----|--------|--------|---------|--------|
+| WO-1 | ctx stats unicode fix | XS | **DONE** | — | — |
+| WO-2 | session append wiring | XS | **TODO** | — | — |
+| WO-3 | daemon warmup automation | S | **DONE** | — | WO-5, WO-7, WO-8 |
+| WO-4 | ctx build/sync auto-trigger | S | **DONE** | — | WO-6 |
+| WO-5 | AST snippet wiring | M | **DONE** | WO-3 | — |
+| WO-6 | FTS5 → ctx search integration | M | **DONE** | WO-4 | — |
+| WO-7 | LSP daemon unification | M | **DONE** | WO-3 | WO-8 |
+| WO-8 | **LSP Hover Completion** (final) | L | **TODO** | WO-3, WO-7 | — |
+
+### Dependency Graph
+
+```
+WO-1 ─────────────────────────────────────────────┐
+WO-2 ─────────────────────────────────────────────┤
+WO-3 ──┬── WO-5 ──┐                              │
+       │           ├── WO-8 (LSP Hover — FINAL)   │
+       └── WO-7 ──┘                              │
+WO-4 ───────────────────── WO-6 ──────────────────┤
+                                                   ▼
+                                             ALL DONE
+```
+
+### Critical Path
+
+**WO-3 → WO-7 → WO-8** (~18-24h total)
+
+### Execution Sprints
+
+| Sprint | WOs | Duration |
+|--------|-----|----------|
+| Sprint 1 (Day 1) | WO-1 + WO-2 | ~1.5h |
+| Sprint 2 (Day 2-3) | WO-3 + WO-4 | ~5h |
+| Sprint 3 (Day 3-5) | WO-5 + WO-6 (parallel) | ~10h |
+| Sprint 4 (Day 5-7) | WO-7 | ~7h |
+| Sprint 5 (Day 7-10) | WO-8 (LSP Hover) | ~10h |
+
+---
+
 ## Key Metrics
 
 | Metric | Value |
@@ -290,15 +334,15 @@
 | Score | 94/100 |
 | Engram reference | 69/100 |
 | Score delta | +25 over Engram |
-| Bugs found/fixed | 29/29 |
+| Bugs found/fixed | 50+ / 50+ |
 | Commits on branch | 10 |
 | Files changed | 170+ |
 | Lines added | 18,000+ |
-| Test baseline | ~1,300 green |
+| Test baseline | ~1,900+ green |
 | MCP tools | 16 |
 | MCP transports | stdio, SSE, streamable-http |
 | P0 gaps | 0 open |
 | P1 gaps | 0 open |
 | P2 gaps | 0 open |
-| Files modified | 75+ |
-| New files created | 25+ |
+| P3 done | G13, G18, G19, G21, G22 (5/10) |
+| P4 WOs | 0/8 (Trifecta full integration) |

@@ -165,8 +165,8 @@ class DiffService:
         def _key(o: object) -> str:
             tk = getattr(o, "topic_key", None)
             if tk:
-                return tk
-            return getattr(o, "id", "")[:8]
+                return str(tk)
+            return str(getattr(o, "id", ""))[:8]
 
         def _build_map(obs_list: list) -> dict[str, object]:
             mapping: dict[str, object] = {}

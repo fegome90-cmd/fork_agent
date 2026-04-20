@@ -409,7 +409,7 @@ class MemoryService:
                     )
                 )
                 added += 1
-            elif f_obs.content != t_obs.content:
+            elif f_obs is not None and t_obs is not None and f_obs.content != t_obs.content:
                 items.append(
                     DiffItem(
                         topic_key=key,
