@@ -124,6 +124,7 @@ memory.db
 TRIFECTA_USAGE.md
 readme_tf.md
 skill.md
+.trifecta/
 
 # Test DBs outside data/
 another/
