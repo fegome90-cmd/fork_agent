@@ -67,3 +67,22 @@ class TestGetAllWithTypeFilter:
         sig = inspect.signature(ObservationRepository.get_all)
         type_param = sig.parameters["type"]
         assert type_param.default is None
+
+
+class TestGetBySessionId:
+    """Protocol must define get_by_session_id() method."""
+
+    def test_has_get_by_session_id_method(self) -> None:
+        assert hasattr(ObservationRepository, "get_by_session_id")
+
+    def test_get_by_session_id_takes_session_id_param(self) -> None:
+        sig = inspect.signature(ObservationRepository.get_by_session_id)
+        assert "session_id" in sig.parameters
+
+    def test_get_by_session_id_takes_project_param(self) -> None:
+        sig = inspect.signature(ObservationRepository.get_by_session_id)
+        assert "project" in sig.parameters
+
+    def test_get_by_session_id_returns_list_of_observations(self) -> None:
+        sig = inspect.signature(ObservationRepository.get_by_session_id)
+        assert sig.return_annotation == "list[Observation]"

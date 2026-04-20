@@ -655,3 +655,89 @@ class TestObservationRepositoryGetByIdPrefix:
         repo.create(Observation(id="123", timestamp=1000, content="C"))
 
         assert repo.get_by_id_prefix("999") == []
+
+
+class TestObservationRepositoryGetBySessionId:
+    """Tests for ObservationRepository.get_by_session_id operation."""
+
+    @pytest.fixture
+    def db_connection(self, tmp_path: Path) -> DatabaseConnection:
+        db_path = tmp_path / "test.db"
+        config = DatabaseConfig(db_path=db_path)
+        migrations_dir = (
+            Path(__file__).parent.parent.parent.parent / "src/infrastructure/persistence/migrations"
+        )
+        run_migrations(config, migrations_dir)
+        return DatabaseConnection(config)
+
+    def test_get_by_session_id_returns_matching(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(Observation(id="o1", timestamp=1000, content="A", session_id="sess-1"))
+        repo.create(Observation(id="o2", timestamp=2000, content="B", session_id="sess-2"))
+        repo.create(Observation(id="o3", timestamp=3000, content="C", session_id="sess-1"))
+
+        results = repo.get_by_session_id("sess-1")
+        assert len(results) == 2
+        ids = {o.id for o in results}
+        assert ids == {"o1", "o3"}
+
+    def test_get_by_session_id_no_match(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(Observation(id="o1", timestamp=1000, content="A", session_id="sess-1"))
+
+        assert repo.get_by_session_id("nonexistent") == []
+
+    def test_get_by_session_id_with_project_filter(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(
+            Observation(id="o1", timestamp=1000, content="A", session_id="sess-1", project="alpha")
+        )
+        repo.create(
+            Observation(id="o2", timestamp=2000, content="B", session_id="sess-1", project="beta")
+        )
+        repo.create(
+            Observation(id="o3", timestamp=3000, content="C", session_id="sess-1", project="alpha")
+        )
+
+        results = repo.get_by_session_id("sess-1", project="alpha")
+        assert len(results) == 2
+        ids = {o.id for o in results}
+        assert ids == {"o1", "o3"}
+
+    def test_get_by_session_id_ignores_null_session(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(Observation(id="o1", timestamp=1000, content="A", session_id=None))
+        repo.create(Observation(id="o2", timestamp=2000, content="B", session_id="sess-1"))
+
+        results = repo.get_by_session_id("sess-1")
+        assert len(results) == 1
+        assert results[0].id == "o2"
+
+    def test_get_by_session_id_returns_ordered_by_timestamp_desc(self, db_connection: DatabaseConnection) -> None:
+        from src.infrastructure.persistence.repositories.observation_repository import (
+            ObservationRepository,
+        )
+
+        repo = ObservationRepository(db_connection)
+        repo.create(Observation(id="o1", timestamp=3000, content="C", session_id="sess-1"))
+        repo.create(Observation(id="o2", timestamp=1000, content="A", session_id="sess-1"))
+        repo.create(Observation(id="o3", timestamp=2000, content="B", session_id="sess-1"))
+
+        results = repo.get_by_session_id("sess-1")
+        assert [o.id for o in results] == ["o1", "o3", "o2"]

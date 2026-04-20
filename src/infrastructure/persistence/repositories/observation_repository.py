@@ -462,6 +462,44 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observations by range: {e}", e) from e
 
+    def get_by_session_id(
+        self, session_id: str, project: str | None = None
+    ) -> list[Observation]:
+        """Retrieve observations for a given session ID.
+
+        Args:
+            session_id: The session identifier to filter by.
+            project: Optional project filter.
+
+        Returns:
+            List of observations with matching session_id, ordered by timestamp descending.
+        """
+        try:
+            conditions = ["session_id = ?"]
+            params: list[str | int] = [session_id]
+
+            if project is not None:
+                normalized = self._normalize_project(project)
+                if normalized:
+                    conditions.append("project = ?")
+                    params.append(normalized)
+
+            where_clause = " WHERE " + " AND ".join(conditions)
+            sql = (
+                f"SELECT {_SELECT_COLUMNS} FROM observations{where_clause}"
+                " ORDER BY timestamp DESC"
+            )
+
+            with self._connection as conn:
+                cursor = conn.execute(sql, params)
+                rows = cursor.fetchall()
+
+            return [self._row_to_observation(row) for row in rows]
+        except sqlite3.Error as e:
+            raise RepositoryError(
+                f"Failed to get observations by session_id: {e}", e
+            ) from e
+
     def upsert_topic_key(self, observation: Observation) -> Observation:
         """Update an existing observation matched by topic_key and project.
 

@@ -7,6 +7,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from src.application.services.diff_result import DiffItem, DiffResult
 from src.application.services.redaction import redact_observation_data
 from src.domain.entities.observation import Observation
 from src.domain.ports.observation_repository import ObservationRepository
@@ -323,6 +324,112 @@ class MemoryService:
                 "sessions_updated": 0,
             }
         return self._repository.merge_projects(canonical=canonical, sources=sources)
+
+    def diff(
+        self,
+        from_ts: int,
+        to_ts: int,
+        project: str | None = None,
+        obs_type: str | None = None,
+    ) -> DiffResult:
+        """Compare observations between two time windows.
+
+        Fetches all observations up to each timestamp, then compares by topic_key.
+        Observations matched by topic_key (same topic = same entity across time).
+        When topic_key is None, match by ID prefix (first 8 chars).
+
+        Args:
+            from_ts: Start of time window (Unix ms).
+            to_ts: End of time window (Unix ms). Must be > from_ts.
+            project: Optional project filter.
+            obs_type: Optional type filter.
+
+        Returns:
+            DiffResult with added/modified/removed counts and per-item changes.
+
+        Raises:
+            ValueError: If from_ts >= to_ts.
+        """
+        if from_ts >= to_ts:
+            raise ValueError("from must be before to")
+
+        from_obs = self._repository.get_by_timestamp_range(0, from_ts)
+        to_obs = self._repository.get_by_timestamp_range(from_ts + 1, to_ts)
+
+        # Apply filters
+        if project:
+            from_obs = [o for o in from_obs if o.project == project]
+            to_obs = [o for o in to_obs if o.project == project]
+        if obs_type:
+            from_obs = [o for o in from_obs if o.type == obs_type]
+            to_obs = [o for o in to_obs if o.type == obs_type]
+
+        # Build lookup maps
+        # Primary: topic_key → latest observation (most recent wins)
+        # Fallback: ID prefix (first 8 chars) → observation
+        def _build_map(obs_list: list[Observation]) -> dict[str, Observation]:
+            mapping: dict[str, Observation] = {}
+            for obs in obs_list:
+                key = obs.topic_key if obs.topic_key else obs.id[:8]
+                existing = mapping.get(key)
+                if existing is None or obs.timestamp > existing.timestamp:
+                    mapping[key] = obs
+            return mapping
+
+        from_map = _build_map(from_obs)
+        to_map = _build_map(to_obs)
+
+        all_keys = sorted(set(from_map) | set(to_map))
+        items: list[DiffItem] = []
+        added = 0
+        modified = 0
+        removed = 0
+
+        for key in all_keys:
+            f_obs = from_map.get(key)
+            t_obs = to_map.get(key)
+
+            if f_obs is not None and t_obs is None:
+                items.append(
+                    DiffItem(
+                        topic_key=key,
+                        change_type="removed",
+                        from_content=f_obs.content,
+                        from_id=f_obs.id,
+                    )
+                )
+                removed += 1
+            elif f_obs is None and t_obs is not None:
+                items.append(
+                    DiffItem(
+                        topic_key=key,
+                        change_type="added",
+                        to_content=t_obs.content,
+                        to_id=t_obs.id,
+                    )
+                )
+                added += 1
+            elif f_obs.content != t_obs.content:
+                items.append(
+                    DiffItem(
+                        topic_key=key,
+                        change_type="modified",
+                        from_content=f_obs.content,
+                        to_content=t_obs.content,
+                        from_id=f_obs.id,
+                        to_id=t_obs.id,
+                    )
+                )
+                modified += 1
+
+        return DiffResult(
+            added=added,
+            modified=modified,
+            removed=removed,
+            items=tuple(items),
+            from_timestamp=from_ts,
+            to_timestamp=to_ts,
+        )
 
     @staticmethod
     def _normalize_project_name(name: str) -> str:

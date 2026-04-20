@@ -14,6 +14,7 @@ from src.infrastructure.persistence.container import get_default_db_path
 from src.interfaces.cli.commands import (
     context,
     delete,
+    diff,
     get,
     list,
     mcp,
@@ -58,6 +59,7 @@ app.command(name="retrieve")(retrieve.retrieve)
 app.command(name="list")(list.list_observations)
 app.command(name="get")(get.get)
 app.command(name="delete")(delete.delete)
+app.command(name="diff")(diff.diff)
 
 app.command(name="update")(update.update)
 app.command(name="context")(context.context)
