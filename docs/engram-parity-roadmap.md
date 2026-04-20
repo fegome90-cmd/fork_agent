@@ -253,6 +253,7 @@
 | 2026-04-18 | Runtime fixes verified | NEW-1 queue drain, NEW-2 timestamp, NEW-3 registry cleanup — all PASS |
 | 2026-04-18 | Trifecta integration confirmed | Installed + primary context resolver in orchestrator |
 | 2026-04-18 | G21 added to P3 roadmap | Autonomous post-compact v2 (gentle-ai parity) |
+| 2026-04-20 | Trifecta integration sprint | 4 scripts (load-first, AST symbols, verifier check, quality report), 5 bugs fixed, 60% utilization |
 | **Total** | **43 bugs fixed, 0 open** | **Score 94/100 (Engram: 69, +25)** |
 
 ---
@@ -261,7 +262,7 @@
 
 | # | Feature | Effort | Status | Description |
 |---|---------|--------|--------|-------------|
-| G13 | TUI Phase 2 | M | **TODO** | SearchScreen, DetailScreen, SaveScreen, StatsScreen. Full interactive TUI. |
+| G13 | TUI Phase 2 | M | **DONE** | SearchScreen, DetailScreen, SaveScreen, StatsScreen + ConfirmModal. 42 tests. Textual v8.2. |
 | G14 | Docker image | S | **TODO** | `Dockerfile` for MCP server. `docker run fork-agent-memory-mcp`. |
 | G15 | PyPI package | S | **TODO** | `pip install fork-agent`. Public package. |
 | G16 | CI/CD pipeline | S | **EXISTS** | `.github/workflows/ci.yml` exists. Needs: test matrix, lint, type-check, publish job. |
@@ -270,16 +271,15 @@
 | G19 | Obsidian import | M | **DONE** | `memory import obsidian -i DIR` — YAML frontmatter → Observation. Roundtrip verified. 14 tests. |
 | G20 | API pagination | S | **TODO** | Cursor-based pagination for list/search endpoints. |
 | G21 | Autonomous post-compact v2 | M | **DONE** | Directive changed from MANDATORY→AUTONOMOUS. Agent recovers → parses next_steps → executes → saves → repeats. artifacts-index now stores JSON with next_steps[]. |
+| G22 | Trifecta integration | M | **DONE** | Load-first strategy (236ms), implementer AST symbols, verifier caller check, quality telemetry. 5 bugs fixed. |
 
-### P3 Priority
+### P3 Priority (updated 2026-04-20)
 
-1. **G18** — 1 line fix, zero risk
-2. **G16** — CI already exists, just needs hardening
-3. **G13** — TUI is the highest-visibility feature
-4. **G14/G15** — Distribution (Docker + PyPI)
-5. **G17** — Templates for n8n adoption
-6. **G19/G20** — Feature additions
-7. **G21** — Autonomous post-compact (full gentle-ai parity)
+1. **G16** — CI hardening (test matrix, lint, type-check, publish)
+2. **G14/G15** — Distribution (Docker image + PyPI package)
+3. **G17** — n8n workflow templates
+4. **G20** — API pagination
+5. ~~G13~~ DONE | ~~G18~~ DONE | ~~G19~~ DONE | ~~G21~~ DONE | ~~G22~~ DONE
 
 ---
 

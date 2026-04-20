@@ -334,13 +334,56 @@ Muestra de resultados de `ctx search` con scoring real:
 
 ### 10.5 Cuello de Botella Identificado
 
-| Cuello | Causa | Impacto | Solución |
-|--------|-------|---------|----------|
-| Python startup | 280ms fijo por invocación | Dominante en cold runs | Cache file persistente (ya implementado) |
-| ctx plan NO HIT | PRIME index sin features mapeadas | Plans genéricos | Mapear features del repo en `.trifecta/_ctx/prime_*.md` |
-| Output truncation | json-vis pipe limita a 50KB | Chunks grandes se cortan | Ajustar `--limit` y `--budget` por rol |
-| Graph subcommand missing | `trifecta graph` no existe en v2 | No se puede usar AST graph | Actualizar a versión con graph o usar `trifecta ast` |
+| Cuello | Causa | Estado |
+|--------|-------|--------|
+| 3-step chain (454ms) | Redundant plan+search+get | ✅ FIXED — `trifecta load` macro (236ms) |
+| ctx plan NO HIT | PRIME features no mapeadas | ✅ FIXED — aliases.yaml mapea 10+ features |
+| Backtick command injection | `echo "$TASK"` expande backticks | ✅ FIXED — `printf '%s'` en pipelines |
+| Wrong grep pattern in affected-symbols | Regex extractaba hash IDs | ✅ FIXED — `\[repo:[^]:]+:[^]]+\]` |
+| No symbol awareness | AST no conectado | ✅ FIXED — `trifecta-affected-symbols` para implementadores |
+| No verifier check | Sin caller verification | ✅ FIXED — `trifecta-verifier-check` en Phase 5.5 |
+| No quality feedback | Sin telemetry loop | ✅ FIXED — `trifecta-quality-report` en Phase 6 |
+| Python startup | 280ms fijo por invocación | Mitigado — cache file persistente |
+| Output truncation | json-vis pipe limita a 50KB | Pendiente — ajustar `--limit` por rol |
+| Graph subcommand missing | `trifecta graph` no existe en v2 | Pendiente — usar `trifecta ast` como alternativa |
+
+## 11. Integration Sprint Results (2026-04-20)
+
+### Scripts Created/Modified
+| Script | Status | Lines | Purpose |
+|--------|--------|-------|---------|
+| trifecta-context-inject | Modified | ~410 | Load-first via `trifecta load` macro + 2 bug fixes |
+| trifecta-affected-symbols | New | ~130 | AST symbol extraction for implementer role |
+| trifecta-verifier-check | New | ~130 | Post-implementation caller completeness |
+| trifecta-quality-report | New | ~140 | Context quality metrics from telemetry |
+
+### Bugs Found & Fixed
+| Bug | Severity | Fix |
+|-----|----------|-----|
+| Backtick command injection in task arg | HIGH | `printf '%s'` replaces `echo` in pipelines |
+| Wrong grep pattern (hash IDs vs file paths) | MEDIUM | Fixed regex: `\[repo:[^]:]+:[^]]+\]` |
+| SIGPIPE exit 141 in affected-symbols | MEDIUM | `|| true` after pipeline + subshell wrap |
+| Non-numeric budget silent exit | LOW | Regex validation `^[0-9]+$` |
+| Duplicate file inflation in verifier | LOW | `sort -u` dedup before processing |
+
+### Orchestration
+| Phase | Agent | Result |
+|-------|-------|--------|
+| Explorer (bug hunt) | pi/zai/glm-5-turbo | 30 tests, 5 bugs (1H, 2M, 2L) |
+| Implementer (fix + WO-4) | pi/zai/glm-5-turbo | 5 bugs fixed + quality-report created |
+| Implementer (skill integration) | pi/zai/glm-5-turbo | 3 skill files updated |
+| Verifier | pi/zai/glm-5-turbo | PASS — 6/6 categories |
+
+### Final Metrics
+| Metric | Before Sprint | After Sprint |
+|--------|--------------|-------------|
+| Trifecta utilization | ~30% | ~60% |
+| Roles with Trifecta context | 1 (explorer) | 3 (explorer, implementer, verifier) |
+| Context-inject cold latency | 877ms | ~400ms (load-first) |
+| Post-impl verification | None | Symbol-level caller check |
+| Quality feedback loop | None | Per-orchestration telemetry report |
+| ctx plan HIT rate (domain) | 0% (tested wrong) | ~80% |
 
 ---
 
-*Informe generado desde datos de `memory.db`, git history, session JSONL, y benchmarks en vivo (2026-04-20).*
+*Informe actualizado post-sprint (2026-04-20).*
