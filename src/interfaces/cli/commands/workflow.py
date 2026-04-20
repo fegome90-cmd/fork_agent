@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import subprocess
 import sys
@@ -827,24 +828,29 @@ def bug_hunt(
         "sniper": "verifier",
     }
 
-    # Agent-specific instructions
-    agent_instructions = {
-        "ripper": """You are the RIPPER agent. Your job: find bugs via adversarial inputs.
-Test: malformed JSON, empty strings, very long content, SQL injection chars,
-unicode edge cases, null bytes, missing required fields, extra fields.
-Run REAL commands: memory save, search, list, get, delete, sync.
-Focus on CRASHES, DATA LOSS, and SILENT CORRUPTION.""",
-        "walker": """You are the WALKER agent. Your job: find bugs in multi-step workflows.
-Test: complete roundtrips (save → search → get → update → delete),
-sync export → import, workflow outline → execute → verify,
-session start → save → summary → end.
-Focus on STATE CORRUPTION and MISSING DATA after workflows.""",
-        "sniper": """You are the SNIPER agent. Your job: find isolation and boundary bugs.
-Test: cross-project data leakage, concurrent access, ID collision,
-prefix matching edge cases, topic_key conflicts between projects,
-FTS special characters, pagination boundaries.
-Focus on DATA LEAKAGE and ISOLATION FAILURES.""",
+    # Agent-specific instructions — loaded from real-world-bug-hunter skill resources
+    skill_root = Path.home() / ".pi" / "agent" / "skills" / "real-world-bug-hunter"
+    agent_resource_map = {
+        "ripper": skill_root / "resources" / "agent-ripper.md",
+        "walker": skill_root / "resources" / "agent-walker.md",
+        "sniper": skill_root / "resources" / "agent-sniper.md",
     }
+    test_catalog_path = skill_root / "resources" / "test-catalog.md"
+
+    agent_instructions: dict[str, str] = {}
+    for agent_name in selected_agents:
+        resource_path = agent_resource_map[agent_name]
+        if resource_path.exists():
+            agent_instructions[agent_name] = resource_path.read_text()
+        else:
+            # Fallback: minimal instructions
+            logger.warning("Skill resource not found: %s", resource_path)
+            agent_instructions[agent_name] = f"You are the {agent_name.upper()} agent. Find bugs in memory CLI."
+
+    # Load test catalog (shared across all agents)
+    test_catalog = ""
+    if test_catalog_path.exists():
+        test_catalog = test_catalog_path.read_text()
 
     # Spawn agents
     spawned = []
@@ -852,31 +858,20 @@ Focus on DATA LEAKAGE and ISOLATION FAILURES.""",
         tmux_role = role_map[agent_name]
         prompt_path = f"/tmp/hunt-prompt-{agent_name}-{hunt_id}.txt"
 
-        # Build agent prompt
+        # Build agent prompt from skill resource + catalog + project context
         subsystem_filter = f"\nFocus on subsystems: {subsystems}" if subsystems else ""
         prompt = f"""{agent_instructions[agent_name]}
 
+# Test Catalog
+{test_catalog}
+
+# Project Context
 Project directory: {Path.cwd()}
 Hunt ID: {hunt_id}
 Intensity: {intensity}{subsystem_filter}
 
-## Method
-1. Run `memory --help` to discover available commands
-2. Run each command with edge-case inputs
-3. Document every bug found
-
 ## Output
 Write findings to /tmp/hunt-findings-{agent_name}-{hunt_id}.md
-Format each finding as:
-```
-## Bug #N: [TITLE]
-- Severity: CRITICAL / HIGH / MEDIUM / LOW
-- Command: memory <command> <args>
-- Description: what's wrong
-- Reproduction: exact steps
-- Expected vs Actual: what should happen vs what happens
-```
-
 When done, write ## HUNT_COMPLETE ## as last line.
 """
 
@@ -907,30 +902,61 @@ When done, write ## HUNT_COMPLETE ## as last line.
 
     # Consolidate findings
     typer.echo("\n=== Consolidating Findings ===")
-    all_findings: list[dict[str, str]] = []
+    findings_dir = f"/tmp/hunt-findings-{hunt_id}"
+    Path(findings_dir).mkdir(exist_ok=True)
 
+    all_findings: list[dict[str, str]] = []
     for agent_name in sorted(selected_agents):
-        findings_path = f"/tmp/hunt-findings-{agent_name}-{hunt_id}.md"
-        if Path(findings_path).exists():
-            content = Path(findings_path).read_text()
+        src = f"/tmp/hunt-findings-{agent_name}-{hunt_id}.md"
+        dst = f"{findings_dir}/hunt-findings-{agent_name}.md"
+        if Path(src).exists():
+            shutil.copy2(src, dst)
+            content = Path(src).read_text()
             bugs = content.count("## Bug #")
             typer.echo(f"  {agent_name}: {bugs} bugs found")
-            all_findings.append({"agent": agent_name, "bugs": bugs, "file": findings_path})
+            all_findings.append({"agent": agent_name, "bugs": bugs, "file": dst})
         else:
             typer.echo(f"  {agent_name}: no findings file")
+
+    # Run hunt-consolidate if available
+    report_path = f"/tmp/hunt-report-{hunt_id}.md"
+    consolidate_script = skill_root / "scripts" / "hunt-consolidate"
+    if consolidate_script.exists() and all_findings:
+        result = subprocess.run(
+            [str(consolidate_script), findings_dir, report_path],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0 and Path(report_path).exists():
+            typer.echo(f"  Consolidated report: {report_path}")
+        else:
+            typer.echo(f"  Consolidation warning: {result.stderr[:200]}", err=True)
+
+    # Count severity from structured headers [AGENT-NNN] SEVERITY
+    critical_count = 0
+    high_count = 0
+    for f in all_findings:
+        if Path(f["file"]).exists():
+            text = Path(f["file"]).read_text()
+            critical_count += len(re.findall(r"^\[[A-Z]+-[0-9]+\] +CRITICAL\b", text, re.MULTILINE))
+            high_count += len(re.findall(r"^\[[A-Z]+-[0-9]+\] +HIGH\b", text, re.MULTILINE))
 
     # Save consolidated report
     total_bugs = sum(f["bugs"] for f in all_findings)
     report = f"Bug hunt {hunt_id}: {total_bugs} bugs found by {len(spawned)} agents."
 
+    # Include consolidated report if available
+    report_content = report
+    if Path(report_path).exists():
+        report_content = Path(report_path).read_text()
+
     try:
         svc = get_memory_service()
         svc.save(
-            content=report,
+            content=report_content,
             type="session-summary",
             project=Path.cwd().name,
             topic_key=topic_key,
-            metadata={"hunt_id": hunt_id, "agents": list(selected_agents), "total_bugs": total_bugs},
+            metadata={"hunt_id": hunt_id, "agents": list(selected_agents), "total_bugs": total_bugs, "critical": critical_count, "high": high_count},
         )
         typer.echo(f"\nReport saved: {topic_key}")
     except Exception as e:
@@ -939,13 +965,15 @@ When done, write ## HUNT_COMPLETE ## as last line.
     # Cleanup
     subprocess.run(["tmux-live", "kill-all"], capture_output=True)
 
-    # Print verdict
+    # Print verdict (using structured severity counts)
     if total_bugs == 0:
         typer.echo("\nVerdict: PASS — no bugs found.")
-    elif any(f["bugs"] > 0 and "CRITICAL" in Path(f["file"]).read_text() for f in all_findings if Path(f["file"]).exists()):
-        typer.echo("\nVerdict: FAIL — CRITICAL bugs found. Fix before shipping.")
+    elif critical_count > 0:
+        typer.echo(f"\nVerdict: FAIL — {critical_count} CRITICAL bug(s) found. Fix before shipping.")
+    elif high_count > 0:
+        typer.echo(f"\nVerdict: PASS WITH WARNINGS — {high_count} HIGH-severity bug(s) found.")
     else:
-        typer.echo(f"\nVerdict: PASS WITH WARNINGS — {total_bugs} non-critical bugs found.")
+        typer.echo(f"\nVerdict: PASS — {total_bugs} non-critical bugs found.")
 
     # Print summary of all findings
     for f in all_findings:
