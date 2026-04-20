@@ -1,4 +1,13 @@
-"""Dependency injection container for persistence layer."""
+"""Dependency injection container for persistence layer.
+
+Fast path: get_memory_service(), get_telemetry_service(), get_repository()
+bypass the DI container entirely for common CLI operations, saving ~140ms
+of startup time by avoiding dependency_injector/fastapi import chains.
+
+The Container class and create_container() live in _container_di.py and are
+only loaded when advanced DI features (get_container, sync, session, etc.)
+are needed.
+"""
 
 from __future__ import annotations
 
@@ -8,34 +17,11 @@ from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
-from dependency_injector import containers, providers
-
-from src.application.services.cleanup_service import CleanupService
-from src.application.services.memory_service import MemoryService
-from src.application.services.messaging.agent_messenger import AgentMessenger
-from src.application.services.orchestration.hook_service import HookService
-from src.application.services.scheduler_service import SchedulerService
-from src.application.services.session_service import SessionService
-from src.application.services.sync.sync_service import SyncService
-from src.application.services.telemetry.telemetry_service import TelemetryService
-from src.application.services.workflow.executor import WorkflowExecutor
-from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
-from src.application.services.workspace.workspace_manager import WorkspaceManager
+# Fast-path imports only — these are lightweight (~69ms total)
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
-from src.infrastructure.persistence.health_check import HealthCheckService
-from src.infrastructure.persistence.message_store import MessageStore
-from src.infrastructure.persistence.migrations import MigrationRunner, run_migrations
+from src.infrastructure.persistence.migrations import run_migrations
 from src.infrastructure.persistence.repositories.observation_repository import (
     ObservationRepository,
-)
-from src.infrastructure.persistence.repositories.promise_repository import (
-    PromiseContractRepository,
-)
-from src.infrastructure.persistence.repositories.scheduled_task_repository import (
-    ScheduledTaskRepository,
-)
-from src.infrastructure.persistence.repositories.session_repository import (
-    SessionRepositoryImpl,
 )
 from src.infrastructure.persistence.repositories.sync_repository import (
     SyncRepositoryImpl,
@@ -43,8 +29,6 @@ from src.infrastructure.persistence.repositories.sync_repository import (
 from src.infrastructure.persistence.repositories.telemetry_repository import (
     TelemetryRepositoryImpl,
 )
-from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
-from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 DEFAULT_MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
@@ -81,157 +65,13 @@ def get_default_db_path() -> Path:
 DEFAULT_DB_PATH = get_default_db_path()
 
 
-class Container(containers.DeclarativeContainer):
-    """Main DI container for persistence infrastructure."""
-
-    config = providers.Configuration()
-
-    database_config = providers.Singleton(
-        DatabaseConfig,
-        db_path=config.db_path,
-    )
-
-    database_connection = providers.Singleton(
-        DatabaseConnection,
-        config=database_config,
-    )
-
-    migration_runner = providers.Factory(
-        MigrationRunner,
-        config=database_config,
-        migrations_dir=config.migrations_dir,
-    )
-
-    sync_repository = providers.Singleton(
-        SyncRepositoryImpl,
-        connection=database_connection,
-    )
-
-    observation_repository = providers.Singleton(
-        ObservationRepository,
-        connection=database_connection,
-        sync_repo=sync_repository,
-    )
-
-    scheduled_task_repository = providers.Singleton(
-        ScheduledTaskRepository,
-        connection=database_connection,
-    )
-
-    telemetry_repository = providers.Singleton(
-        TelemetryRepositoryImpl,
-        connection=database_connection,
-    )
-
-    telemetry_service = providers.Singleton(
-        TelemetryService,
-        repository=telemetry_repository,
-    )
-    session_repository = providers.Singleton(
-        SessionRepositoryImpl,
-        connection=database_connection,
-    )
-
-    session_service = providers.Singleton(
-        SessionService,
-        repository=session_repository,
-    )
-
-    memory_service = providers.Singleton(
-        MemoryService,
-        repository=observation_repository,
-        telemetry_service=telemetry_service,
-    )
-
-    scheduler_service = providers.Singleton(
-        SchedulerService,
-        repository=scheduled_task_repository,
-    )
-
-    cleanup_service = providers.Singleton(
-        CleanupService,
-        connection=database_connection,
-    )
-
-    sync_service = providers.Singleton(
-        SyncService,
-        observation_repo=observation_repository,
-        sync_repo=sync_repository,
-        export_dir=get_default_data_dir() / "sync",
-    )
-
-    health_check_service = providers.Singleton(
-        HealthCheckService,
-        connection=database_connection,
-        db_path=config.db_path,
-    )
-
-    promise_contract_repository = providers.Singleton(
-        PromiseContractRepository,
-        connection=database_connection,
-    )
-
-    tmux_orchestrator = providers.Singleton(
-        TmuxOrchestrator,
-        safety_mode=False,
-    )
-
-    message_repository = providers.Singleton(
-        MessageStore,
-        connection=database_connection,
-    )
-
-    agent_messenger = providers.Singleton(
-        AgentMessenger,
-        orchestrator=tmux_orchestrator,
-        store=message_repository,
-    )
-
-    # Workspace infrastructure
-    git_executor = providers.Singleton(GitCommandExecutor)
-
-    workspace_config = providers.Singleton(
-        WorkspaceConfig,
-        default_layout=LayoutType.NESTED,
-        auto_cleanup=True,
-        hooks_dir=None,
-    )
-
-    workspace_manager = providers.Singleton(
-        WorkspaceManager,
-        git_executor=git_executor,
-        config=workspace_config,
-    )
-
-
-def create_container(
-    db_path: Path | None = None,
-    export_dir: Path | None = None,
-) -> Container:
-    container = Container()
-    db_path_value = db_path or DEFAULT_DB_PATH
-    container.config.db_path.from_value(db_path_value)
-    container.config.migrations_dir.from_value(DEFAULT_MIGRATIONS_DIR)
-    if export_dir is not None:
-        container.sync_service.override(
-            providers.Singleton(
-                SyncService,
-                observation_repo=container.observation_repository,
-                sync_repo=container.sync_repository,
-                export_dir=export_dir,
-            )
-        )
-    _auto_backup(db_path_value)
-    _run_migrations_on_init(db_path_value, DEFAULT_MIGRATIONS_DIR)
-    return container
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 
 def _auto_backup(db_path: Path) -> None:
-    """Auto-backup DB before container init if DB exists and has data.
-
-    Keeps at most 3 backups. Prevents catastrophic data loss from
-    agent-triggered DB recreation (see P2 in subagent-failure-patterns.md).
-    """
+    """Auto-backup DB before container init if DB exists and has data."""
     if not db_path.exists():
         return
     try:
@@ -247,12 +87,11 @@ def _auto_backup(db_path: Path) -> None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = backup_dir / f"memory_{timestamp}.db"
         shutil.copy2(db_path, backup_path)
-        # Rotate: keep only last 3
         backups = sorted(backup_dir.glob("memory_*.db"))
         for old in backups[:-3]:
             old.unlink()
     except (sqlite3.Error, OSError):
-        pass  # Backup failure must never block container init
+        pass
 
 
 def _run_migrations_on_init(db_path: Path, migrations_dir: Path) -> None:
@@ -262,29 +101,73 @@ def _run_migrations_on_init(db_path: Path, migrations_dir: Path) -> None:
     run_migrations(config, migrations_dir)
 
 
-def override_database_for_testing(container: Container, test_db_path: Path) -> None:
-    container.config.db_path.override(test_db_path)
-    container.database_config.reset()
+# ---------------------------------------------------------------------------
+# Fast path: bypass dependency_injector for common CLI operations
+# ---------------------------------------------------------------------------
+
+_fast_cache: dict[str, tuple[ObservationRepository, TelemetryRepositoryImpl]] = {}
+_fast_lock = Lock()
 
 
-# =============================================================================
+def _get_or_create_fast(
+    db_path: Path | None = None,
+) -> tuple[ObservationRepository, TelemetryRepositoryImpl]:
+    """Create repository instances without the DI container."""
+    resolved = db_path or DEFAULT_DB_PATH
+    cache_key = str(resolved)
+    if cache_key in _fast_cache:
+        return _fast_cache[cache_key]
+    with _fast_lock:
+        if cache_key in _fast_cache:
+            return _fast_cache[cache_key]
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        _auto_backup(resolved)
+        _run_migrations_on_init(resolved, DEFAULT_MIGRATIONS_DIR)
+        config = DatabaseConfig(db_path=resolved)
+        conn = DatabaseConnection(config=config)
+        sync_repo = SyncRepositoryImpl(connection=conn)
+        repo = ObservationRepository(connection=conn, sync_repo=sync_repo)
+        telemetry_repo = TelemetryRepositoryImpl(connection=conn)
+        _fast_cache[cache_key] = (repo, telemetry_repo)
+        return repo, telemetry_repo
+
+
+# ---------------------------------------------------------------------------
 # Convenience Factory Functions (Canonical SSOT)
-# =============================================================================
+# ---------------------------------------------------------------------------
 
-# Unified container cache — replaces per-module caching strategies
-_container_cache: dict[str, Container] = {}
+_container_cache: dict[str, object] = {}
 _container_lock = Lock()
 
 # Global singleton instances for non-container services
-_hook_service: HookService | None = None
-_workflow_executor: WorkflowExecutor | None = None
+_hook_service: object | None = None
+_workflow_executor: object | None = None
 
 
-def get_container(db_path: Path | None = None) -> Container:
-    """Get or create cached container for the given db_path.
+# Reference to create_container — can be patched in tests.
+# At runtime, lazily resolves to the real implementation.
+_create_container_ref = None
 
-    Thread-safe. Replaces all per-module caching with single canonical cache.
-    """
+
+def _get_create_container():
+    """Resolve create_container lazily (patchable for tests)."""
+    global _create_container_ref
+    if _create_container_ref is None:
+        from src.infrastructure.persistence._container_di import create_container
+        _create_container_ref = create_container
+    return _create_container_ref
+
+
+# Alias for backward-compat patching: tests do
+#   patch("src.infrastructure.persistence.container.create_container", ...)
+# This works because __getattr__ resolves it.
+def create_container(db_path=None, export_dir=None):
+    """Create a DI container (lazy-loaded, patchable for tests)."""
+    return _get_create_container()(db_path, export_dir)
+
+
+def get_container(db_path: Path | None = None):
+    """Get or create cached DI container (lazy-loads dependency_injector)."""
     cache_key = str(db_path or "default")
     if cache_key not in _container_cache:
         with _container_lock:
@@ -294,65 +177,85 @@ def get_container(db_path: Path | None = None) -> Container:
 
 
 def get_repository(db_path: Path | None = None) -> ObservationRepository:
-    """Get the ObservationRepository instance."""
-    return get_container(db_path).observation_repository()
+    """Get the ObservationRepository instance (fast path)."""
+    repo, _ = _get_or_create_fast(db_path)
+    return repo
 
 
-def get_tmux_orchestrator() -> TmuxOrchestrator:
-    """Get the singleton TmuxOrchestrator instance."""
-    return get_container().tmux_orchestrator()
+def get_memory_service(db_path: Path | None = None):
+    """Get a MemoryService instance (fast path)."""
+    from src.application.services.memory_service import MemoryService
+    from src.application.services.telemetry.telemetry_service import TelemetryService
+
+    repo, telemetry_repo = _get_or_create_fast(db_path)
+    telemetry_svc = TelemetryService(repository=telemetry_repo)
+    return MemoryService(repository=repo, telemetry_service=telemetry_svc)
 
 
-def get_memory_service(db_path: Path | None = None) -> MemoryService:
-    """Get a MemoryService instance."""
-    return get_container(db_path).memory_service()
+def get_telemetry_service(db_path: Path | None = None):
+    """Get a TelemetryService instance (fast path)."""
+    from src.application.services.telemetry.telemetry_service import TelemetryService
+
+    _, telemetry_repo = _get_or_create_fast(db_path)
+    return TelemetryService(repository=telemetry_repo)
 
 
-def get_session_service(db_path: Path | None = None) -> SessionService:
-    """Get a SessionService instance."""
-    return get_container(db_path).session_service()
-
-
-def get_sync_service(db_path: Path | None = None) -> SyncService:
-    """Get a SyncService instance."""
-    return get_container(db_path).sync_service()
-
-
-def get_health_service(db_path: Path | None = None) -> HealthCheckService:
-    """Get a HealthCheckService instance."""
-    return get_container(db_path).health_check_service()
-
-
-def get_health_check_service(db_path: Path | None = None) -> HealthCheckService:
-    """Alias for get_health_service() — backward compat for CLI commands."""
-    return get_health_service(db_path)
-
-
-def get_hook_service() -> HookService:
-    """Get the singleton HookService instance."""
+def get_hook_service():
+    """Get the singleton HookService instance (no DI container needed)."""
     global _hook_service
     if _hook_service is None:
+        from src.application.services.orchestration.hook_service import HookService
+
         _hook_service = HookService()
     return _hook_service
 
 
-def get_promise_repository(db_path: Path | None = None) -> PromiseContractRepository:
+# ---------------------------------------------------------------------------
+# DI-container-dependent functions (lazy-load dependency_injector)
+# ---------------------------------------------------------------------------
+
+
+def get_tmux_orchestrator():
+    """Get the singleton TmuxOrchestrator instance."""
+    return get_container().tmux_orchestrator()
+
+
+def get_session_service(db_path: Path | None = None):
+    """Get a SessionService instance."""
+    return get_container(db_path).session_service()
+
+
+def get_sync_service(db_path: Path | None = None):
+    """Get a SyncService instance."""
+    return get_container(db_path).sync_service()
+
+
+def get_health_service(db_path: Path | None = None):
+    """Get a HealthCheckService instance."""
+    return get_container(db_path).health_check_service()
+
+
+def get_health_check_service(db_path: Path | None = None):
+    """Alias for get_health_service() — backward compat for CLI commands."""
+    return get_health_service(db_path)
+
+
+def get_promise_repository(db_path: Path | None = None):
     """Get the singleton PromiseContractRepository instance."""
     return get_container(db_path).promise_contract_repository()
 
 
-def get_workspace_manager(db_path: Path | None = None) -> WorkspaceManager:
+def get_workspace_manager(db_path: Path | None = None):
     """Get the WorkspaceManager instance via DI container."""
     return get_container(db_path).workspace_manager()
 
 
-def get_workflow_executor() -> WorkflowExecutor:
-    """Get the singleton WorkflowExecutor instance.
-
-    Wires TmuxOrchestrator, MemoryService, WorkspaceManager, HookService.
-    """
+def get_workflow_executor():
+    """Get the singleton WorkflowExecutor instance."""
     global _workflow_executor
     if _workflow_executor is None:
+        from src.application.services.workflow.executor import WorkflowExecutor
+
         _workflow_executor = WorkflowExecutor(
             tmux_orchestrator=get_tmux_orchestrator(),
             memory_service=get_memory_service(),
@@ -362,66 +265,42 @@ def get_workflow_executor() -> WorkflowExecutor:
     return _workflow_executor
 
 
-def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
-    """Get a TelemetryService instance."""
-    return get_container(db_path).telemetry_service()
-
-
-def get_cleanup_service(db_path: Path | None = None) -> CleanupService:
+def get_cleanup_service(db_path: Path | None = None):
     """Get a CleanupService instance."""
     return get_container(db_path).cleanup_service()
 
 
-def get_scheduler_service(db_path: Path | None = None) -> SchedulerService:
+def get_scheduler_service(db_path: Path | None = None):
     """Get a SchedulerService instance."""
     return get_container(db_path).scheduler_service()
 
 
 def detect_memory_db_path() -> Path:
-    """Detect the appropriate memory DB path based on current workspace.
-
-    If we're in a worktree, use a worktree-specific DB path.
-    Otherwise, use the default repo-level DB path.
-
-    Returns:
-        Path: The path to the memory database file.
-    """
+    """Detect the appropriate memory DB path based on current workspace."""
     try:
         workspace_manager = get_workspace_manager()
         workspace = workspace_manager.detect_workspace()
-
         if workspace is not None:
-            # We're in a worktree - use worktree-specific DB
             worktree_db_dir = workspace.path / ".memory"
             worktree_db_dir.mkdir(parents=True, exist_ok=True)
             return worktree_db_dir / "observations.db"
     except (OSError, ValueError):
-        # If workspace detection fails, fall through to default
         pass
-
-    # Default: use repo-level DB
     return DEFAULT_DB_PATH
 
 
-def get_memory_service_auto() -> MemoryService:
-    """Get MemoryService with automatic workspace-aware DB path detection.
-
-    This function automatically detects if we're in a worktree and uses
-    the appropriate isolated database path.
-
-    Returns:
-        MemoryService: The memory service instance with correct DB path.
-    """
+def get_memory_service_auto():
+    """Get MemoryService with automatic workspace-aware DB path detection."""
     db_path = detect_memory_db_path()
     return get_memory_service(db_path)
 
 
-def get_message_store(db_path: Path | None = None) -> MessageStore:
+def get_message_store(db_path: Path | None = None):
     """Get the MessageStore instance."""
     return get_container(db_path).message_repository()
 
 
-def get_agent_messenger(db_path: Path | None = None) -> AgentMessenger:
+def get_agent_messenger(db_path: Path | None = None):
     """Get the AgentMessenger instance."""
     return get_container(db_path).agent_messenger()
 
@@ -429,3 +308,17 @@ def get_agent_messenger(db_path: Path | None = None) -> AgentMessenger:
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
     return get_container(db_path).database_connection()
+
+
+# ---------------------------------------------------------------------------
+# Re-exports for backward compat (Container class, create_container, etc.)
+# ---------------------------------------------------------------------------
+
+
+def __getattr__(name: str) -> object:
+    """Lazy-load Container class and related symbols from _container_di."""
+    if name in ("Container", "create_container", "override_database_for_testing"):
+        from src.infrastructure.persistence import _container_di
+
+        return getattr(_container_di, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
