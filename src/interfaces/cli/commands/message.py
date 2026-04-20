@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import time
 from typing import Annotated
 
 import typer
@@ -102,3 +104,80 @@ def show_history(
         )
 
     console.print(table)
+
+
+@app.command("receive")
+def receive_messages(
+    agent_id: Annotated[str, typer.Argument(help="Agent ID to receive messages for (session:window)")],
+    limit: Annotated[int, typer.Option(help="Max messages to retrieve")] = 10,
+    watch: Annotated[bool, typer.Option("--watch", help="Continuous polling (5s interval)")] = False,
+    mark_read: Annotated[bool, typer.Option("--mark-read", help="Delete messages after retrieval")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
+) -> None:
+    messenger = get_agent_messenger()
+
+    def _fetch() -> list[AgentMessage]:
+        return messenger.get_messages(agent_id, limit=limit)
+
+    def _print_messages(msgs: list[AgentMessage]) -> None:
+        if json_output:
+            output = [
+                {
+                    "id": msg.id,
+                    "from": msg.from_agent,
+                    "to": msg.to_agent,
+                    "type": msg.message_type.name,
+                    "payload": msg.payload,
+                    "created_at": msg.created_at_iso,
+                }
+                for msg in msgs
+            ]
+            print(json.dumps(output, indent=2))
+        else:
+            if not msgs:
+                console.print(f"No messages for {agent_id}")
+                return
+            table = Table(title=f"Inbox for {agent_id}")
+            table.add_column("Date", style="cyan")
+            table.add_column("From", style="magenta")
+            table.add_column("Type", style="yellow")
+            table.add_column("Payload")
+            for msg in msgs:
+                table.add_row(
+                    msg.created_at_iso,
+                    msg.from_agent,
+                    msg.message_type.name,
+                    msg.payload[:50] + ("..." if len(msg.payload) > 50 else ""),
+                )
+            console.print(table)
+
+    def _delete_messages(msgs: list[AgentMessage]) -> None:
+        if not msgs:
+            return
+        # TODO: add delete_messages(ids) to MessageStore once schema work lands
+        ids = [msg.id for msg in msgs]
+        placeholders = ",".join("?" for _ in ids)
+        with messenger.store._connection as conn:
+            conn.execute(f"DELETE FROM messages WHERE id IN ({placeholders})", ids)
+            conn.commit()
+
+    if not watch:
+        messages = _fetch()
+        _print_messages(messages)
+        if mark_read:
+            _delete_messages(messages)
+        return
+
+    # Watch mode
+    console.print(f"[dim]Watching inbox for {agent_id}... (Ctrl+C to stop)[/dim]")
+    try:
+        while True:
+            console.clear()
+            messages = _fetch()
+            console.print(f"[dim]{len(messages)} message(s) for {agent_id}[/dim]")
+            _print_messages(messages)
+            if mark_read:
+                _delete_messages(messages)
+            time.sleep(5)
+    except KeyboardInterrupt:
+        console.print("\n[dim]Stopped watching.[/dim]")

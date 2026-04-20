@@ -59,8 +59,8 @@ class MessageStore:
             )
             conn.commit()
 
-    def save(self, msg: AgentMessage) -> None:
-        """Save a message to the store and maintain hygiene."""
+    def save(self, msg: AgentMessage) -> str:
+        """Save a message to the store and maintain hygiene."""""
         # 1. Self-healing: Purge expired before adding new ones
         self.cleanup_expired()
 
@@ -99,6 +99,7 @@ class MessageStore:
                 ),
             )
             conn.commit()
+            return msg.id
 
     def get_for_agent(self, agent_id: str, limit: int = 50) -> list[AgentMessage]:
         """Get messages addressed to a specific agent."""
@@ -153,8 +154,26 @@ class MessageStore:
             )
             return [self._row_to_message(row) for row in cursor.fetchall()]
 
+    def get_by_id(self, msg_id: str) -> AgentMessage | None:
+        """Get a single message by ID."""
+        with self._connection as conn:
+            cursor = conn.execute(
+                "SELECT * FROM messages WHERE id = ?",
+                (msg_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            return self._row_to_message(row)
+
+    def get_messages_for_agent(self, agent_id: str, limit: int = 50) -> list[AgentMessage]:
+        return self.get_for_agent(agent_id, limit)
+
+    def delete_expired(self) -> int:
+        return self.cleanup_expired()
+
     def cleanup_expired(self) -> int:
-        """Remove messages that have expired."""
+        """Remove messages that have expired."""""
         import time
 
         now_ms = int(time.time() * 1000)
