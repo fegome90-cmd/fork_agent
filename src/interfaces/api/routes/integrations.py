@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from src.infrastructure.external_apis.branch_review_client import (
     BranchReviewClient,
@@ -81,34 +82,28 @@ async def get_branch_review_final(
         ) from e
 
 
-class CommandRequest:
-    """Request body for command execution."""
+class BranchReviewCommandRequest(BaseModel):
+    command: str = Field(..., min_length=1, max_length=50)
+    args: dict | None = None
+    model_config = {"extra": "forbid"}
 
-    command: str
-    args: dict[str, str | int | bool] | None = None
 
-    def __init__(self, **data: Any) -> None:
-        self.command = data.get("command", "")
-        self.args = data.get("args")
+class BranchReviewWorkflowRequest(BaseModel):
+    agents: list[str] | None = None
+    model_config = {"extra": "forbid"}
 
 
 @router.post("/branch-review/command")
 async def execute_branch_review_command(
-    request: dict[str, Any],
+    request: BranchReviewCommandRequest,
     _: str = Depends(verify_api_key),
 ) -> dict[str, Any]:
     """Execute a branch-review command.
 
     Commands: init, explore, plan, run, ingest, verdict, merge, cleanup
     """
-    command = request.get("command")
-    args = request.get("args", {})
-
-    if not command:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing 'command' in request body",
-        )
+    command = request.command
+    args = request.args or {}
 
     try:
         with get_branch_review_client() as client:
@@ -131,14 +126,14 @@ async def execute_branch_review_command(
 
 @router.post("/branch-review/workflow")
 async def run_branch_review_workflow(
-    request: dict[str, Any],
+    request: BranchReviewWorkflowRequest,
     _: str = Depends(verify_api_key),
 ) -> dict[str, Any]:
     """Run a complete branch-review workflow.
 
     Optional body: {"agents": ["code-reviewer", "code-simplifier"]}
     """
-    agents = request.get("agents", ["code-reviewer"])
+    agents = request.agents or ["code-reviewer"]
 
     try:
         with get_branch_review_client() as client:

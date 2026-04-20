@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from textual.app import ComposeResult
@@ -11,6 +12,8 @@ from textual.screen import Screen
 from textual.widgets import Button, DataTable, Input, Static
 
 from src.domain.entities.observation import Observation
+
+logger = logging.getLogger(__name__)
 
 
 class SearchScreen(Screen[None]):
@@ -83,7 +86,12 @@ class SearchScreen(Screen[None]):
         project_filter = self.query_one("#project-filter", Input).value.strip() or None
 
         service = self._get_service()
-        results: list[Observation] = service.search(query, limit=100, project=project_filter)
+        try:
+            results: list[Observation] = service.search(query, limit=100, project=project_filter)
+        except Exception as e:
+            logger.error("Search failed: %s", e)
+            self.query_one("#search-status", Static).update(f"Search failed: {e}")
+            return
 
         # Post-filter by type if specified
         if type_filter:

@@ -51,6 +51,11 @@ async def create_observation(
                 session_id=observation.session_id,
             )
         )
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Failed to create observation: {e}")
         raise HTTPException(
@@ -87,6 +92,11 @@ async def list_observations(
             ],
             count=len(observations),
         )
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Failed to list observations: {e}")
         raise HTTPException(
@@ -123,6 +133,11 @@ async def search_observations(
             ],
             count=len(results),
         )
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Failed to search observations: {e}")
         raise HTTPException(
@@ -204,6 +219,11 @@ async def query_memory(
             )
 
         return QueryResponse(data=output, count=len(output))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Query failed: {e}")
         raise HTTPException(
@@ -215,7 +235,7 @@ async def query_memory(
 @router.get("/timeline/{run_id}", response_model=QueryResponse)
 async def get_timeline(
     run_id: str,
-    scan_limit: int = Query(1000, alias="scan-limit"),
+    scan_limit: int = Query(1000, alias="scan-limit", ge=1, le=10000),
     _: str = Depends(verify_api_key),
     memory=Depends(get_memory_service),
 ) -> QueryResponse:
@@ -246,6 +266,11 @@ async def get_timeline(
             )
 
         return QueryResponse(data=output, count=len(output))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Timeline failed: {e}")
         raise HTTPException(

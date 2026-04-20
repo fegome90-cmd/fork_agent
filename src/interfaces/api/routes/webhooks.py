@@ -1,9 +1,13 @@
-"""Rutas para webhooks."""
+"""Rutas para webhooks.
+
+NOTE: Webhooks are stored in-memory and are lost on API restart.
+For persistent webhooks, use an external webhook management service.
+"""
 
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.interfaces.api.dependencies import verify_api_key
 from src.interfaces.api.models import (
@@ -60,5 +64,6 @@ async def delete_webhook(
     _: str = Depends(verify_api_key),
 ) -> None:
     logger.info(f"Deleting webhook: id={webhook_id}")
-    if webhook_id in _webhooks:
-        del _webhooks[webhook_id]
+    if webhook_id not in _webhooks:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    del _webhooks[webhook_id]

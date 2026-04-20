@@ -54,7 +54,21 @@ def import_cmd(
 ) -> None:
     """Import observations from JSONL chunk files."""
     sync_service = get_sync_service(_get_db_path(ctx))
-    imported = sync_service.import_observations(chunk_paths=chunk_paths, source=source)
+
+    # Look for manifest file alongside chunks
+    manifest_path = None
+    if chunk_paths:
+        chunk_dir = chunk_paths[0].parent
+        manifest_files = sorted(chunk_dir.glob("manifest_*.json"))
+        if manifest_files:
+            manifest_path = manifest_files[0]
+            typer.echo(f"Using manifest: {manifest_path.name}")
+        else:
+            typer.echo("Warning: No manifest file found. Checksum validation skipped.", err=True)
+
+    imported = sync_service.import_observations(
+        chunk_paths=chunk_paths, source=source, manifest_path=manifest_path
+    )
     typer.echo(f"Imported {imported} observation(s)")
 
 

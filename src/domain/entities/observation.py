@@ -45,6 +45,8 @@ class Observation:
             "performance",
             "preference",
             "file_ops",
+            "file-ops",
+            "artifacts-index",
         }
     )
 

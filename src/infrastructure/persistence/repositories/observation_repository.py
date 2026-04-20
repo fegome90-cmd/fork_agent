@@ -177,6 +177,12 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observation by idempotency_key: {e}", e) from e
 
+    def count(self) -> int:
+        """Return total number of observations."""
+        with self._connection as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM observations")
+            return cursor.fetchone()[0]
+
     def get_by_id(self, observation_id: str) -> Observation:
         """Retrieve an observation by its ID.
 

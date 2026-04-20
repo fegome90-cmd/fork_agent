@@ -109,7 +109,9 @@ class TestAllEndpoints:
         client.get('/api/v1/logs/1', headers=auth_headers)
 
     def test_webhooks_delete(self, client, auth_headers):
-        client.delete('/api/v1/webhooks/test-id', headers=auth_headers)
+        # Deleting non-existent webhook should return 404
+        resp = client.delete('/api/v1/webhooks/test-id', headers=auth_headers)
+        assert resp.status_code == 404
 
     def test_integrations_run(self, client, auth_headers):
         client.get('/api/v1/integrations/branch-review/run', headers=auth_headers)

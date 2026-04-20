@@ -10,6 +10,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any, Protocol
 
+from src.application.exceptions import RepositoryError
 from src.domain.entities.observation import Observation
 from src.domain.entities.sync import SyncChunk, SyncMutation, SyncStatus
 
@@ -25,6 +26,9 @@ class ObservationRepositoryProtocol(Protocol):
         offset: int | None = None,
         type: str | None = None,
     ) -> list[Observation]:
+        ...
+
+    def count(self) -> int:
         ...
 
     def create(self, observation: Observation) -> None:
@@ -204,11 +208,11 @@ class SyncService:
         max_seq = since_seq
 
         for m in mutations:
-            # Apply project filter before counting the seq
+            max_seq = max(max_seq, m.seq)
+
+            # Apply project filter after tracking watermark
             if project and m.project != project:
                 continue
-
-            max_seq = max(max_seq, m.seq)
 
             if m.op == "delete":
                 deleted_ids.add(m.entity_key)
@@ -469,11 +473,13 @@ class SyncService:
                     try:
                         self._observation_repo.create(observation)
                         imported += 1
-                    except Exception as e:
+                    except RepositoryError as e:
                         if "already exists" in str(e).lower():
                             logger.debug("Skipping duplicate observation: %s", observation.id)
                         else:
                             raise
+                    except Exception:
+                        raise
 
                 except (json.JSONDecodeError, KeyError) as e:
                     logger.warning("Failed to parse observation: %s", e)
@@ -498,8 +504,7 @@ class SyncService:
         latest_seq = self._sync_repo.get_latest_seq()
 
         # Count total observations
-        all_obs = self._observation_repo.get_all()
-        total_obs = len(all_obs)
+        total_obs = self._observation_repo.count()
 
         return {
             "total_observations": total_obs,

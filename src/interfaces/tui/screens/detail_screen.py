@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from textual.widgets import RichLog, Static
 
 from src.domain.entities.observation import Observation
 from src.interfaces.tui.widgets.type_badge import TypeBadge
+
+logger = logging.getLogger(__name__)
 
 
 class DetailScreen(Screen[None]):
@@ -60,7 +63,12 @@ class DetailScreen(Screen[None]):
 
     def _load_observation(self) -> None:
         service = self._get_service()
-        obs = service.get_by_id(self._obs_id)
+        try:
+            obs = service.get_by_id(self._obs_id)
+        except Exception as e:
+            logger.error("Failed to load observation: %s", e)
+            self.query_one("#detail-header", Static).update(f"Error loading observation: {e}")
+            return
         self._observation = obs
 
         # Header

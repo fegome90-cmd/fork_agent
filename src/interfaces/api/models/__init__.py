@@ -64,6 +64,8 @@ class AgentSession(BaseModel):
 class AgentSessionCreate(BaseModel):
     """Request para crear sesion de agente."""
 
+    model_config = {"extra": "forbid"}
+
     agent_type: str = Field(
         default="opencode",
         min_length=1,
@@ -142,6 +144,8 @@ class WorkflowResponse(BaseModel):
 class ObservationCreate(BaseModel):
     """Request para crear observacion."""
 
+    model_config = {"extra": "forbid"}
+
     content: str = Field(..., min_length=1, max_length=10000)
     type: str | None = None
     project: str | None = None
@@ -152,6 +156,8 @@ class ObservationCreate(BaseModel):
 
 class ObservationUpdate(BaseModel):
     """Request para actualizar observacion."""
+
+    model_config = {"extra": "forbid"}
 
     content: str | None = Field(None, min_length=1, max_length=10000)
     type: str | None = None
@@ -234,6 +240,8 @@ class ErrorResponse(BaseModel):
 
 class WebhookCreate(BaseModel):
     """Request para crear webhook."""
+
+    model_config = {"extra": "forbid"}
 
     url: str = Field(..., pattern=r"^https?://")
     events: list[str] = Field(..., min_length=1)

@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from src.application.exceptions import RepositoryError
 from src.domain.entities.promise_contract import PromiseContract, PromiseState, VerifyEvidence
@@ -14,6 +15,12 @@ from src.interfaces.api.dependencies import get_promise_repository, verify_api_k
 from src.interfaces.api.models import WorkflowPlanRequest, WorkflowResponse
 
 logger = logging.getLogger(__name__)
+
+class ShipRequest(BaseModel):
+    branch: str = Field(..., min_length=1, max_length=200)
+    commit_message: str = Field(..., min_length=1, max_length=1000)
+    model_config = {"extra": "forbid"}
+
 
 router = APIRouter(prefix="/workflow", tags=["workflow"])
 
@@ -97,11 +104,11 @@ async def verify_plan(
 @router.post("/{plan_id}/ship", response_model=WorkflowResponse)
 async def ship_plan(
     plan_id: str,
-    request: dict,
+    request: ShipRequest,
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
-    branch = request.get("branch", "main")
-    commit_message = request.get("commit_message", "")
+    branch = request.branch
+    commit_message = request.commit_message
 
     try:
         repo = get_promise_repository()

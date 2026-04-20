@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
+
+logger = logging.getLogger(__name__)
 
 
 class ListScreen(Screen[None]):
@@ -55,8 +58,13 @@ class ListScreen(Screen[None]):
     def _load_data(self) -> None:
         service = self._get_service()
 
-        offset = self._page * self.PAGE_SIZE
-        observations = service.get_recent(limit=self.PAGE_SIZE, offset=offset)
+        try:
+            offset = self._page * self.PAGE_SIZE
+            observations = service.get_recent(limit=self.PAGE_SIZE, offset=offset)
+        except Exception as e:
+            logger.error("Failed to load observations: %s", e)
+            self.query_one("#status", Static).update(f"Error loading observations: {e}")
+            return
 
         table = self.query_one(DataTable)
         table.clear()

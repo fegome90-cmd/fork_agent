@@ -253,7 +253,8 @@ async def create_session(
 ) -> AgentSessionResponse:
     """Crea una nueva sesión de agente (with concurrency guard)."""
     # Check concurrency limit
-    if not _session_semaphore.acquire(blocking=False):
+    acquired = _session_semaphore.acquire(blocking=False)
+    if not acquired:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Max concurrent sessions ({_max_concurrent_sessions}) reached. Try again later.",
@@ -351,8 +352,8 @@ async def create_session(
             detail=f"Failed to create session: {e}",
         ) from e
     finally:
-        # BUG FIX: Always release semaphore to prevent leak
-        _session_semaphore.release()
+        if acquired:
+            _session_semaphore.release()
 
 
 @router.get("/sessions", response_model=SessionListResponse)

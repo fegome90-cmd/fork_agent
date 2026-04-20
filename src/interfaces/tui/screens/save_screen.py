@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from textual.app import ComposeResult
@@ -11,6 +12,8 @@ from textual.screen import Screen
 from textual.widgets import Input, Static, TextArea
 
 from src.domain.entities.observation import Observation
+
+logger = logging.getLogger(__name__)
 
 
 class SaveScreen(Screen[None]):
@@ -131,12 +134,17 @@ class SaveScreen(Screen[None]):
         title = self.query_one("#save-title", Input).value.strip() or None
 
         service = self._get_service()
-        service.save(
-            content=content,
-            type=obs_type,
-            topic_key=topic_key,
-            project=project,
-            title=title,
-        )
+        try:
+            service.save(
+                content=content,
+                type=obs_type,
+                topic_key=topic_key,
+                project=project,
+                title=title,
+            )
+        except Exception as e:
+            logger.error("Save failed: %s", e)
+            self.query_one("#save-validation", Static).update(f"Save failed: {e}")
+            return
         self.notify("Observation saved", severity="information")
         self.app.pop_screen()
