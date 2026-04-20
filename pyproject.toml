@@ -64,6 +64,7 @@ dev = [
     "ruff>=0.3.0",
     "black>=24.0.0",
     "hypothesis>=6.90.0",
+    "bandit>=1.7.0",
 ]
 tui = [
     "rich>=14.3.3",
