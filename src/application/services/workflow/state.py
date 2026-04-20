@@ -59,6 +59,8 @@ class WorkflowPhase(StrEnum):
     VERIFIED = "verified"
     SHIPPING = "shipping"
     SHIPPED = "shipped"
+    HUNTING = "hunting"
+    HUNTED = "hunted"
 
 
 @dataclass(frozen=True)

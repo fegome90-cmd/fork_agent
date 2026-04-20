@@ -751,6 +751,208 @@ def ship(
     )
 
 
+@app.command("bug-hunt")
+def bug_hunt(
+    agents: str = typer.Option("all", "--agents", "-a", help="Agent roles: ripper, walker, sniper, or all"),
+    intensity: str = typer.Option("standard", "--intensity", "-i", help="quick, standard, or deep"),
+    subsystems: str = typer.Option("", "--subsystems", "-s", help="Comma-separated subsystems to test"),
+    auto: bool = typer.Option(False, "--auto", help="Run without confirmation prompts"),
+) -> None:
+    """Launch parallel bug-hunt agents against the project.
+
+    Spawns 3 adversarial agents (ripper, walker, sniper) via tmux-live
+    that execute real CLI commands to find bugs that unit tests miss.
+    Requires: tmux-live on PATH, memory CLI available.
+
+    Agents:
+      ripper  — adversarial inputs, PII, injection, encoding attacks
+      walker  — multi-step workflows, roundtrips, real-world usage
+      sniper  — cross-project isolation, boundaries, edge cases
+
+    Intensity levels:
+      quick    — 1 agent (ripper only), focused scenarios
+      standard — 3 agents, full scenario catalog
+      deep     — 3 agents, extended scenarios + follow-up rounds
+    """
+
+    # Pre-flight checks
+    if not shutil.which("tmux-live"):
+        typer.echo("Error: tmux-live not found on PATH. Install tmux-fork-orchestrator.", err=True)
+        raise typer.Exit(1)
+
+    if not shutil.which("memory"):
+        typer.echo("Error: memory CLI not found. Run 'uv tool install .'", err=True)
+        raise typer.Exit(1)
+
+    # Resolve agent roles
+    valid_agents = {"ripper", "walker", "sniper"}
+    if agents == "all":
+        selected_agents = valid_agents
+    else:
+        selected_agents = {a.strip() for a in agents.split(",") if a.strip() in valid_agents}
+        if not selected_agents:
+            typer.echo(f"Error: No valid agents. Use: {', '.join(valid_agents)} or 'all'", err=True)
+            raise typer.Exit(1)
+
+    # Quick mode: single agent only
+    if intensity == "quick":
+        selected_agents = {"ripper"}
+
+    # Record hunt session
+    hunt_id = uuid.uuid4().hex[:8]
+    hunt_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    topic_key = f"bug-hunt/{hunt_date}/{hunt_id}"
+
+    typer.echo(f"""
+=== Bug Hunt: {hunt_id} ===
+  Agents: {', '.join(sorted(selected_agents))}
+  Intensity: {intensity}
+  Subsystems: {subsystems or 'all'}
+  Topic key: {topic_key}
+""")
+
+    if not auto:
+        confirm = input("Launch agents? [y/N] ")
+        if confirm.lower() != "y":
+            typer.echo("Aborted.")
+            raise typer.Exit(0)
+
+    # Initialize tmux-live orchestrator
+    subprocess.run(["tmux-live", "init", str(len(selected_agents) + 1)], check=True)
+
+    # Agent role → tmux-live role mapping
+    role_map = {
+        "ripper": "explorer",
+        "walker": "implementer",
+        "sniper": "verifier",
+    }
+
+    # Agent-specific instructions
+    agent_instructions = {
+        "ripper": """You are the RIPPER agent. Your job: find bugs via adversarial inputs.
+Test: malformed JSON, empty strings, very long content, SQL injection chars,
+unicode edge cases, null bytes, missing required fields, extra fields.
+Run REAL commands: memory save, search, list, get, delete, sync.
+Focus on CRASHES, DATA LOSS, and SILENT CORRUPTION.""",
+        "walker": """You are the WALKER agent. Your job: find bugs in multi-step workflows.
+Test: complete roundtrips (save → search → get → update → delete),
+sync export → import, workflow outline → execute → verify,
+session start → save → summary → end.
+Focus on STATE CORRUPTION and MISSING DATA after workflows.""",
+        "sniper": """You are the SNIPER agent. Your job: find isolation and boundary bugs.
+Test: cross-project data leakage, concurrent access, ID collision,
+prefix matching edge cases, topic_key conflicts between projects,
+FTS special characters, pagination boundaries.
+Focus on DATA LEAKAGE and ISOLATION FAILURES.""",
+    }
+
+    # Spawn agents
+    spawned = []
+    for agent_name in sorted(selected_agents):
+        tmux_role = role_map[agent_name]
+        prompt_path = f"/tmp/hunt-prompt-{agent_name}-{hunt_id}.txt"
+
+        # Build agent prompt
+        subsystem_filter = f"\nFocus on subsystems: {subsystems}" if subsystems else ""
+        prompt = f"""{agent_instructions[agent_name]}
+
+Project directory: {Path.cwd()}
+Hunt ID: {hunt_id}
+Intensity: {intensity}{subsystem_filter}
+
+## Method
+1. Run `memory --help` to discover available commands
+2. Run each command with edge-case inputs
+3. Document every bug found
+
+## Output
+Write findings to /tmp/hunt-findings-{agent_name}-{hunt_id}.md
+Format each finding as:
+```
+## Bug #N: [TITLE]
+- Severity: CRITICAL / HIGH / MEDIUM / LOW
+- Command: memory <command> <args>
+- Description: what's wrong
+- Reproduction: exact steps
+- Expected vs Actual: what should happen vs what happens
+```
+
+When done, write ## HUNT_COMPLETE ## as last line.
+"""
+
+        with open(prompt_path, "w") as f:
+            f.write(prompt)
+
+        full_name = f"hunt-{agent_name}-{hunt_id}"
+        result = subprocess.run(
+            ["tmux-live", "launch", tmux_role, full_name, f"@{prompt_path}"],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            typer.echo(f"  ✅ Spawned {agent_name} ({full_name})")
+            spawned.append(full_name)
+        else:
+            typer.echo(f"  ❌ Failed to spawn {agent_name}: {result.stderr.strip()}", err=True)
+
+    if not spawned:
+        typer.echo("Error: No agents spawned. Aborting.", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"\n{len(spawned)} agents running. Monitoring...")
+
+    # Wait for all agents
+    for name in spawned:
+        typer.echo(f"  Waiting for {name}...")
+        subprocess.run(["tmux-live", "wait", name, "600"], capture_output=True)
+
+    # Consolidate findings
+    typer.echo("\n=== Consolidating Findings ===")
+    all_findings: list[dict[str, str]] = []
+
+    for agent_name in sorted(selected_agents):
+        findings_path = f"/tmp/hunt-findings-{agent_name}-{hunt_id}.md"
+        if Path(findings_path).exists():
+            content = Path(findings_path).read_text()
+            bugs = content.count("## Bug #")
+            typer.echo(f"  {agent_name}: {bugs} bugs found")
+            all_findings.append({"agent": agent_name, "bugs": bugs, "file": findings_path})
+        else:
+            typer.echo(f"  {agent_name}: no findings file")
+
+    # Save consolidated report
+    total_bugs = sum(f["bugs"] for f in all_findings)
+    report = f"Bug hunt {hunt_id}: {total_bugs} bugs found by {len(spawned)} agents."
+
+    try:
+        svc = get_memory_service()
+        svc.save(
+            content=report,
+            type="session-summary",
+            project=Path.cwd().name,
+            topic_key=topic_key,
+            metadata={"hunt_id": hunt_id, "agents": list(selected_agents), "total_bugs": total_bugs},
+        )
+        typer.echo(f"\nReport saved: {topic_key}")
+    except Exception as e:
+        typer.echo(f"\nWarning: Could not save to memory: {e}", err=True)
+
+    # Cleanup
+    subprocess.run(["tmux-live", "kill-all"], capture_output=True)
+
+    # Print verdict
+    if total_bugs == 0:
+        typer.echo("\nVerdict: PASS — no bugs found.")
+    elif any(f["bugs"] > 0 and "CRITICAL" in Path(f["file"]).read_text() for f in all_findings if Path(f["file"]).exists()):
+        typer.echo("\nVerdict: FAIL — CRITICAL bugs found. Fix before shipping.")
+    else:
+        typer.echo(f"\nVerdict: PASS WITH WARNINGS — {total_bugs} non-critical bugs found.")
+
+    # Print summary of all findings
+    for f in all_findings:
+        if Path(f["file"]).exists():
+            typer.echo(f"\n--- {f['agent']} findings: {f['file']} ---")
+
+
 @app.command("status")
 def status() -> None:
     plan_path = get_plan_state_path()
