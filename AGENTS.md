@@ -176,6 +176,46 @@ Ver `pyproject.toml` para configuración completa.
 
 ---
 
+## Inter-Agent Messaging
+
+### CLI (`fork message`)
+
+```bash
+fork message send <session:win> <payload> [--from-agent ID] [--type TYPE]
+fork message receive <agent_id> [--json] [--watch] [--mark-read] [--limit N]
+fork message broadcast <payload> [--from-agent ID]
+fork message history <agent_id> [--limit N]
+fork message cleanup [--max-age SECONDS]
+```
+
+### Message Types
+
+| Type | Use |
+|------|-----|
+| COMMAND | Task assignment |
+| REPLY | Response to command |
+| HANDOFF | Session handoff |
+| PROGRESS | Progress report |
+| FILE_TOUCHED | File claim for exclusive editing |
+| OBSERVATION | Discovery/finding share |
+
+### Architecture
+
+- SQLite is authoritative transport (persists even when tmux fails)
+- tmux pane option @last_fork_msg is notification side-channel
+- 24h TTL, 5000 message hard cap
+- MessageRepository Protocol in `src/domain/ports/`
+- MessageStore implementation in `src/infrastructure/persistence/`
+
+### Workflow Integration
+
+```bash
+memory workflow execute --messaging  # PROGRESS messages to orchestrator
+memory workflow verify --messaging   # REPLY with verification results
+```
+
+---
+
 ## SESSION CHECKPOINT PROCEDURE
 
 Al finalizar una sesión de trabajo, SIEMPRE ejecutar en PARALELO:

@@ -21,7 +21,7 @@ def test_concurrency_shared_db(tmp_path):
     msg = AgentMessage.create(
         from_agent="s1:0", to_agent="s2:0", message_type=MessageType.COMMAND, payload="Message 1"
     )
-    assert messenger.store.save(msg) is None  # save returns None
+    assert messenger.store.save(msg) == msg.id  # save returns msg id
 
     # 3. Verify both exist
     assert len(memory_service.search("Observation")) >= 1

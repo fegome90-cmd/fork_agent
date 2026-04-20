@@ -144,11 +144,57 @@ memory schedule cancel <id>
 
 ### Messaging (inter-agent IPC)
 
+Persistent message bus for coordinating multiple AI agents via SQLite.
+Messages survive tmux failures and pane restarts.
+Each message is stored with a type, sender, target, and timestamp.
+Agents poll for new messages or use the `--watch` flag for live message delivery.
+
+#### CLI Commands
+
 ```bash
-memory message send agent1:1 "Task complete"
-memory message broadcast "All systems operational"
-memory message history agent1:1
+fork message send <target> <payload> [--from-agent ID] [--type TYPE]
+fork message receive <agent_id> [--limit N] [--watch] [--mark-read] [--json]
+fork message broadcast <payload> [--from-agent ID]
+fork message history <agent_id> [--limit N]
+fork message cleanup [--max-age SECONDS]
 ```
+
+#### Message Types
+
+| Type | Purpose |
+|------|---------|
+| `COMMAND` | Task assignment or request from orchestrator to worker |
+| `REPLY` | Response to a command, includes success/failure status |
+| `HANDOFF` | Session handoff notification between agent shifts |
+| `PROGRESS` | Agent reports progress or task completion |
+| `FILE_TOUCHED` | Agent claims a file for editing (conflict avoidance) |
+| `OBSERVATION` | Agent shares a discovery, finding, or insight |
+
+#### Architecture
+
+- **SQLite** is the authoritative transport (messages persist even when tmux fails)
+- **tmux pane options** (`@last_fork_msg`) are a notification side-channel for real-time alerts
+- **v2 protocol**: temp files with short prefix (`# F:{id8}`) to avoid tmux line limits
+- **TTL**: 24h default, 5000 message hard cap per agent
+- **MessageRepository Protocol** for dependency inversion and testability
+- **EventCategory.MESSAGE** telemetry with Prometheus counter for message throughput
+
+#### Workflow Integration
+
+The messaging system integrates with the workflow engine to automatically
+send progress messages during execution and verification replies on completion.
+
+```bash
+memory workflow execute --messaging    # enables PROGRESS messages to orchestrator
+memory workflow verify --messaging     # sends REPLY with verification results
+```
+
+#### POC Results
+
+- Round-trip test: 11/11 message tests pass
+- Live agent test: 16 messages exchanged between 2 agents, 6 file discoveries delivered
+- Latency: ~30s from send to receive (acceptable for orchestration)
+- Message delivery confirmed even after tmux pane restart
 
 ---
 

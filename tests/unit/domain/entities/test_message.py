@@ -24,13 +24,16 @@ class TestMessageType:
         """MessageType should have HANDOFF."""
         assert hasattr(MessageType, "HANDOFF")
 
-    def test_has_exactly_three_types(self) -> None:
-        """MessageType should have exactly 3 types (COMMAND, REPLY, HANDOFF)."""
+    def test_has_exactly_six_types(self) -> None:
+        """MessageType should have exactly 6 types."""
         types = list(MessageType)
-        assert len(types) == 3
+        assert len(types) == 6
         assert MessageType.COMMAND in types
         assert MessageType.REPLY in types
         assert MessageType.HANDOFF in types
+        assert MessageType.PROGRESS in types
+        assert MessageType.FILE_TOUCHED in types
+        assert MessageType.OBSERVATION in types
 
 
 class TestAgentMessage:
