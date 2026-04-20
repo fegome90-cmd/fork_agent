@@ -819,7 +819,21 @@ def bug_hunt(
             raise typer.Exit(0)
 
     # Initialize tmux-live orchestrator
-    subprocess.run(["tmux-live", "init", str(len(selected_agents) + 1)], check=True)
+    try:
+        result = subprocess.run(
+            ["tmux-live", "init", str(len(selected_agents) + 1)],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            pass  # tmux-live initialized successfully
+        else:
+            typer.echo(f"Warning: tmux-live not available ({result.stderr.strip()})", err=True)
+            typer.echo("Hint: Run inside tmux for agent spawning. Use 'memory workflow bug-hunt --help'", err=True)
+            typer.echo("       to see what would run.", err=True)
+            raise typer.Exit(1)
+    except FileNotFoundError:
+        typer.echo("Error: tmux-live not found on PATH. Install from tmux_fork skills.", err=True)
+        raise typer.Exit(1) from None
 
     # Agent role → tmux-live role mapping
     role_map = {
