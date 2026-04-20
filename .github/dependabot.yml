@@ -1,0 +1,38 @@
+version: 2
+
+updates:
+  # Python dependencies via uv
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Montevideo"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "fegome90-cmd"
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Montevideo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "fegome90-cmd"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: "ci"

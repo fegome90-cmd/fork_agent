@@ -1,0 +1,40 @@
+# CODEOWNERS — defines code ownership for review requirements
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @fegome90-cmd
+
+# Source code — domain layer (core business logic)
+/src/domain/ @fegome90-cmd
+
+# Source code — application layer (use cases, services)
+/src/application/ @fegome90-cmd
+
+# Source code — infrastructure (adapters, persistence, external APIs)
+/src/infrastructure/ @fegome90-cmd
+
+# Source code — interfaces (CLI, API, MCP, TUI)
+/src/interfaces/ @fegome90-cmd
+
+# Tests
+/tests/ @fegome90-cmd
+
+# CI/CD workflows
+/.github/workflows/ @fegome90-cmd
+
+# Project config
+/pyproject.toml @fegome90-cmd
+/Makefile @fegome90-cmd
+/.pre-commit-config.yaml @fegome90-cmd
+
+# Documentation
+/docs/ @fegome90-cmd
+/README.md @fegome90-cmd
+
+# Scripts
+/scripts/ @fegome90-cmd
+
+# Config files
+/.env.sample @fegome90-cmd
+/.mypy.ini @fegome90-cmd
+/.gitignore @fegome90-cmd

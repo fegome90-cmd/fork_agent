@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check version consistency
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # Extract version from pyproject.toml (handles "0.1.0" or "0.1.0rc1")
+          TOML_VERSION=$(grep -oP 'version\s*=\s*"\K[^"]+' pyproject.toml | head -1)
+          echo "Tag version: $TAG_VERSION"
+          echo "TOML version: $TOML_VERSION"
+          if [ "$TAG_VERSION" != "$TOML_VERSION" ]; then
+            echo "::error::Tag version $TAG_VERSION does not match pyproject.toml version $TOML_VERSION"
+            exit 1
+          fi
+
+  test:
+    name: Test (release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-fail-under=90
+
+      - name: Lint
+        run: uv run ruff check src/ tests/
+
+      - name: Format check
+        run: uv run ruff format --check src/ tests/
+
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: uv sync --all-extras
+
+      - name: Build
+        run: uv build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 30
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-github:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "$PREV_TAG"..HEAD)
+          fi
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            ## Changes
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+            ```bash
+            pip install fork_agent==${{ github.ref_name }}
+            ```
+          files: dist/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'rc') }}
