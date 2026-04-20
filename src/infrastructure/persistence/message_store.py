@@ -156,6 +156,7 @@ class MessageStore:
     def cleanup_expired(self) -> int:
         """Remove messages that have expired."""
         import time
+
         now_ms = int(time.time() * 1000)
         with self._connection as conn:
             cursor = conn.execute(

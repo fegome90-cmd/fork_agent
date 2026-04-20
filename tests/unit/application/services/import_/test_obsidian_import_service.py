@@ -74,7 +74,9 @@ class TestImportSingleFile:
 class TestImportNestedDirs:
     """test_import_nested_dirs - topic_key from directory structure."""
 
-    def test_nested_dirs_imported(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
+    def test_nested_dirs_imported(
+        self, tmp_path: Path, import_service: ObsidianImportService
+    ) -> None:
         _write_obsidian_md(
             tmp_path / "compact" / "session-summary.md",
             topic_key="compact/session-summary",
@@ -97,7 +99,9 @@ class TestImportNestedDirs:
 class TestImportNoFrontmatter:
     """test_import_no_frontmatter - skip with error."""
 
-    def test_skip_no_frontmatter(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
+    def test_skip_no_frontmatter(
+        self, tmp_path: Path, import_service: ObsidianImportService
+    ) -> None:
         (tmp_path / "no-frontmatter.md").write_text(
             "# Just a regular markdown\n\nNo frontmatter here.\n", encoding="utf-8"
         )
@@ -118,9 +122,7 @@ class TestImportInvalidYaml:
 
     def test_skip_invalid_yaml(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
         path = tmp_path / "bad-yaml.md"
-        path.write_text(
-            "---\nid: abc\n: broken yaml [[[\n---\ncontent\n", encoding="utf-8"
-        )
+        path.write_text("---\nid: abc\n: broken yaml [[[\n---\ncontent\n", encoding="utf-8")
         result = import_service.import_from_dir(
             input_dir=tmp_path,
             memory_save_fn=_fake_save,
@@ -151,7 +153,9 @@ class TestImportDuplicateSkip:
         assert result.skipped == 1
         assert len(result.errors) == 0
 
-    def test_overwrite_when_not_skipping(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
+    def test_overwrite_when_not_skipping(
+        self, tmp_path: Path, import_service: ObsidianImportService
+    ) -> None:
         _write_obsidian_md(
             tmp_path / "dup.md",
             id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -248,7 +252,9 @@ class TestImportDerivesTopicKeyFromPath:
 class TestImportStripsH1Title:
     """test_import_strips_h1_title - body starts with # Title\\n\\n."""
 
-    def test_strips_h1_from_content(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
+    def test_strips_h1_from_content(
+        self, tmp_path: Path, import_service: ObsidianImportService
+    ) -> None:
         saved_content: str | None = None
 
         def capture_save(content: str, **_kwargs: object) -> str:  # noqa: ARG001
@@ -273,7 +279,9 @@ class TestImportStripsH1Title:
 class TestImportPathTraversalBlocked:
     """test_import_path_traversal_blocked - malicious paths rejected."""
 
-    def test_traversal_in_file_path(self, tmp_path: Path, import_service: ObsidianImportService) -> None:
+    def test_traversal_in_file_path(
+        self, tmp_path: Path, import_service: ObsidianImportService
+    ) -> None:
         # Create a symlink or actual path outside the input dir
         outside = tmp_path.parent / "evil.md"
         outside.write_text(

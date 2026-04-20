@@ -448,7 +448,9 @@ class TestBackwardCompatibility:
 class TestCleanupTempFiles:
     """Tests for cleanup_temp_files function."""
 
-    def test_cleanup_removes_old_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_cleanup_removes_old_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Should remove files older than TTL."""
         # Create a temp file with old mtime
         old_file = tmp_path / "fork_msg_oldtest.json"
@@ -477,7 +479,9 @@ class TestCleanupTempFiles:
         assert not old_file.exists()
         assert new_file.exists()
 
-    def test_cleanup_keeps_recent_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_cleanup_keeps_recent_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Should not remove files newer than TTL."""
         # Create a new file
         new_file = tmp_path / "fork_msg_recent.json"

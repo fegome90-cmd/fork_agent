@@ -162,6 +162,12 @@ class TestTelemetryIntegration:
         telemetry_service.flush()
         counts = telemetry_service.get_event_counts("24h")
 
-        assert counts.get("memory.save", 0) >= 2, f"Expected >= 2 saves, got {counts.get('memory.save', 0)}"
-        assert counts.get("memory.search", 0) >= 1, f"Expected >= 1 search, got {counts.get('memory.search', 0)}"
-        assert counts.get("memory.delete", 0) >= 1, f"Expected >= 1 delete, got {counts.get('memory.delete', 0)}"
+        assert counts.get("memory.save", 0) >= 2, (
+            f"Expected >= 2 saves, got {counts.get('memory.save', 0)}"
+        )
+        assert counts.get("memory.search", 0) >= 1, (
+            f"Expected >= 1 search, got {counts.get('memory.search', 0)}"
+        )
+        assert counts.get("memory.delete", 0) >= 1, (
+            f"Expected >= 1 delete, got {counts.get('memory.delete', 0)}"
+        )

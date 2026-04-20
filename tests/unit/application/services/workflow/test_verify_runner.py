@@ -53,7 +53,6 @@ class TestVerifyRunner:
         assert result["test_count"] == 3
         assert result["fail_count"] == 0
 
-
     @patch("subprocess.run")
     def test_run_timeout(self, mock_run: MagicMock, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").touch()
@@ -79,7 +78,9 @@ class TestVerifyRunner:
         mock_result = MagicMock()
         mock_result.returncode = 0
         # Multiple test patterns
-        mock_result.stdout = "tests/test_a.py::test_x PASSED\ntests/test_b.py::test_y PASSED\n5 passed in 1.2s"
+        mock_result.stdout = (
+            "tests/test_a.py::test_x PASSED\ntests/test_b.py::test_y PASSED\n5 passed in 1.2s"
+        )
         mock_result.stderr = ""
         mock_run.return_value = mock_result
         runner = VerifyRunner()

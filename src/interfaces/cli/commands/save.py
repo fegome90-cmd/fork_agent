@@ -71,7 +71,9 @@ def save(
         None, "--where", help="Where (files, components) (structured field)"
     ),
     learned: str | None = typer.Option(None, "--learned", help="Key takeaway (structured field)"),
-    title: str | None = typer.Option(None, "--title", "-T", help="Optional title for the observation"),
+    title: str | None = typer.Option(
+        None, "--title", "-T", help="Optional title for the observation"
+    ),
 ) -> None:
     """Save an observation to memory.
 

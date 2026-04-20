@@ -22,4 +22,6 @@ class RetrievalSearchService:
         type_: str | None = None,
         session_id: str | None = None,
     ) -> list[Observation]:
-        return self._enhanced.search(query, limit=limit, project=project, type=type_, session_id=session_id)
+        return self._enhanced.search(
+            query, limit=limit, project=project, type=type_, session_id=session_id
+        )

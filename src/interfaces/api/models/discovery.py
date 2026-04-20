@@ -109,9 +109,9 @@ class DiscoveryCardEnvelope(BaseModel):
         description="When this card was generated",
     )
     cache_ttl: int = Field(default=3600, description="Seconds to cache this card")
-    data: (
-        OverviewCardData | WorkflowCardData | ErrorGuidance | dict[str, Any]
-    ) = Field(..., description="Card payload")
+    data: OverviewCardData | WorkflowCardData | ErrorGuidance | dict[str, Any] = Field(
+        ..., description="Card payload"
+    )
     quick_actions: list[str] = Field(
         default_factory=list,
         description="Quick action suggestions",

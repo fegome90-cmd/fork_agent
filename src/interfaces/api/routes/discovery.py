@@ -69,7 +69,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             curl_example=f"curl -X POST {base_url}/api/v1/agents/sessions "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
-            f"-d '{{\"agent_type\": \"opencode\", \"task\": \"your task\"}}'",
+            f'-d \'{{"agent_type": "opencode", "task": "your task"}}\'',
             description="Create a new agent session",
         ),
         EndpointSummary(
@@ -102,7 +102,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             curl_example=f"curl -X POST {base_url}/api/v1/workflow/outline "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
-            f"-d '{{\"task\": \"your task\"}}'",
+            f'-d \'{{"task": "your task"}}\'',
             description="Create a development plan for a task",
         ),
         EndpointSummary(
@@ -127,7 +127,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             curl_example=f"curl -X POST {base_url}/api/v1/workflow/ship/{{verify_id}} "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
-            f"-d '{{\"branch\": \"feature/x\", \"commit_message\": \"Add X\"}}'",
+            f'-d \'{{"branch": "feature/x", "commit_message": "Add X"}}\'',
             description="Ship the implementation (commit and push)",
         ),
         EndpointSummary(
@@ -146,7 +146,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             curl_example=f"curl -X POST {base_url}/api/v1/memory "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
-            f"-d '{{\"content\": \"your observation\"}}'",
+            f'-d \'{{"content": "your observation"}}\'',
             description="Save an observation to memory",
         ),
         EndpointSummary(
@@ -186,7 +186,7 @@ def _build_endpoint_summaries() -> list[EndpointSummary]:
             curl_example=f"curl -X POST {base_url}/api/v1/integrations/branch-review/workflow "
             f"-H 'X-API-Key: $API_KEY' "
             f"-H 'Content-Type: application/json' "
-            f"-d '{{\"agents\": [\"code-reviewer\"]}}'",
+            f'-d \'{{"agents": ["code-reviewer"]}}\'',
             description="Run a complete branch-review workflow via external service",
         ),
         # Process management endpoints

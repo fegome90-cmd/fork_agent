@@ -70,8 +70,9 @@ class AgentMessenger:
 
         # 2. Ephemeral Maintenance (Filesystem protection)
         import time
+
         now = time.time()
-        if now - self._last_maintenance > 30: # Every 30 seconds max
+        if now - self._last_maintenance > 30:  # Every 30 seconds max
             cleanup_temp_files(max_age_seconds=60)
             self._last_maintenance = now
 
@@ -86,18 +87,29 @@ class AgentMessenger:
         # We use Tmux User Options as an invisible side-channel for agents.
         # This is 100% clean and doesn't affect the human UI (status bar).
         import subprocess
+
         try:
             # Check if session exists first
-            check = subprocess.run(["tmux", "has-session", "-t", target_session], capture_output=True)
+            check = subprocess.run(
+                ["tmux", "has-session", "-t", target_session], capture_output=True
+            )
             if check.returncode != 0:
                 logging.warning(f"Messaging target session not found: {target_session}")
                 return False
 
             # Set the message ID as a pane option (Side-channel)
-            subprocess.run([
-                "tmux", "set-option", "-p", "-t", f"{target_session}:{window_index}",
-                "@last_fork_msg", encoded_msg
-            ], capture_output=True)
+            subprocess.run(
+                [
+                    "tmux",
+                    "set-option",
+                    "-p",
+                    "-t",
+                    f"{target_session}:{window_index}",
+                    "@last_fork_msg",
+                    encoded_msg,
+                ],
+                capture_output=True,
+            )
 
             # 5. UI Notification (Optional/Discreet)
             # To avoid "hiding sessions", we ONLY send display-message if the target
@@ -106,10 +118,17 @@ class AgentMessenger:
             if target_session != current_session:
                 # We show a generic notification that doesn't leak IDs to the status bar
                 # but alerts the user/agent that something happened.
-                subprocess.run([
-                    "tmux", "display-message", "-t", target_session,
-                    f"FORK: Msg from {msg.from_agent}"
-                ], capture_output=True, timeout=1)
+                subprocess.run(
+                    [
+                        "tmux",
+                        "display-message",
+                        "-t",
+                        target_session,
+                        f"FORK: Msg from {msg.from_agent}",
+                    ],
+                    capture_output=True,
+                    timeout=1,
+                )
 
             return True
         except Exception as e:
@@ -120,12 +139,12 @@ class AgentMessenger:
         """Identify current tmux session name safely."""
         import os
         import subprocess
+
         if "TMUX" not in os.environ:
             return None
         try:
             result = subprocess.run(
-                ["tmux", "display-message", "-p", "#S"],
-                capture_output=True, text=True, timeout=1
+                ["tmux", "display-message", "-p", "#S"], capture_output=True, text=True, timeout=1
             )
             return result.stdout.strip() if result.returncode == 0 else None
         except Exception:

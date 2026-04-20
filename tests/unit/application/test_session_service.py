@@ -80,7 +80,9 @@ class TestStartSession:
         assert session.summary is None
 
     @patch("src.application.services.session_service.uuid")
-    def test_start_session_uses_generated_uuid(self, mock_uuid: MagicMock, mock_repository: MagicMock) -> None:
+    def test_start_session_uses_generated_uuid(
+        self, mock_uuid: MagicMock, mock_repository: MagicMock
+    ) -> None:
         from src.application.services.session_service import SessionService
 
         mock_uuid.uuid4.return_value = "fixed-uuid-1234"
@@ -160,9 +162,14 @@ class TestListSessions:
         from src.application.services.session_service import SessionService
 
         s1 = Session(
-            id="s1", project="p", directory="/d",
-            started_at=1000, ended_at=2000,
-            goal=None, instructions=None, summary=None,
+            id="s1",
+            project="p",
+            directory="/d",
+            started_at=1000,
+            ended_at=2000,
+            goal=None,
+            instructions=None,
+            summary=None,
         )
         mock_repository.get_recent.return_value = [s1]
         service = SessionService(repository=mock_repository)
@@ -177,14 +184,24 @@ class TestListSessions:
         from src.application.services.session_service import SessionService
 
         active = Session(
-            id="active", project="p", directory="/d",
-            started_at=1000, ended_at=None,
-            goal=None, instructions=None, summary=None,
+            id="active",
+            project="p",
+            directory="/d",
+            started_at=1000,
+            ended_at=None,
+            goal=None,
+            instructions=None,
+            summary=None,
         )
         ended = Session(
-            id="ended", project="p", directory="/d",
-            started_at=1000, ended_at=2000,
-            goal=None, instructions=None, summary=None,
+            id="ended",
+            project="p",
+            directory="/d",
+            started_at=1000,
+            ended_at=2000,
+            goal=None,
+            instructions=None,
+            summary=None,
         )
         mock_repository.get_recent.return_value = [active, ended]
         service = SessionService(repository=mock_repository)
@@ -215,9 +232,14 @@ class TestGetActive:
         from src.application.services.session_service import SessionService
 
         active = Session(
-            id="s1", project="p", directory="/d",
-            started_at=1000, ended_at=None,
-            goal=None, instructions=None, summary=None,
+            id="s1",
+            project="p",
+            directory="/d",
+            started_at=1000,
+            ended_at=None,
+            goal=None,
+            instructions=None,
+            summary=None,
         )
         mock_repository.get_active.return_value = active
         service = SessionService(repository=mock_repository)
@@ -269,6 +291,7 @@ class TestGetContext:
 # Minimal spec for type hints (not used as a real mock base, just for spec)
 class SessionRepositorySpec:
     """Specification for SessionRepository interface."""
+
     def create(self, session: Session) -> None: ...
     def end_session(self, session_id: str, summary: str | None = None) -> Session: ...
     def get_recent(self, project: str, limit: int = 10) -> list[Session]: ...

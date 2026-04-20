@@ -15,7 +15,13 @@ _INTENT_KEYWORDS = {
 }
 
 _INTENT_TYPE_BOOSTS = {
-    "operational": {"procedure": 3.0, "decision": 2.5, "pattern": 2.0, "policy": 1.5, "lifecycle": 1.5},
+    "operational": {
+        "procedure": 3.0,
+        "decision": 2.5,
+        "pattern": 2.0,
+        "policy": 1.5,
+        "lifecycle": 1.5,
+    },
     "historical": {"discovery": 3.0, "learning": 2.5, "memory": 2.0},
     "official": {"reference": 3.0, "policy": 2.5, "decision": 2.0},
     "lookup": {"reference": 3.0, "config": 2.5, "workaround": 2.0},

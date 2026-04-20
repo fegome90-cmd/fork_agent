@@ -1,4 +1,5 @@
 """Tests for REQ-6: TmuxOrchestrator thread safety foundation."""
+
 from __future__ import annotations
 
 import threading
@@ -81,15 +82,19 @@ class TestConcurrentAccess:
         # Check no interleaving: each start-end pair should be adjacent
         for i in range(0, len(call_order) - 1, 2):
             assert call_order[i].startswith("start"), f"Expected start at {i}, got {call_order[i]}"
-            assert call_order[i + 1].startswith("end"), f"Expected end at {i+1}, got {call_order[i+1]}"
+            assert call_order[i + 1].startswith("end"), (
+                f"Expected end at {i + 1}, got {call_order[i + 1]}"
+            )
 
     @patch("src.infrastructure.tmux_orchestrator.subprocess.run")
     def test_reentrant_no_deadlock(self, mock_run: MagicMock) -> None:
         """launch_agent -> send_command chain SHALL NOT deadlock."""
         mock_run.return_value = MagicMock(returncode=0)
-        with patch.object(TmuxOrchestrator, "_get_windows", return_value=[
-            type("W", (), {"window_index": 0, "active": True})()
-        ]):
+        with patch.object(
+            TmuxOrchestrator,
+            "_get_windows",
+            return_value=[type("W", (), {"window_index": 0, "active": True})()],
+        ):
             orch = TmuxOrchestrator(safety_mode=False)
             backend = MagicMock()
             backend.get_default_model.return_value = "test-model"

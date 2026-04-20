@@ -97,7 +97,6 @@ class TestToolPreExecutionEvent:
             event.tool_name = "Edit"  # type: ignore[misc]
 
 
-
 class TestWorkflowPhaseChangeEvent:
     """Tests for WorkflowPhaseChangeEvent."""
 
@@ -149,9 +148,7 @@ class TestWorkflowOutlineEvents:
             WorkflowOutlineStartEvent,
         )
 
-        event = WorkflowOutlineStartEvent(
-            plan_id="plan-123", task_description="test task"
-        )
+        event = WorkflowOutlineStartEvent(plan_id="plan-123", task_description="test task")
 
         assert event.plan_id == "plan-123"
         assert event.task_description == "test task"
@@ -162,9 +159,7 @@ class TestWorkflowOutlineEvents:
             WorkflowOutlineCompleteEvent,
         )
 
-        event = WorkflowOutlineCompleteEvent(
-            plan_id="plan-123", plan_file="/tmp/plan.md"
-        )
+        event = WorkflowOutlineCompleteEvent(plan_id="plan-123", plan_file="/tmp/plan.md")
 
         assert event.plan_id == "plan-123"
         assert event.plan_file == "/tmp/plan.md"
@@ -231,9 +226,7 @@ class TestWorkflowVerifyEvents:
             WorkflowVerifyCompleteEvent,
         )
 
-        event = WorkflowVerifyCompleteEvent(
-            plan_id="plan-123", test_results={"passed": True}
-        )
+        event = WorkflowVerifyCompleteEvent(plan_id="plan-123", test_results={"passed": True})
 
         assert isinstance(event.test_results, MappingProxyType)
         with pytest.raises(TypeError):

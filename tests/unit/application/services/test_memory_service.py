@@ -263,9 +263,7 @@ class TestMemoryServiceGetRecentWithTypeFilter:
 class TestMemoryServiceSaveRedaction:
     """Verify save() redacts PII before storage."""
 
-    def test_api_key_in_content_gets_redacted(
-        self, service: object, mock_repo: MagicMock
-    ) -> None:
+    def test_api_key_in_content_gets_redacted(self, service: object, mock_repo: MagicMock) -> None:
         mock_repo.create.return_value = None
         mock_repo.get_by_topic_key.return_value = None
 
@@ -281,9 +279,7 @@ class TestMemoryServiceSaveRedaction:
     ) -> None:
         mock_repo.create.return_value = None
 
-        service.save(
-            content="The config is <private>super_secret_value</private> here"
-        )
+        service.save(content="The config is <private>super_secret_value</private> here")
 
         create_args = mock_repo.create.call_args
         stored_content = create_args[0][0].content
@@ -304,9 +300,7 @@ class TestMemoryServiceSaveRedaction:
         stored_meta = create_args[0][0].metadata
         assert stored_meta["password"] == "[REDACTED]"
 
-    def test_clean_content_unchanged(
-        self, service: object, mock_repo: MagicMock
-    ) -> None:
+    def test_clean_content_unchanged(self, service: object, mock_repo: MagicMock) -> None:
         mock_repo.create.return_value = None
 
         original = "This is a normal observation about Python patterns"
@@ -319,9 +313,7 @@ class TestMemoryServiceSaveRedaction:
 class TestMemoryServiceUpdateRedaction:
     """Verify update() redacts PII before storage."""
 
-    def test_secret_in_content_gets_redacted(
-        self, service: object, mock_repo: MagicMock
-    ) -> None:
+    def test_secret_in_content_gets_redacted(self, service: object, mock_repo: MagicMock) -> None:
         existing = _make_observation(id="upd-1", revision_count=1)
         mock_repo.get_by_id.return_value = existing
         mock_repo.update.return_value = None
@@ -332,9 +324,7 @@ class TestMemoryServiceUpdateRedaction:
         updated_content = update_args[0][0].content
         assert "[REDACTED]" in updated_content
 
-    def test_metadata_token_gets_redacted(
-        self, service: object, mock_repo: MagicMock
-    ) -> None:
+    def test_metadata_token_gets_redacted(self, service: object, mock_repo: MagicMock) -> None:
         existing = _make_observation(id="upd-2", revision_count=1)
         mock_repo.get_by_id.return_value = existing
         mock_repo.update.return_value = None
@@ -348,9 +338,7 @@ class TestMemoryServiceUpdateRedaction:
         updated_meta = update_args[0][0].metadata
         assert updated_meta["token"] == "[REDACTED]"
 
-    def test_clean_content_unchanged(
-        self, service: object, mock_repo: MagicMock
-    ) -> None:
+    def test_clean_content_unchanged(self, service: object, mock_repo: MagicMock) -> None:
         existing = _make_observation(id="upd-3", revision_count=1)
         mock_repo.get_by_id.return_value = existing
         mock_repo.update.return_value = None

@@ -28,7 +28,9 @@ def delete(
     ctx: typer.Context,
     observation_id: str = typer.Argument(..., help="Full ID or prefix of the observation"),
     force: bool = typer.Option(False, "--force", "-f"),
-    project: str | None = typer.Option(None, "--project", "-p", help="Verify observation belongs to project"),
+    project: str | None = typer.Option(
+        None, "--project", "-p", help="Verify observation belongs to project"
+    ),
 ) -> None:
     memory_service = ctx.obj
     if not force and not typer.confirm(f"Delete observation {observation_id}?"):

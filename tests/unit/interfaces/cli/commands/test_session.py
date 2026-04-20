@@ -74,7 +74,10 @@ class TestSessionStartCommand:
 
         mock_service = _make_session_service()
         with (
-            patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service),
+            patch(
+                "src.interfaces.cli.commands.session._get_session_service",
+                return_value=mock_service,
+            ),
             patch("os.getcwd", return_value="/tmp/workdir"),
         ):
             result = runner.invoke(
@@ -97,16 +100,22 @@ class TestSessionStartCommand:
 
         mock_service = _make_session_service()
         with (
-            patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service),
+            patch(
+                "src.interfaces.cli.commands.session._get_session_service",
+                return_value=mock_service,
+            ),
             patch("os.getcwd", return_value="/tmp"),
         ):
             result = runner.invoke(
                 app,
                 [
                     "start",
-                    "--project", "p",
-                    "--goal", "g",
-                    "--instructions", "Use TDD",
+                    "--project",
+                    "p",
+                    "--goal",
+                    "g",
+                    "--instructions",
+                    "Use TDD",
                 ],
             )
 
@@ -124,7 +133,9 @@ class TestSessionEndCommand:
 
         active = _make_active_session()
         mock_service = _make_session_service(active_session=active)
-        with patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service):
+        with patch(
+            "src.interfaces.cli.commands.session._get_session_service", return_value=mock_service
+        ):
             result = runner.invoke(
                 app,
                 ["end", "--project", "test-proj", "--summary", "Done"],
@@ -140,7 +151,9 @@ class TestSessionEndCommand:
         from src.interfaces.cli.commands.session import app
 
         mock_service = _make_session_service(active_session=None)
-        with patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service):
+        with patch(
+            "src.interfaces.cli.commands.session._get_session_service", return_value=mock_service
+        ):
             result = runner.invoke(
                 app,
                 ["end", "--project", "test-proj"],
@@ -159,7 +172,9 @@ class TestSessionListCommand:
 
         sessions = [_make_active_session(), _make_ended_session()]
         mock_service = _make_session_service(list_return=sessions)
-        with patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service):
+        with patch(
+            "src.interfaces.cli.commands.session._get_session_service", return_value=mock_service
+        ):
             result = runner.invoke(
                 app,
                 ["list", "--project", "test-proj"],
@@ -173,7 +188,9 @@ class TestSessionListCommand:
         from src.interfaces.cli.commands.session import app
 
         mock_service = _make_session_service(list_return=[])
-        with patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service):
+        with patch(
+            "src.interfaces.cli.commands.session._get_session_service", return_value=mock_service
+        ):
             result = runner.invoke(
                 app,
                 ["list", "--project", "test-proj"],
@@ -192,7 +209,9 @@ class TestSessionContextCommand:
 
         sessions = [_make_active_session()]
         mock_service = _make_session_service(context_return=sessions)
-        with patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service):
+        with patch(
+            "src.interfaces.cli.commands.session._get_session_service", return_value=mock_service
+        ):
             result = runner.invoke(
                 app,
                 ["context", "--project", "test-proj"],
@@ -206,7 +225,9 @@ class TestSessionContextCommand:
         from src.interfaces.cli.commands.session import app
 
         mock_service = _make_session_service(context_return=[])
-        with patch("src.interfaces.cli.commands.session._get_session_service", return_value=mock_service):
+        with patch(
+            "src.interfaces.cli.commands.session._get_session_service", return_value=mock_service
+        ):
             result = runner.invoke(
                 app,
                 ["context", "--project", "test-proj"],

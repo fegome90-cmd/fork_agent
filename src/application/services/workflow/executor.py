@@ -625,16 +625,8 @@ class WorkflowExecutor:
                 debug_mode = os.environ.get("DEBUG", "0") == "1"
                 if not debug_mode:
                     # Replace full home paths with <redacted>
-                    sanitized = re.sub(
-                        r'/Users/[^/]+/',
-                        '<redacted>/',
-                        error_message
-                    )
-                    sanitized = re.sub(
-                        r'/home/[^/]+/',
-                        '<redacted>/',
-                        sanitized
-                    )
+                    sanitized = re.sub(r"/Users/[^/]+/", "<redacted>/", error_message)
+                    sanitized = re.sub(r"/home/[^/]+/", "<redacted>/", sanitized)
                     metadata_kwargs["error_message"] = sanitized
                 else:
                     metadata_kwargs["error_message"] = error_message

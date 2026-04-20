@@ -26,6 +26,7 @@ def get_branch_review_client() -> BranchReviewClient:
 
 # --- Branch Review Integration ---
 
+
 @router.get("/branch-review/info")
 async def get_branch_review_info(
     _: str = Depends(verify_api_key),

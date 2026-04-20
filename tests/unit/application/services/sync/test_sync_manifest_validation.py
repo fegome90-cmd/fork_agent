@@ -3,6 +3,7 @@
 Bug 3: import_observations() and import_mutations() must validate
 the manifest checksum before processing chunks.
 """
+
 from __future__ import annotations
 
 import gzip
@@ -94,31 +95,40 @@ def _wire_repos(db_path: Path):
     return obs_repo, sync_repo
 
 
-def _write_obs_chunk(export_dir: Path, observations: list[Observation], chunk_id: str = "sync_1000_000") -> Path:
+def _write_obs_chunk(
+    export_dir: Path, observations: list[Observation], chunk_id: str = "sync_1000_000"
+) -> Path:
     """Write a single observation chunk file."""
     export_dir.mkdir(parents=True, exist_ok=True)
     chunk_path = export_dir / f"{chunk_id}.jsonl.gz"
     lines = []
     for obs in observations:
-        lines.append(json.dumps({
-            "id": obs.id,
-            "timestamp": obs.timestamp,
-            "content": obs.content,
-            "metadata": obs.metadata,
-            "idempotency_key": obs.idempotency_key,
-            "project": obs.project,
-            "type": obs.type,
-            "topic_key": obs.topic_key,
-            "revision_count": obs.revision_count,
-            "session_id": obs.session_id,
-        }, separators=(",", ":")))
+        lines.append(
+            json.dumps(
+                {
+                    "id": obs.id,
+                    "timestamp": obs.timestamp,
+                    "content": obs.content,
+                    "metadata": obs.metadata,
+                    "idempotency_key": obs.idempotency_key,
+                    "project": obs.project,
+                    "type": obs.type,
+                    "topic_key": obs.topic_key,
+                    "revision_count": obs.revision_count,
+                    "session_id": obs.session_id,
+                },
+                separators=(",", ":"),
+            )
+        )
     content = "\n".join(lines).encode("utf-8")
     with gzip.open(chunk_path, "wb") as f:
         f.write(content)
     return chunk_path
 
 
-def _write_manifest(export_dir: Path, chunk_paths: list[Path], valid: bool = True, timestamp: int = 1000) -> Path:
+def _write_manifest(
+    export_dir: Path, chunk_paths: list[Path], valid: bool = True, timestamp: int = 1000
+) -> Path:
     """Write a manifest file with checksum over chunks."""
     import hashlib
 
@@ -180,6 +190,7 @@ class TestManifestValidationObservations:
         manifest_path = _write_manifest(export_dir, [chunk_path], valid=False)
 
         import pytest
+
         with pytest.raises(ValueError, match="checksum mismatch"):
             svc.import_observations([chunk_path], source="test", manifest_path=manifest_path)
 
@@ -224,7 +235,9 @@ class TestManifestValidationObservations:
 class TestManifestValidationMutations:
     """Manifest checksum validation for import_mutations."""
 
-    def _write_mutation_chunk(self, export_dir: Path, mutations: list[dict], chunk_id: str = "mutation_1000_000") -> Path:
+    def _write_mutation_chunk(
+        self, export_dir: Path, mutations: list[dict], chunk_id: str = "mutation_1000_000"
+    ) -> Path:
         """Write a single mutation chunk file."""
         chunk_path = export_dir / f"{chunk_id}.jsonl.gz"
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -243,10 +256,14 @@ class TestManifestValidationMutations:
         svc = SyncService(observation_repo=obs_repo, sync_repo=sync_repo, export_dir=export_dir)
 
         mutation = {
-            "seq": 1, "entity": "observation", "entity_key": "mm-1",
+            "seq": 1,
+            "entity": "observation",
+            "entity_key": "mm-1",
             "op": "insert",
             "payload": json.dumps({"id": "mm-1", "timestamp": 1000, "content": "test"}),
-            "source": "local", "project": "", "created_at": 1000,
+            "source": "local",
+            "project": "",
+            "created_at": 1000,
         }
         chunk_path = self._write_mutation_chunk(export_dir, [mutation])
         manifest_path = _write_manifest(export_dir, [chunk_path], valid=True)
@@ -266,15 +283,20 @@ class TestManifestValidationMutations:
         svc = SyncService(observation_repo=obs_repo, sync_repo=sync_repo, export_dir=export_dir)
 
         mutation = {
-            "seq": 1, "entity": "observation", "entity_key": "mm-2",
+            "seq": 1,
+            "entity": "observation",
+            "entity_key": "mm-2",
             "op": "insert",
             "payload": json.dumps({"id": "mm-2", "timestamp": 1000, "content": "test"}),
-            "source": "local", "project": "", "created_at": 1000,
+            "source": "local",
+            "project": "",
+            "created_at": 1000,
         }
         chunk_path = self._write_mutation_chunk(export_dir, [mutation])
         manifest_path = _write_manifest(export_dir, [chunk_path], valid=False)
 
         import pytest
+
         with pytest.raises(ValueError, match="checksum mismatch"):
             svc.import_mutations([chunk_path], source="test", manifest_path=manifest_path)
 

@@ -38,7 +38,7 @@ class TestRestoreSessionsFromDisk:
             "status": "running",
             "started_at": datetime.now().isoformat(),
             "tmux_session": "fork-test",
-            "hooks": []
+            "hooks": [],
         }
         (sessions_dir / "test-session.json").write_text(json.dumps(session_data))
 
@@ -68,9 +68,7 @@ class TestRunGc:
     @patch("src.application.services.agent.agent_manager.AgentManager.cleanup_orphans")
     def test_run_gc_updates_state(self, mock_cleanup):
         mock_cleanup.return_value = CleanupResult(
-            cleaned_sessions=["s1", "s2"],
-            failed_sessions=["f1"],
-            dry_run=False
+            cleaned_sessions=["s1", "s2"], failed_sessions=["f1"], dry_run=False
         )
 
         cleaned, failed = _run_gc(min_age_seconds=0)

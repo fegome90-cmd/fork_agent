@@ -8,6 +8,7 @@ SCRIPTS_DIR = Path("scripts")
 HEALTH_SCRIPT = SCRIPTS_DIR / "trifecta_health.sh"
 STATUS_FILE = Path("_ctx/telemetry/daemon.status")
 
+
 @pytest.fixture
 def mock_env(tmp_path, monkeypatch):
     """Setup a mock environment for the script."""
@@ -20,7 +21,16 @@ def mock_env(tmp_path, monkeypatch):
     # Mock PID file location (Trifecta standard)
     home_dir = tmp_path / "home"
     home_dir.mkdir()
-    trifecta_config_dir = home_dir / ".local" / "share" / "trifecta" / "repos" / "tmux_fork_fc994b59" / "runtime" / "daemon"
+    trifecta_config_dir = (
+        home_dir
+        / ".local"
+        / "share"
+        / "trifecta"
+        / "repos"
+        / "tmux_fork_fc994b59"
+        / "runtime"
+        / "daemon"
+    )
     trifecta_config_dir.mkdir(parents=True)
     pid_file = trifecta_config_dir / "pid"
 
@@ -31,8 +41,9 @@ def mock_env(tmp_path, monkeypatch):
         "scripts_dir": scripts_dir,
         "telemetry_dir": telemetry_dir,
         "pid_file": pid_file,
-        "status_file": tmp_path / "_ctx" / "telemetry" / "daemon.status"
+        "status_file": tmp_path / "_ctx" / "telemetry" / "daemon.status",
     }
+
 
 def test_daemon_healthy(mock_env):  # noqa: ARG001
     """Scenario: Daemon is running and healthy."""
@@ -50,7 +61,7 @@ def test_daemon_healthy(mock_env):  # noqa: ARG001
         if args[0] == "ps":
             if "-p" in args and pid in args:
                 return MockProcess()
-            return MockProcess() # Default to success for name check
+            return MockProcess()  # Default to success for name check
 
         # Simulating 'trifecta' start (should not be called if healthy)
         if args[0] == "trifecta":
@@ -71,7 +82,7 @@ def test_daemon_healthy(mock_env):  # noqa: ARG001
 def test_daemon_dead_with_pid_file(mock_env):
     """Scenario: Daemon is not running but PID file exists."""
     # 1. Setup: Create orphaned PID file
-    mock_env["pid_file"].write_text("99999") # PID that doesn't exist
+    mock_env["pid_file"].write_text("99999")  # PID that doesn't exist
 
     script_path = str(HEALTH_SCRIPT.absolute())
 
@@ -80,4 +91,3 @@ def test_daemon_dead_with_pid_file(mock_env):
     result = subprocess.run([script_path], capture_output=True, text=True)
     assert result.returncode == 1
     assert "CRITICAL" in result.stdout
-

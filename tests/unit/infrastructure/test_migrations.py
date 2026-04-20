@@ -320,9 +320,7 @@ class TestRunPendingMigrations:
 
         # Simulate race: manually apply the migration tracking
         # (it's already applied, but add another pending one)
-        (migrations_dir / "002_add_col.sql").write_text(
-            "ALTER TABLE items ADD COLUMN extra TEXT;"
-        )
+        (migrations_dir / "002_add_col.sql").write_text("ALTER TABLE items ADD COLUMN extra TEXT;")
 
         # Pre-apply migration 002 tracking to simulate concurrent process
         runner = MigrationRunner(config, migrations_dir)

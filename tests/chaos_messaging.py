@@ -16,6 +16,7 @@ from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 pytestmark = pytest.mark.bughunt
 
+
 @pytest.fixture
 def messenger(tmp_path):
     # Use a real file-based DB for stress testing WAL mode
@@ -24,6 +25,7 @@ def messenger(tmp_path):
     store = MessageStore(connection=conn)
     orchestrator = TmuxOrchestrator(safety_mode=False)
     return AgentMessenger(orchestrator=orchestrator, store=store)
+
 
 def test_flood_and_prune_enforcement(messenger):
     """
@@ -50,6 +52,7 @@ def test_flood_and_prune_enforcement(messenger):
     assert count <= MAX_TOTAL_MESSAGES
     print(f"[FLOOD] Hygiene verified: {count} messages in DB (Limit is {MAX_TOTAL_MESSAGES})")
 
+
 def test_concurrent_write_torture(messenger):
     """
     STRESS: 20 threads writing and cleaning up simultaneously.
@@ -67,9 +70,10 @@ def test_concurrent_write_torture(messenger):
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(attack) for _ in range(num_threads)]
         for f in futures:
-            f.result() # Should not raise SQLite error
+            f.result()  # Should not raise SQLite error
 
     print("[CONCURRENCY] System survived concurrent writes.")
+
 
 def test_large_payload_fs_exhaustion(messenger, tmp_path):
     """
@@ -82,7 +86,7 @@ def test_large_payload_fs_exhaustion(messenger, tmp_path):
 
     # Mocking the temp dir to the test tmp_path
     with patch("src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR", tmp_path):
-        large_data = "X" * (1024 * 1024) # 1MB
+        large_data = "X" * (1024 * 1024)  # 1MB
 
         print("\n[FS_STRESS] Starting 100MB burst...")
         with patch("subprocess.run") as mock_run:

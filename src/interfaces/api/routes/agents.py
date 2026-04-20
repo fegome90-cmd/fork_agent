@@ -305,7 +305,9 @@ async def create_session(
                         model=request.model,
                     )
                     if success:
-                        logger.info(f"Launched {backend.display_name} in tmux session: {tmux_session_name}")
+                        logger.info(
+                            f"Launched {backend.display_name} in tmux session: {tmux_session_name}"
+                        )
                     else:
                         agent_error = f"Failed to launch agent in {tmux_session_name}"
                         logger.warning(agent_error)

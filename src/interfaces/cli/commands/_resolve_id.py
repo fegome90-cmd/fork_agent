@@ -29,6 +29,4 @@ def resolve_observation_id(
             raise ValueError(
                 f"Ambiguous ID '{observation_id}' matches {len(matches)} observations"
             ) from None
-        raise ObservationNotFoundError(
-            f"Observation not found: {observation_id}"
-        ) from None
+        raise ObservationNotFoundError(f"Observation not found: {observation_id}") from None

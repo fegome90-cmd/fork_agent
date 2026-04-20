@@ -157,7 +157,9 @@ class MemoryService:
             idempotency_key=idempotency_key,
         )
 
-    def search(self, query: str, limit: int | None = None, project: str | None = None) -> list[Observation]:
+    def search(
+        self, query: str, limit: int | None = None, project: str | None = None
+    ) -> list[Observation]:
         start_ms = int(time.time() * 1000)
         results = self._repository.search(query, limit=limit, project=project)
         duration_ms = int(time.time() * 1000) - start_ms

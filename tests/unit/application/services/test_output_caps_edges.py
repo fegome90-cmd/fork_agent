@@ -24,6 +24,7 @@ TRUNCATION_MARKER = _TRUNCATION_MARKER
 # 1. Exact boundary — no truncation
 # ---------------------------------------------------------------------------
 
+
 class TestExactBoundary:
     def test_content_exactly_at_token_limit_no_truncation(self) -> None:
         """Content of exactly DEFAULT_MAX_TOKENS * CHARS_PER_TOKEN chars fits."""
@@ -41,6 +42,7 @@ class TestExactBoundary:
 # ---------------------------------------------------------------------------
 # 2. One char over boundary — truncation must happen
 # ---------------------------------------------------------------------------
+
 
 class TestOneCharOverBoundary:
     def test_one_char_over_truncates(self) -> None:
@@ -62,6 +64,7 @@ class TestOneCharOverBoundary:
 # ---------------------------------------------------------------------------
 # 3. Unicode — emoji, accented, CJK
 # ---------------------------------------------------------------------------
+
 
 class TestUnicodeContent:
     def test_emoji_estimation(self) -> None:
@@ -103,6 +106,7 @@ class TestUnicodeContent:
 # 4. Newlines and special characters
 # ---------------------------------------------------------------------------
 
+
 class TestNewlinesAndSpecialChars:
     def test_content_with_many_newlines(self) -> None:
         content = "line\n" * 200  # 800 chars
@@ -139,6 +143,7 @@ class TestNewlinesAndSpecialChars:
 # 5. cap_response with observations missing "content" key
 # ---------------------------------------------------------------------------
 
+
 class TestMissingContentKey:
     def test_obs_without_content_key_no_crash(self) -> None:
         """obs.get("content", "") should default to empty string."""
@@ -163,6 +168,7 @@ class TestMissingContentKey:
 # 6. cap_response with empty string content
 # ---------------------------------------------------------------------------
 
+
 class TestEmptyStringContent:
     def test_empty_content_passes_through(self) -> None:
         obs = [{"content": "", "id": "empty"}]
@@ -184,6 +190,7 @@ class TestEmptyStringContent:
 # 7. cap_response with negative max_tokens
 # ---------------------------------------------------------------------------
 
+
 class TestNegativeMaxTokens:
     def test_negative_returns_empty(self) -> None:
         obs = [{"content": "anything"}]
@@ -199,6 +206,7 @@ class TestNegativeMaxTokens:
 # ---------------------------------------------------------------------------
 # 8. cap_response with very large max_tokens
 # ---------------------------------------------------------------------------
+
 
 class TestVeryLargeMaxTokens:
     def test_one_million_tokens_no_overflow(self) -> None:
@@ -222,6 +230,7 @@ class TestVeryLargeMaxTokens:
 # ---------------------------------------------------------------------------
 # 9. Single observation exceeds entire budget
 # ---------------------------------------------------------------------------
+
 
 class TestSingleObsExceedsBudget:
     def test_first_obs_larger_than_budget_gets_truncated_not_dropped(self) -> None:
@@ -251,6 +260,7 @@ class TestSingleObsExceedsBudget:
 # ---------------------------------------------------------------------------
 # 10. Mixed sizes — some fit, some don't
 # ---------------------------------------------------------------------------
+
 
 class TestMixedSizes:
     def test_first_fits_second_truncated(self) -> None:
@@ -282,9 +292,7 @@ class TestMixedSizes:
     def test_three_fit_exactly_then_fourth_dropped(self) -> None:
         """When 4th obs doesn't fit, it's dropped (not truncated — capped overhead > original)."""
         unit = "a" * 40  # 10 content tokens
-        obs = [
-            {"content": unit, "id": str(i)} for i in range(4)
-        ]
+        obs = [{"content": unit, "id": str(i)} for i in range(4)]
         # Full JSON per obs: 66 chars. 3 × 66 = 198 chars = 50 tokens.
         # Budget = 50 tokens = 200 chars. 4th obs = 66 chars > 2 remaining → dropped.
         result = cap_response(obs, max_tokens=50)
@@ -313,6 +321,7 @@ class TestMixedSizes:
 # 11. estimate_tokens with None
 # ---------------------------------------------------------------------------
 
+
 class TestEstimateTokensNone:
     def test_none_raises_type_error(self) -> None:
         """estimate_tokens expects str — None should raise TypeError."""
@@ -323,6 +332,7 @@ class TestEstimateTokensNone:
 # ---------------------------------------------------------------------------
 # 12. Content containing the truncation marker itself
 # ---------------------------------------------------------------------------
+
 
 class TestTruncationMarkerInContent:
     def test_content_contains_marker_no_confusion(self) -> None:
@@ -363,6 +373,7 @@ class TestTruncationMarkerInContent:
 # Additional: cap_response mutability safety
 # ---------------------------------------------------------------------------
 
+
 class TestMutabilitySafety:
     def test_original_observations_not_mutated(self) -> None:
         """cap_response should copy dicts, not mutate the originals."""
@@ -382,6 +393,7 @@ class TestMutabilitySafety:
 # ---------------------------------------------------------------------------
 # Additional: truncate_content with max_tokens=1
 # ---------------------------------------------------------------------------
+
 
 class TestTinyBudget:
     def test_max_tokens_one(self) -> None:

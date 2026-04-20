@@ -49,9 +49,7 @@ def save_summary(
     accomplished: str | None = typer.Option(
         None, "--accomplished", "-a", help="What was accomplished"
     ),
-    next_steps: str | None = typer.Option(
-        None, "--next-steps", "-n", help="Next steps"
-    ),
+    next_steps: str | None = typer.Option(None, "--next-steps", "-n", help="Next steps"),
     files: str | None = typer.Option(
         None, "--files", "-f", help="Relevant files (comma-separated)"
     ),
@@ -149,26 +147,17 @@ def recover(
     summaries = [
         obs
         for obs in summaries_raw
-        if (
-            obs.type == "session-summary"
-            or obs.content.startswith("compact/session-summary")
-        )
+        if (obs.type == "session-summary" or obs.content.startswith("compact/session-summary"))
         and (
             obs.topic_key == "compact/session-summary"
             or obs.content.startswith("compact/session-summary")
         )
-        and (
-            not proj
-            or obs.project in (proj, None)
-        )
+        and (not proj or obs.project in (proj, None))
     ][:summary_limit]
 
     # Also fetch artifacts-index
     artifacts_raw = memory_service.search("compact/artifacts-index", limit=1)
-    artifacts_index = [
-        obs for obs in artifacts_raw
-        if obs.type == "artifacts-index"
-    ]
+    artifacts_index = [obs for obs in artifacts_raw if obs.type == "artifacts-index"]
 
     # Get recent observations (excluding session summaries)
     all_observations = memory_service.get_recent(limit=observation_limit + 20, offset=0)
@@ -237,9 +226,7 @@ def recover(
 @app.command(name="file-ops")
 def file_ops(
     ctx: typer.Context,
-    read: str | None = typer.Option(
-        None, "--read", "-r", help="Files read (comma-separated)"
-    ),
+    read: str | None = typer.Option(None, "--read", "-r", help="Files read (comma-separated)"),
     written: str | None = typer.Option(
         None, "--written", "-w", help="Files written (comma-separated)"
     ),
@@ -256,7 +243,9 @@ def file_ops(
     context recovery and change tracking.
     """
     if not read and not written and not edited:
-        typer.echo("Error: At least one of --read, --written, or --edited must be specified", err=True)
+        typer.echo(
+            "Error: At least one of --read, --written, or --edited must be specified", err=True
+        )
         raise typer.Exit(1)
 
     memory_service = ctx.obj

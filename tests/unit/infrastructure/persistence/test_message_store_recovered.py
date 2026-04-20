@@ -399,6 +399,7 @@ class TestMessageStoreGetDbPath:
     def test_default_db_path(self) -> None:
         """Should use default path if not specified."""
         from src.infrastructure.persistence.container import get_database_connection
+
         conn = get_database_connection()
         store = MessageStore(connection=conn)
 

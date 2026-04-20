@@ -1,4 +1,5 @@
 """Unit tests for Observation revision_count field."""
+
 from __future__ import annotations
 
 import pytest

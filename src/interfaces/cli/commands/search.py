@@ -33,9 +33,9 @@ def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     """Get database path from CLI context."""
     current = ctx
     while current:
-        if hasattr(current, 'params') and 'db_path' in current.params:
-            return Path(current.params['db_path'])
-        current = current.parent if hasattr(current, 'parent') else None
+        if hasattr(current, "params") and "db_path" in current.params:
+            return Path(current.params["db_path"])
+        current = current.parent if hasattr(current, "parent") else None
     return None
 
 
@@ -44,12 +44,21 @@ def search(
     ctx: typer.Context,
     query: str = typer.Argument(...),
     limit: int | None = typer.Option(None, "--limit", "-l"),
-    project: str | None = typer.Option(None, "--project", "-p", help="Filter by project (auto-detected from CWD)"),
+    project: str | None = typer.Option(
+        None, "--project", "-p", help="Filter by project (auto-detected from CWD)"
+    ),
 ) -> None:
     memory_service = ctx.obj
-    effective_project = project if project is not None else (_auto_detect_project() if _should_auto_detect(ctx) else None)
+    effective_project = (
+        project
+        if project is not None
+        else (_auto_detect_project() if _should_auto_detect(ctx) else None)
+    )
     if project is None and effective_project is not None:
-        typer.echo(f"Note: Auto-filtering by project '{effective_project}' (use --project to override, or --project '' for all)", err=True)
+        typer.echo(
+            f"Note: Auto-filtering by project '{effective_project}' (use --project to override, or --project '' for all)",
+            err=True,
+        )
     results = memory_service.search(query=query, limit=limit, project=effective_project)
 
     if not results:

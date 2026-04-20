@@ -2,6 +2,7 @@
 
 Secure tmux control via UDS with API key auth and command allowlist.
 """
+
 from __future__ import annotations
 
 import hmac

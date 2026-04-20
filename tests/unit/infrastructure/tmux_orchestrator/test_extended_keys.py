@@ -1,4 +1,5 @@
 """Tests for REQ-7: Extended-keys detection and Enter behavior."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

@@ -1,4 +1,5 @@
 """Tests for REQ-4: Agent idle detection."""
+
 from __future__ import annotations
 
 import subprocess

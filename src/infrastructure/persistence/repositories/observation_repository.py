@@ -265,7 +265,9 @@ class ObservationRepository:
                     params.append(normalized)
 
             where_clause = (" WHERE " + " AND ".join(conditions)) if conditions else ""
-            sql = f"SELECT {_SELECT_COLUMNS} FROM observations{where_clause} ORDER BY timestamp DESC"
+            sql = (
+                f"SELECT {_SELECT_COLUMNS} FROM observations{where_clause} ORDER BY timestamp DESC"
+            )
 
             if limit is not None:
                 sql += " LIMIT ?"
@@ -390,7 +392,9 @@ class ObservationRepository:
 
         self._record_mutation("delete", observation_id, None, {"id": observation_id})
 
-    def search(self, query: str, limit: int | None = None, project: str | None = None) -> list[Observation]:
+    def search(
+        self, query: str, limit: int | None = None, project: str | None = None
+    ) -> list[Observation]:
         """Search observations using full-text search.
 
         Args:
@@ -602,7 +606,9 @@ class ObservationRepository:
         # Normalize hyphenated type values to underscored (e.g. "file-ops" -> "file_ops")
         if type_ is not None and type_ not in Observation._ALLOWED_TYPES:
             normalized = type_.replace("-", "_")
-            type_ = normalized if normalized in Observation._ALLOWED_TYPES else None  # Unknown type, discard
+            type_ = (
+                normalized if normalized in Observation._ALLOWED_TYPES else None
+            )  # Unknown type, discard
         if type_ is None and isinstance(metadata_dict, dict):
             meta_type = metadata_dict.get("type")
             if isinstance(meta_type, str):

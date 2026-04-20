@@ -1,4 +1,5 @@
 """Sync repository implementation for SQLite persistence."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -108,16 +109,12 @@ class SyncRepositoryImpl:
                         "Failed to get sequence number from mutation insert",
                     )
                 # Increment mutation_count in sync_status
-                conn.execute(
-                    "UPDATE sync_status SET mutation_count = mutation_count + 1"
-                )
+                conn.execute("UPDATE sync_status SET mutation_count = mutation_count + 1")
                 return row["seq"]
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to record mutation: {e}", e) from e
 
-    def get_mutations_since(
-        self, seq: int, limit: int | None = None
-    ) -> list[SyncMutation]:
+    def get_mutations_since(self, seq: int, limit: int | None = None) -> list[SyncMutation]:
         """Get mutations since a given sequence number."""
         try:
             with self._connection as conn:

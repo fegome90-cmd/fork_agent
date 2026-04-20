@@ -102,7 +102,9 @@ class TestWorkspaceDetectorDetect:
         assert workspace is None
 
     def test_detect_returns_none_on_path_resolve_error(
-        self, workspace_detector: WorkspaceDetector, mock_git_executor: MagicMock  # noqa: ARG002
+        self,
+        workspace_detector: WorkspaceDetector,
+        mock_git_executor: MagicMock,  # noqa: ARG002
     ) -> None:
         test_path = Path("/invalid/path")
 

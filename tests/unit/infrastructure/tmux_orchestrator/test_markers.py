@@ -1,4 +1,5 @@
 """Tests for REQ-10: FORK_START/END markers and capture_between_markers."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

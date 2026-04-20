@@ -14,14 +14,16 @@ from src.infrastructure.persistence.container import get_agent_messenger
 app = typer.Typer(help="Manage inter-agent messaging.")
 console = Console()
 
+
 @app.command("send")
 def send_message(
     to_agent: Annotated[str, typer.Argument(help="Target agent (session:window)")],
     payload: Annotated[str, typer.Argument(help="Message content")],
     from_agent: Annotated[str, typer.Option(help="Source agent ID")] = "cli:0",
-    type: Annotated[str, typer.Option("--type", help="Message type (COMMAND/EVENT/OBSERVATION)")] = "COMMAND"
+    type: Annotated[
+        str, typer.Option("--type", help="Message type (COMMAND/EVENT/OBSERVATION)")
+    ] = "COMMAND",
 ) -> None:
-
     """Send a message to another agent."""
     messenger = get_agent_messenger()
 
@@ -31,10 +33,7 @@ def send_message(
         console.print(f"[red]Error: Invalid message type {type}[/red]")
         raise typer.Exit(1)  # noqa: B904
     msg = AgentMessage.create(
-        from_agent=from_agent,
-        to_agent=to_agent,
-        message_type=mtype,
-        payload=payload
+        from_agent=from_agent, to_agent=to_agent, message_type=mtype, payload=payload
     )
 
     if messenger.send(msg):
@@ -42,10 +41,11 @@ def send_message(
     else:
         console.print("[red]Failed to send message via tmux[/red] (stored in history)")
 
+
 @app.command("broadcast")
 def broadcast_message(
     payload: Annotated[str, typer.Argument(help="Message content")],
-    from_agent: Annotated[str, typer.Option(help="Source agent ID")] = "cli:0"
+    from_agent: Annotated[str, typer.Option(help="Source agent ID")] = "cli:0",
 ) -> None:
     """Send a message to all active tmux sessions."""
     messenger = get_agent_messenger()
@@ -55,10 +55,11 @@ def broadcast_message(
 
 @app.command("cleanup")
 def cleanup_messages(
-    max_age: Annotated[int, typer.Option(help="Remove files older than N seconds")] = 300
+    max_age: Annotated[int, typer.Option(help="Remove files older than N seconds")] = 300,
 ) -> None:
     """Cleanup expired messages from DB and temp files."""
     from src.application.services.messaging.message_protocol import cleanup_temp_files
+
     messenger = get_agent_messenger()
 
     # 1. Clean DB
@@ -72,13 +73,10 @@ def cleanup_messages(
 
 
 @app.command("history")
-
-
 def show_history(
     agent_id: Annotated[str, typer.Argument(help="Agent ID to show history for")],
-    limit: Annotated[int, typer.Option(help="Max messages to show")] = 20
+    limit: Annotated[int, typer.Option(help="Max messages to show")] = 20,
 ) -> None:
-
     """Show message history for an agent."""
     messenger = get_agent_messenger()
     history = messenger.get_history(agent_id, limit=limit)
@@ -100,7 +98,7 @@ def show_history(
             msg.from_agent,
             msg.to_agent,
             msg.message_type.name,
-            msg.payload[:50] + ("..." if len(msg.payload) > 50 else "")
+            msg.payload[:50] + ("..." if len(msg.payload) > 50 else ""),
         )
 
     console.print(table)

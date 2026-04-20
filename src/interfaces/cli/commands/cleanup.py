@@ -38,8 +38,12 @@ def cleanup(
     ctx: typer.Context,
     days: int = typer.Option(90, "--days", "-d", help="Delete observations older than N days"),
     dry_run: bool = typer.Option(True, "--dry-run/--no-dry-run", help="Preview only, don't delete"),
-    vacuum: bool = typer.Option(False, "--vacuum", "-v", help="Run VACUUM after deletion to reclaim space"),
-    optimize_fts: bool = typer.Option(False, "--optimize-ft", "-o", help="Optimize FTS index after cleanup"),
+    vacuum: bool = typer.Option(
+        False, "--vacuum", "-v", help="Run VACUUM after deletion to reclaim space"
+    ),
+    optimize_fts: bool = typer.Option(
+        False, "--optimize-ft", "-o", help="Optimize FTS index after cleanup"
+    ),
 ) -> None:
     """Clean up old observations from the database.
 

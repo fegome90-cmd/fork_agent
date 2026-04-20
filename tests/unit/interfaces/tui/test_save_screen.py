@@ -17,11 +17,15 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#save-content": MagicMock(text="  "),
-            "#save-type": MagicMock(value="decision"),
-            "#save-topic-key": MagicMock(value=""),
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#save-content": MagicMock(text="  "),
+                "#save-type": MagicMock(value="decision"),
+                "#save-topic-key": MagicMock(value=""),
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             errors = screen._validate()
 
         assert any("Content is required" in e for e in errors)
@@ -31,11 +35,15 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#save-content": MagicMock(text="some content"),
-            "#save-type": MagicMock(value="invalid_type"),
-            "#save-topic-key": MagicMock(value=""),
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#save-content": MagicMock(text="some content"),
+                "#save-type": MagicMock(value="invalid_type"),
+                "#save-topic-key": MagicMock(value=""),
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             errors = screen._validate()
 
         assert any("Invalid type" in e for e in errors)
@@ -45,11 +53,15 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#save-content": MagicMock(text="content"),
-            "#save-type": MagicMock(value=""),
-            "#save-topic-key": MagicMock(value="has spaces"),
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#save-content": MagicMock(text="content"),
+                "#save-type": MagicMock(value=""),
+                "#save-topic-key": MagicMock(value="has spaces"),
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             errors = screen._validate()
 
         assert any("spaces" in e for e in errors)
@@ -59,11 +71,15 @@ class TestSaveScreen:
 
         screen = SaveScreen(db_path=None)
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#save-content": MagicMock(text="valid content"),
-            "#save-type": MagicMock(value="decision"),
-            "#save-topic-key": MagicMock(value="valid-key"),
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#save-content": MagicMock(text="valid content"),
+                "#save-type": MagicMock(value="decision"),
+                "#save-topic-key": MagicMock(value="valid-key"),
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             errors = screen._validate()
 
         assert errors == []
@@ -84,14 +100,18 @@ class TestSaveScreen:
 
         token = active_app.set(mock_app)
         try:
-            with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-                "#save-content": MagicMock(text="content here"),
-                "#save-type": MagicMock(value="decision"),
-                "#save-topic-key": MagicMock(value="my-key"),
-                "#save-project": MagicMock(value="proj"),
-                "#save-title": MagicMock(value="Title"),
-                "#save-validation": mock_static,
-            }.get(s if isinstance(s, str) else "", MagicMock())):
+            with patch.object(
+                screen,
+                "query_one",
+                side_effect=lambda s, _w=None: {
+                    "#save-content": MagicMock(text="content here"),
+                    "#save-type": MagicMock(value="decision"),
+                    "#save-topic-key": MagicMock(value="my-key"),
+                    "#save-project": MagicMock(value="proj"),
+                    "#save-title": MagicMock(value="Title"),
+                    "#save-validation": mock_static,
+                }.get(s if isinstance(s, str) else "", MagicMock()),
+            ):
                 screen.action_save()
         finally:
             active_app.reset(token)
@@ -115,12 +135,16 @@ class TestSaveScreen:
 
         token = active_app.set(MagicMock())
         try:
-            with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-                "#save-content": MagicMock(text=""),
-                "#save-type": MagicMock(value=""),
-                "#save-topic-key": MagicMock(value=""),
-                "#save-validation": mock_static,
-            }.get(s if isinstance(s, str) else "", MagicMock())):
+            with patch.object(
+                screen,
+                "query_one",
+                side_effect=lambda s, _w=None: {
+                    "#save-content": MagicMock(text=""),
+                    "#save-type": MagicMock(value=""),
+                    "#save-topic-key": MagicMock(value=""),
+                    "#save-validation": mock_static,
+                }.get(s if isinstance(s, str) else "", MagicMock()),
+            ):
                 screen.action_save()
         finally:
             active_app.reset(token)
@@ -135,14 +159,18 @@ class TestSaveScreen:
         screen = SaveScreen(db_path=None)
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#save-content": MagicMock(text="hello world"),
-            "#save-type": MagicMock(value="decision"),
-            "#save-topic-key": MagicMock(value=""),
-            "#save-project": MagicMock(value="proj"),
-            "#save-title": MagicMock(value=""),
-            "#save-preview": mock_static,
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#save-content": MagicMock(text="hello world"),
+                "#save-type": MagicMock(value="decision"),
+                "#save-topic-key": MagicMock(value=""),
+                "#save-project": MagicMock(value="proj"),
+                "#save-title": MagicMock(value=""),
+                "#save-preview": mock_static,
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             screen._update_preview()
 
         mock_static.update.assert_called_once()

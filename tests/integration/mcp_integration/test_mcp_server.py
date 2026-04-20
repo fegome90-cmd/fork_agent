@@ -101,9 +101,7 @@ async def test_save_and_search_roundtrip(server_params: object) -> None:
                 "memory_save", {"content": "python async patterns integration test"}
             )
 
-            search_result = await session.call_tool(
-                "memory_search", {"query": "python async"}
-            )
+            search_result = await session.call_tool("memory_search", {"query": "python async"})
             search_data = json.loads(search_result.content[0].text)
             assert len(search_data) >= 1
             assert any("python async" in obs["content"] for obs in search_data)
@@ -119,9 +117,7 @@ async def test_list_returns_observations(server_params: object) -> None:
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            await session.call_tool(
-                "memory_save", {"content": "list test observation 1"}
-            )
+            await session.call_tool("memory_save", {"content": "list test observation 1"})
 
             list_result = await session.call_tool("memory_list", {"limit": 5})
             list_data = json.loads(list_result.content[0].text)
@@ -139,14 +135,10 @@ async def test_delete_removes_observation(server_params: object) -> None:
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            save_result = await session.call_tool(
-                "memory_save", {"content": "to be deleted"}
-            )
+            save_result = await session.call_tool("memory_save", {"content": "to be deleted"})
             obs_id = json.loads(save_result.content[0].text)["id"]
 
-            delete_result = await session.call_tool(
-                "memory_delete", {"id": obs_id}
-            )
+            delete_result = await session.call_tool("memory_delete", {"id": obs_id})
             delete_data = json.loads(delete_result.content[0].text)
             assert delete_data["status"] == "deleted"
 

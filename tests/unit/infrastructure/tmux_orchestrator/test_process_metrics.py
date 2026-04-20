@@ -1,4 +1,5 @@
 """Tests for REQ-12: Process metrics collection."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -62,7 +63,9 @@ class TestCollectMetricsProcFs:
     """REQ-12: /proc fallback on Linux."""
 
     @patch("src.infrastructure.tmux_orchestrator.process_metrics._PSUTIL_AVAILABLE", False)
-    @patch("src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Linux")
+    @patch(
+        "src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Linux"
+    )
     def test_proc_stat_failure_returns_zeroed(self, _mock_platform: MagicMock) -> None:
         """CPU parsed from /proc/{pid}/stat returns zeroed when process missing."""
         from src.infrastructure.tmux_orchestrator.process_metrics import collect_metrics
@@ -73,7 +76,10 @@ class TestCollectMetricsProcFs:
         assert "memory_mb" in result
 
     @patch("src.infrastructure.tmux_orchestrator.process_metrics._PSUTIL_AVAILABLE", False)
-    @patch("src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Darwin")
+    @patch(
+        "src.infrastructure.tmux_orchestrator.process_metrics.platform.system",
+        return_value="Darwin",
+    )
     def test_non_linux_skips_proc(self, _mock_platform: MagicMock) -> None:
         """Non-Linux systems skip /proc fallback."""
         from src.infrastructure.tmux_orchestrator.process_metrics import collect_metrics
@@ -83,7 +89,9 @@ class TestCollectMetricsProcFs:
         assert result["memory_mb"] == 0.0
 
     @patch("src.infrastructure.tmux_orchestrator.process_metrics._PSUTIL_AVAILABLE", False)
-    @patch("src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Linux")
+    @patch(
+        "src.infrastructure.tmux_orchestrator.process_metrics.platform.system", return_value="Linux"
+    )
     @patch(
         "src.infrastructure.tmux_orchestrator.process_metrics._collect_via_proc",
         return_value={"cpu_percent": 80.0, "memory_mb": 100.0},
@@ -145,8 +153,7 @@ class TestCollectViaProc:
     def test_missing_vmrss_returns_zero_memory(self) -> None:
         """Returns 0 memory when VmRSS line is missing."""
         stat_content = (
-            "1234 (python) S 1 1234 1234 0 -1 4194304 0 "
-            "10 20 0 0 20 0 1 0 12345 100000000\n"
+            "1234 (python) S 1 1234 1234 0 -1 4194304 0 10 20 0 0 20 0 1 0 12345 100000000\n"
         )
         status_lines = [
             "Name:\tpython\n",

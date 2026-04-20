@@ -192,8 +192,6 @@ class TestRegexMatcherSpec:
 
         assert spec.is_satisfied_by(event) is True
 
-
-
     def test_matches_workflow_outline_start_by_plan_id(self) -> None:
         """Should match WorkflowOutlineStartEvent by plan_id."""
         from src.application.services.orchestration.events import (

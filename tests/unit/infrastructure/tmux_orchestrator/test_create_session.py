@@ -1,4 +1,5 @@
 """Tests for REQ-5 (idempotent create) and REQ-9 (history-limit)."""
+
 from __future__ import annotations
 
 from pathlib import Path

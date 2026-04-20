@@ -143,7 +143,13 @@ class TestWorkflowVerify:
             ),
             patch(
                 "src.interfaces.cli.commands.workflow.verify_runner.run",
-                return_value={"passed": True, "exit_code": 0, "test_count": 1, "fail_count": 0, "duration_ms": 100},
+                return_value={
+                    "passed": True,
+                    "exit_code": 0,
+                    "test_count": 1,
+                    "fail_count": 0,
+                    "duration_ms": 100,
+                },
             ),
         ):
             result = runner.invoke(get_app(), ["verify"])
@@ -185,7 +191,13 @@ class TestWorkflowVerify:
             ),
             patch(
                 "src.interfaces.cli.commands.workflow.verify_runner.run",
-                return_value={"passed": True, "exit_code": 0, "test_count": 1, "fail_count": 0, "duration_ms": 100},
+                return_value={
+                    "passed": True,
+                    "exit_code": 0,
+                    "test_count": 1,
+                    "fail_count": 0,
+                    "duration_ms": 100,
+                },
             ),
         ):
             result = runner.invoke(get_app(), ["verify"])
@@ -215,7 +227,9 @@ class TestWorkflowShip:
 
     def test_ship_blocked_without_unlock(self, tmp_path: Path) -> None:
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=False, phase=WorkflowPhase.VERIFIED)
+        verify_state = VerifyState(
+            session_id="test-verify", unlock_ship=False, phase=WorkflowPhase.VERIFIED
+        )
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
@@ -230,7 +244,9 @@ class TestWorkflowShip:
 
     def test_ship_allowed_with_unlock(self, tmp_path: Path) -> None:
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED)
+        verify_state = VerifyState(
+            session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED
+        )
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
@@ -249,7 +265,9 @@ class TestWorkflowShip:
             WorkflowShipStartEvent,
         )
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED)
+        verify_state = VerifyState(
+            session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED
+        )
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
@@ -272,11 +290,12 @@ class TestWorkflowShip:
         assert WorkflowShipStartEvent in event_types
         assert WorkflowShipCompleteEvent in event_types
 
-
     def test_ship_records_preflight_failed_event(self, tmp_path: Path) -> None:
         from src.interfaces.cli.commands import workflow as workflow_module
 
-        verify_state = VerifyState(session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED)
+        verify_state = VerifyState(
+            session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED
+        )
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
@@ -305,7 +324,10 @@ class TestWorkflowShip:
                 side_effect=lambda name, meta: events.append((name, meta)),
             ),
         ):
-            result = runner.invoke(get_app(), ["ship", "--force", "--reason", "test", "--target", "main", "--no-worktree"])
+            result = runner.invoke(
+                get_app(),
+                ["ship", "--force", "--reason", "test", "--target", "main", "--no-worktree"],
+            )
 
         assert result.exit_code == 1
         assert any(name == "preflight_failed" for name, _ in events)
@@ -321,9 +343,15 @@ class TestWorkflowShip:
                 "src.interfaces.cli.commands.workflow._record_ship_event",
                 side_effect=lambda name, meta: events.append((name, meta)),
             ),
-            patch("src.interfaces.cli.commands.workflow._get_current_branch", return_value="feat-branch"),
+            patch(
+                "src.interfaces.cli.commands.workflow._get_current_branch",
+                return_value="feat-branch",
+            ),
             patch("src.interfaces.cli.commands.workflow._get_dirty_files", return_value=[]),
-            patch("src.interfaces.cli.commands.workflow.get_execute_state_path", return_value=tmp_path / "execute-state.json"),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
         ):
             result = runner.invoke(
                 get_app(),
@@ -346,9 +374,18 @@ class TestWorkflowShip:
                 "src.interfaces.cli.commands.workflow._record_ship_event",
                 side_effect=lambda name, meta: events.append((name, meta)),
             ),
-            patch("src.interfaces.cli.commands.workflow._get_current_branch", return_value="feat-branch"),
-            patch("src.interfaces.cli.commands.workflow._get_dirty_files", return_value=["a.py", "b.py"]),
-            patch("src.interfaces.cli.commands.workflow.get_execute_state_path", return_value=tmp_path / "execute-state.json"),
+            patch(
+                "src.interfaces.cli.commands.workflow._get_current_branch",
+                return_value="feat-branch",
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow._get_dirty_files",
+                return_value=["a.py", "b.py"],
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
         ):
             result = runner.invoke(
                 get_app(),

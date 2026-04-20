@@ -85,9 +85,7 @@ class TestListCommand:
         mock_memory = MagicMock()
         mock_memory.get_recent.return_value = []
 
-        result = runner.invoke(
-            app, ["--type", "decision", "-p", "myproj"], obj=mock_memory
-        )
+        result = runner.invoke(app, ["--type", "decision", "-p", "myproj"], obj=mock_memory)
 
         assert result.exit_code == 0
         mock_memory.get_recent.assert_called_once_with(

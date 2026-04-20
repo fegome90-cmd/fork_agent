@@ -34,32 +34,29 @@ class MemoryHookConfig(BaseModel):
 
     # Policy
     policy: HookPolicy = Field(
-        default=HookPolicy.IMPORTANT_ONLY,
-        description="Capture policy level"
+        default=HookPolicy.IMPORTANT_ONLY, description="Capture policy level"
     )
     allowed_message_types: set[str] = Field(
-        default={"COMMAND", "REPLY", "HANDOFF"},
-        description="Message types to capture"
+        default={"COMMAND", "REPLY", "HANDOFF"}, description="Message types to capture"
     )
 
     # Rate-limiting
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
     rate_limit_per_minute: int = Field(
         default=30,
-        description="Max messages per minute per (run_id, task_id, agent_id, message_type)"
+        description="Max messages per minute per (run_id, task_id, agent_id, message_type)",
     )
 
     # Truncation
     max_content_bytes: int = Field(
         default=4096,  # 4KB
-        description="Max content size in bytes before truncation"
+        description="Max content size in bytes before truncation",
     )
     truncation_enabled: bool = Field(default=True, description="Enable payload truncation")
 
     # Storage
     payload_storage_path: Path | None = Field(
-        default=None,
-        description="Path to store truncated payloads (None = no storage)"
+        default=None, description="Path to store truncated payloads (None = no storage)"
     )
 
     model_config = {"frozen": True}

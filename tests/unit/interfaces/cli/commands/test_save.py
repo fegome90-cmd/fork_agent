@@ -36,7 +36,14 @@ class TestSaveCommand:
 
         assert result.exit_code == 0
         assert "Saved:" in result.stdout
-        mock_memory.save.assert_called_once_with(content="test content", metadata=None, topic_key=None, project=None, type=None, title=None)
+        mock_memory.save.assert_called_once_with(
+            content="test content",
+            metadata=None,
+            topic_key=None,
+            project=None,
+            type=None,
+            title=None,
+        )
 
     def test_save_with_metadata_json(self) -> None:
         from src.interfaces.cli.commands.save import app
@@ -55,7 +62,14 @@ class TestSaveCommand:
         )
 
         assert result.exit_code == 0
-        mock_memory.save.assert_called_once_with(content="test content", metadata={"key": "value"}, topic_key=None, project=None, type=None, title=None)
+        mock_memory.save.assert_called_once_with(
+            content="test content",
+            metadata={"key": "value"},
+            topic_key=None,
+            project=None,
+            type=None,
+            title=None,
+        )
 
     def test_save_invalid_metadata_json(self) -> None:
         from src.interfaces.cli.commands.save import app
@@ -101,7 +115,9 @@ class TestSaveCommand:
         call_kwargs = mock_memory.save.call_args
         assert call_kwargs.kwargs["type"] == "decision"
         # type should be removed from metadata dict to avoid duplication
-        assert call_kwargs.kwargs["metadata"] is None or "type" not in call_kwargs.kwargs["metadata"]
+        assert (
+            call_kwargs.kwargs["metadata"] is None or "type" not in call_kwargs.kwargs["metadata"]
+        )
 
     def test_save_metadata_invalid_type_rejected(self) -> None:
         """BUG-8: Invalid type in metadata JSON is rejected."""
@@ -138,7 +154,10 @@ class TestSaveCommand:
         assert result.exit_code == 0
         call_kwargs = mock_memory.save.call_args
         assert call_kwargs.kwargs["topic_key"] == "test/meta"
-        assert call_kwargs.kwargs["metadata"] is None or "topic_key" not in call_kwargs.kwargs["metadata"]
+        assert (
+            call_kwargs.kwargs["metadata"] is None
+            or "topic_key" not in call_kwargs.kwargs["metadata"]
+        )
 
     def test_save_metadata_project_extracted(self) -> None:
         """BUG-9: project from metadata JSON is extracted and passed."""
@@ -160,7 +179,10 @@ class TestSaveCommand:
         assert result.exit_code == 0
         call_kwargs = mock_memory.save.call_args
         assert call_kwargs.kwargs["project"] == "myapp"
-        assert call_kwargs.kwargs["metadata"] is None or "project" not in call_kwargs.kwargs["metadata"]
+        assert (
+            call_kwargs.kwargs["metadata"] is None
+            or "project" not in call_kwargs.kwargs["metadata"]
+        )
 
 
 class TestSaveGitAutoDetection:
@@ -177,9 +199,7 @@ class TestSaveGitAutoDetection:
             content="test content",
         )
 
-        with patch(
-            "src.interfaces.cli.commands.save._detect_git_project", return_value="my-repo"
-        ):
+        with patch("src.interfaces.cli.commands.save._detect_git_project", return_value="my-repo"):
             result = runner.invoke(app, ["test content"], obj=mock_memory)
 
         assert result.exit_code == 0
@@ -197,12 +217,8 @@ class TestSaveGitAutoDetection:
             content="test content",
         )
 
-        with patch(
-            "src.interfaces.cli.commands.save._detect_git_project", return_value="git-repo"
-        ):
-            result = runner.invoke(
-                app, ["test content", "-p", "cli-project"], obj=mock_memory
-            )
+        with patch("src.interfaces.cli.commands.save._detect_git_project", return_value="git-repo"):
+            result = runner.invoke(app, ["test content", "-p", "cli-project"], obj=mock_memory)
 
         assert result.exit_code == 0
         call_kwargs = mock_memory.save.call_args
@@ -219,9 +235,7 @@ class TestSaveGitAutoDetection:
             content="test content",
         )
 
-        with patch(
-            "src.interfaces.cli.commands.save._detect_git_project", return_value="git-repo"
-        ):
+        with patch("src.interfaces.cli.commands.save._detect_git_project", return_value="git-repo"):
             result = runner.invoke(
                 app, ["test content", "-m", '{"project":"meta-proj"}'], obj=mock_memory
             )
@@ -262,9 +276,7 @@ class TestSaveGitAutoDetection:
             content="test content",
         )
 
-        with patch(
-            "src.interfaces.cli.commands.save._detect_git_project", return_value=None
-        ):
+        with patch("src.interfaces.cli.commands.save._detect_git_project", return_value=None):
             result = runner.invoke(app, ["test content"], obj=mock_memory)
 
         assert result.exit_code == 0
@@ -286,9 +298,12 @@ class TestSaveGitAutoDetection:
             app,
             [
                 "test content",
-                "--metadata", '{"topic_key": "meta/key", "project": "meta-proj"}',
-                "--topic-key", "cli/key",
-                "--project", "cli-proj",
+                "--metadata",
+                '{"topic_key": "meta/key", "project": "meta-proj"}',
+                "--topic-key",
+                "cli/key",
+                "--project",
+                "cli-proj",
             ],
             obj=mock_memory,
         )
@@ -318,7 +333,8 @@ class TestSaveGitAutoDetection:
             app,
             [
                 "test content",
-                "--metadata", '{"type": "bugfix", "topic_key": "test/meta", "project": "meta-proj"}',
+                "--metadata",
+                '{"type": "bugfix", "topic_key": "test/meta", "project": "meta-proj"}',
             ],
             obj=mock_memory,
         )
@@ -346,9 +362,7 @@ class TestSaveDomainErrorHandling:
             "topic_key must not exceed 128 characters (got 129)"
         )
 
-        result = runner.invoke(
-            app, ["test content", "-k", "a" * 129], obj=mock_memory
-        )
+        result = runner.invoke(app, ["test content", "-k", "a" * 129], obj=mock_memory)
 
         assert result.exit_code == 1
         assert "topic_key must not exceed 128" in result.output
@@ -358,13 +372,9 @@ class TestSaveDomainErrorHandling:
         from src.interfaces.cli.commands.save import app
 
         mock_memory = MagicMock()
-        mock_memory.save.side_effect = ValueError(
-            "topic_key must not contain spaces"
-        )
+        mock_memory.save.side_effect = ValueError("topic_key must not contain spaces")
 
-        result = runner.invoke(
-            app, ["test content", "-k", "has spaces"], obj=mock_memory
-        )
+        result = runner.invoke(app, ["test content", "-k", "has spaces"], obj=mock_memory)
 
         assert result.exit_code == 1
         assert "topic_key must not contain spaces" in result.output
@@ -376,9 +386,7 @@ class TestSaveDomainErrorHandling:
         mock_memory = MagicMock()
         mock_memory.save.side_effect = TypeError("topic_key must be a string or None")
 
-        result = runner.invoke(
-            app, ["test content", "-k", "123"], obj=mock_memory
-        )
+        result = runner.invoke(app, ["test content", "-k", "123"], obj=mock_memory)
 
         assert result.exit_code == 1
         assert "topic_key must be a string" in result.output

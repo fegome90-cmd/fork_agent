@@ -15,6 +15,7 @@ class TestEventProtocol:
 
     def test_event_is_runtime_checkable(self) -> None:
         """Event protocol should be runtime_checkable for isinstance()."""
+
         # Create a concrete implementation to test isinstance
         class ConcreteEvent:
             pass
@@ -28,6 +29,7 @@ class TestActionProtocol:
 
     def test_action_is_runtime_checkable(self) -> None:
         """Action protocol should be runtime_checkable for isinstance()."""
+
         # Create a concrete implementation to test isinstance
         class ConcreteAction:
             pass

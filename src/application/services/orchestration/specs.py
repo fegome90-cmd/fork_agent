@@ -36,36 +36,42 @@ _EVENT_FIELD_EXTRACTORS: dict[str, str] = {
 @runtime_checkable
 class _HasPlanId(Protocol):
     """Protocol for events with plan_id field."""
+
     plan_id: str
 
 
 @runtime_checkable
 class _HasSessionId(Protocol):
     """Protocol for events with session_id field."""
+
     session_id: str
 
 
 @runtime_checkable
 class _HasAgentName(Protocol):
     """Protocol for events with agent_name field."""
+
     agent_name: str
 
 
 @runtime_checkable
 class _HasCommandName(Protocol):
     """Protocol for events with command_name field."""
+
     command_name: str
 
 
 @runtime_checkable
 class _HasPath(Protocol):
     """Protocol for events with path field."""
+
     path: str
 
 
 @runtime_checkable
 class _HasToolName(Protocol):
     """Protocol for events with tool_name field."""
+
     tool_name: str
 
 

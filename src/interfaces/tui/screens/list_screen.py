@@ -76,7 +76,11 @@ class ListScreen(Screen[None]):
                 if obs.timestamp
                 else ""
             )
-            title = obs.title if obs.title else (obs.content[:40] + "..." if len(obs.content) > 40 else obs.content)
+            title = (
+                obs.title
+                if obs.title
+                else (obs.content[:40] + "..." if len(obs.content) > 40 else obs.content)
+            )
             table.add_row(
                 obs.id[:8],
                 obs.type or "",

@@ -219,7 +219,9 @@ class TestExport:
         assert len(created) == 1
         assert "_orphans" in str(created[0])
 
-    def test_export_multiple(self, tmp_path: Path, sample_obs: Observation, orphan_obs: Observation) -> None:
+    def test_export_multiple(
+        self, tmp_path: Path, sample_obs: Observation, orphan_obs: Observation
+    ) -> None:
         from src.application.services.export.obsidian_export_service import ObsidianExportService
 
         svc = ObsidianExportService()

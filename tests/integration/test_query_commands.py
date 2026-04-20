@@ -257,9 +257,7 @@ class TestTimelineCommand:
         assert result.exit_code == 0
 
         # Count terminal events (completed or failed)
-        terminal_count = result.output.count("task_completed") + result.output.count(
-            "task_failed"
-        )
+        terminal_count = result.output.count("task_completed") + result.output.count("task_failed")
 
         # Should have 2 terminal events (one per task)
         assert terminal_count == 2, f"Expected 2 terminal events, got {terminal_count}"

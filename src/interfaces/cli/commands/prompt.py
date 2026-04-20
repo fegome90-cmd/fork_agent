@@ -130,7 +130,9 @@ def search(
         if row["provider"]:
             meta_parts.append(f"provider={row['provider']}")
         meta_str = f" [{', '.join(meta_parts)}]" if meta_parts else ""
-        typer.echo(f"[{row['id']}] {row['prompt_text'][:80]}{'...' if len(row['prompt_text']) > 80 else ''}{meta_str}")
+        typer.echo(
+            f"[{row['id']}] {row['prompt_text'][:80]}{'...' if len(row['prompt_text']) > 80 else ''}{meta_str}"
+        )
 
 
 @app.command(name="list")
@@ -163,7 +165,9 @@ def list_prompts(
         if row["provider"]:
             parts.append(f"provider={row['provider']}")
         meta_str = f" [{', '.join(parts)}]" if parts else ""
-        typer.echo(f"[{row['id']}] {row['prompt_text'][:80]}{'...' if len(row['prompt_text']) > 80 else ''}{meta_str}")
+        typer.echo(
+            f"[{row['id']}] {row['prompt_text'][:80]}{'...' if len(row['prompt_text']) > 80 else ''}{meta_str}"
+        )
 
 
 @app.command()

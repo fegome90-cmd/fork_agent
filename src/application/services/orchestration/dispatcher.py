@@ -80,7 +80,7 @@ class EventDispatcher:
             except Exception as exc:
                 logger.warning(
                     "CONTINUE policy: swallowed error for rule '%s': %s",
-                    getattr(rule.action, 'command', rule.action),
+                    getattr(rule.action, "command", rule.action),
                     exc,
                 )
         elif policy == OnFailurePolicy.RETRY:

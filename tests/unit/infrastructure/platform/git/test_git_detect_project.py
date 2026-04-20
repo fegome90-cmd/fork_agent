@@ -2,6 +2,7 @@
 
 Feature: detect_project_from_remote() extracts repo name from git remote origin URL.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -112,9 +113,7 @@ class TestDetectProjectFromRemote:
             stdout="git@github.com:owner/cli-tool.git\n"
         )
 
-        result = GitCommandExecutor.detect_project_from_remote(
-            executor, path=Path("/some/repo")
-        )
+        result = GitCommandExecutor.detect_project_from_remote(executor, path=Path("/some/repo"))
         assert result == "cli-tool"
         executor._run_git_command.assert_called_once()
         call_kwargs = executor._run_git_command.call_args
