@@ -44,14 +44,16 @@ def delete(
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)  # noqa: B904
     # Verify project ownership if --project given or auto-detected
-    effective_project = project if project is not None else Path(os.getcwd()).name
-    if resolved.project and resolved.project != effective_project and not force:
-        typer.echo(
-            f"Error: Observation belongs to project '{resolved.project}', "
-            f"not '{effective_project}'. Use --force to override.",
-            err=True,
-        )
-        raise typer.Exit(1)  # noqa: B904
+    # When --force is set, skip the project ownership check entirely
+    if not force:
+        effective_project = project if project is not None else Path(os.getcwd()).name
+        if resolved.project and resolved.project != effective_project:
+            typer.echo(
+                f"Error: Observation belongs to project '{resolved.project}', "
+                f"not '{effective_project}'. Use --force to override.",
+                err=True,
+            )
+            raise typer.Exit(1)  # noqa: B904
     try:
         memory_service.delete(actual_id)
         typer.echo(f"Deleted: {actual_id}")

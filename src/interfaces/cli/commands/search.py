@@ -48,6 +48,8 @@ def search(
 ) -> None:
     memory_service = ctx.obj
     effective_project = project if project is not None else (_auto_detect_project() if _should_auto_detect(ctx) else None)
+    if project is None and effective_project is not None:
+        typer.echo(f"Note: Auto-filtering by project '{effective_project}' (use --project to override, or --project '' for all)", err=True)
     results = memory_service.search(query=query, limit=limit, project=effective_project)
 
     if not results:

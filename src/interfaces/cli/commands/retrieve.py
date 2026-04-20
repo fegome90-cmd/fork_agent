@@ -35,6 +35,10 @@ def retrieve(
     Uses concept extraction, semantic bridges, and keyword density
     to produce more relevant results than basic FTS5 search.
     """
+    if limit is not None and limit <= 0:
+        typer.echo("Error: limit must be a positive integer", err=True)
+        raise typer.Exit(1)
+
     db_path = _get_db_path_from_context(ctx)
     repository = get_repository(db_path)
     service = EnhancedRetrievalSearchService(repository)
