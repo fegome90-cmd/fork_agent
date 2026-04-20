@@ -8,6 +8,7 @@ for detection in capture-pane output.
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,7 @@ from src.domain.entities.message import AgentMessage, MessageType
 # Prefixed with "# " so shells (fish/zsh/bash) treat it as a comment
 FORK_MSG_PREFIX = "# FORK_MSG:"
 FORK_MSG_SHORT_PREFIX = "# F:"
-FORK_MSG_TEMP_DIR = Path("/tmp/fork-messages")
+FORK_MSG_TEMP_DIR = Path(tempfile.gettempdir()) / "fork-messages"
 
 
 def encode_message(msg: AgentMessage) -> str:

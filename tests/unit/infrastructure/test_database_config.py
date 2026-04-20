@@ -18,7 +18,8 @@ class TestDatabaseConfig:
         """Test creating config with default values."""
         config = DatabaseConfig(db_path=Path("/tmp/test.db"))
 
-        assert config.db_path == Path("/tmp/test.db")
+        # expand_path resolves symlinks (/tmp -> /private/tmp on macOS)
+        assert config.db_path == Path("/tmp/test.db").resolve()
         assert config.journal_mode == "WAL"
         assert config.busy_timeout_ms == 5000
         assert config.foreign_keys is True

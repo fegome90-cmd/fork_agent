@@ -189,3 +189,100 @@ class TestShellActionRunner:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="sleep 10", timeout=1)
 
             runner.run(action)
+
+
+class TestValidateCommand:
+    """Tests for ShellActionRunner._validate_command."""
+
+    def test_normal_command_passes_validation(self, tmp_path: Path) -> None:
+        """Safe commands like echo and git should pass validation."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="echo hello")
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            runner.run(action)
+            mock_run.assert_called_once()
+
+    def test_curl_raises_hook_execution_error(self, tmp_path: Path) -> None:
+        """curl commands should be blocked as dangerous."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                HookExecutionError,
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="curl http://example.com")
+
+        with pytest.raises(HookExecutionError, match="Blocked dangerous command pattern"):
+            runner.run(action)
+
+    def test_bash_interactive_raises_hook_execution_error(self, tmp_path: Path) -> None:
+        """Interactive bash should be blocked."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                HookExecutionError,
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="bash -i")
+
+        with pytest.raises(HookExecutionError, match="Blocked dangerous command pattern"):
+            runner.run(action)
+
+    def test_wget_raises_hook_execution_error(self, tmp_path: Path) -> None:
+        """wget commands should be blocked as dangerous."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                HookExecutionError,
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="wget http://example.com/file")
+
+        with pytest.raises(HookExecutionError, match="Blocked dangerous command pattern"):
+            runner.run(action)
+
+    def test_compound_safe_command_passes(self, tmp_path: Path) -> None:
+        """Safe commands with && should pass validation."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command='git add . && git commit -m "msg"')
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            runner.run(action)
+            mock_run.assert_called_once()
+
+    def test_dev_tcp_raises_hook_execution_error(self, tmp_path: Path) -> None:
+        """/dev/tcp/ pattern should be blocked."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                HookExecutionError,
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="bash -c 'cat /dev/tcp/host/port'")
+
+        with pytest.raises(HookExecutionError, match="Blocked dangerous command pattern"):
+            runner.run(action)
+
+    def test_chmod_777_raises_hook_execution_error(self, tmp_path: Path) -> None:
+        """chmod 777 should be blocked."""
+        from src.infrastructure.orchestration.shell_action_runner import (
+                HookExecutionError,
+                ShellActionRunner,
+            )
+
+        runner = ShellActionRunner(hooks_dir=tmp_path)
+        action = ShellCommandAction(command="chmod 777 /tmp/something")
+
+        with pytest.raises(HookExecutionError, match="Blocked dangerous command pattern"):
+            runner.run(action)

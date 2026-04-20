@@ -940,7 +940,8 @@ def bug_hunt(
     spawned = []
     for agent_name in sorted(selected_agents):
         tmux_role = role_map[agent_name]
-        prompt_path = f"/tmp/hunt-prompt-{agent_name}-{hunt_id}.txt"
+        _tmp = tempfile.gettempdir()
+        prompt_path = f"{_tmp}/hunt-prompt-{agent_name}-{hunt_id}.txt"
 
         # Build agent prompt from skill resource + catalog + project context
         subsystem_filter = f"\nFocus on subsystems: {subsystems}" if subsystems else ""
@@ -955,7 +956,7 @@ Hunt ID: {hunt_id}
 Intensity: {intensity}{subsystem_filter}
 
 ## Output
-Write findings to /tmp/hunt-findings-{agent_name}-{hunt_id}.md
+Write findings to {_tmp}/hunt-findings-{agent_name}-{hunt_id}.md
 When done, write ## HUNT_COMPLETE ## as last line.
 """
 
@@ -987,12 +988,12 @@ When done, write ## HUNT_COMPLETE ## as last line.
 
     # Consolidate findings
     typer.echo("\n=== Consolidating Findings ===")
-    findings_dir = f"/tmp/hunt-findings-{hunt_id}"
+    findings_dir = f"{_tmp}/hunt-findings-{hunt_id}"
     Path(findings_dir).mkdir(exist_ok=True)
 
     all_findings: list[dict[str, str | int]] = []
     for agent_name in sorted(selected_agents):
-        src = f"/tmp/hunt-findings-{agent_name}-{hunt_id}.md"
+        src = f"{_tmp}/hunt-findings-{agent_name}-{hunt_id}.md"
         dst = f"{findings_dir}/hunt-findings-{agent_name}.md"
         if Path(src).exists():
             shutil.copy2(src, dst)
@@ -1004,7 +1005,7 @@ When done, write ## HUNT_COMPLETE ## as last line.
             typer.echo(f"  {agent_name}: no findings file")
 
     # Run hunt-consolidate if available
-    report_path = f"/tmp/hunt-report-{hunt_id}.md"
+    report_path = f"{_tmp}/hunt-report-{hunt_id}.md"
     consolidate_script = skill_root / "scripts" / "hunt-consolidate"
     if consolidate_script.exists() and all_findings:
         result = subprocess.run(

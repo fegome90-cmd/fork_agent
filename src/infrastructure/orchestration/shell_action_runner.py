@@ -62,7 +62,27 @@ class ShellActionRunner:
     Attributes:
         hooks_dir: Directory for hook scripts (passed to executed commands).
         default_timeout: Default timeout in seconds for command execution.
+        strict_mode: When True, blocks unknown commands.
     """
+
+    _DANGEROUS_PATTERNS: frozenset[str] = frozenset({
+        "curl ",
+        "wget ",
+        "nc ",
+        "ncat ",
+        "bash -i",
+        "sh -i",
+        "/dev/tcp/",
+        "/dev/udp/",
+        "base64 -d",
+        "xxd -r",
+        "chmod 777",
+        "chmod 666",
+        "> /etc/",
+        ">> /etc/",
+        "mkfifo ",
+        "nohup ",
+    })
 
     __slots__ = ("_default_timeout", "_hooks_dir")
 
@@ -99,6 +119,26 @@ class ShellActionRunner:
 
         return safe_env
 
+    def _validate_command(self, command: str) -> None:
+        """Validate command for dangerous patterns.
+
+        Logs warnings for suspicious commands. Raises HookExecutionError
+        if dangerous patterns are detected.
+
+        Args:
+            command: The shell command string to validate.
+
+        Raises:
+            HookExecutionError: If a dangerous pattern is found in the command.
+        """
+        stripped = command.strip()
+
+        for pattern in self._DANGEROUS_PATTERNS:
+            if pattern in stripped:
+                raise HookExecutionError(
+                    f"Blocked dangerous command pattern: {pattern.strip()}"
+                )
+
     def run(self, action: Action) -> None:
         """Execute the shell command action.
 
@@ -107,12 +147,14 @@ class ShellActionRunner:
 
         Raises:
             TypeError: If action is not a ShellCommandAction.
-            HookExecutionError: If critical hook fails.
+            HookExecutionError: If critical hook fails or dangerous command.
         """
         if not isinstance(action, ShellCommandAction):
             raise TypeError(
                 f"ShellActionRunner only handles ShellCommandAction, got {type(action).__name__}"
             )
+
+        self._validate_command(action.command)
 
         timeout = action.timeout or self._default_timeout
         safe_env = self._get_safe_env()

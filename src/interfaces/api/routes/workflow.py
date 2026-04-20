@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import tempfile
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -78,7 +80,7 @@ async def verify_plan(
             task=f"Workflow plan {plan_id}",
             state=PromiseState.VERIFY_PASSED,
             verify_evidence=VerifyEvidence(
-                artifact_path=f"/tmp/verify-{verify_id}.json",
+                artifact_path=str(Path(tempfile.gettempdir()) / f"verify-{verify_id}.json"),
                 passed=passed,
                 exit_code=0,
                 timestamp=now.isoformat(),
