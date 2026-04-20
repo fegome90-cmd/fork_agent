@@ -725,6 +725,16 @@ class TelemetryService:
                 ]
             )
 
+        # Message metrics
+        if "message" in counts:
+            lines.extend(
+                [
+                    "# HELP fork_agent_message_events_total Total messaging events",
+                    "# TYPE fork_agent_message_events_total counter",
+                    f"fork_agent_message_events_total {counts['message']}",
+                ]
+            )
+
         return "\n".join(lines)
 
     def export_json(self, period: str = "24h") -> dict[str, Any]:

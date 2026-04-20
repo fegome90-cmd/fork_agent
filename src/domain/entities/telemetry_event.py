@@ -22,6 +22,7 @@ class EventCategory(StrEnum):
     MEMORY = "memory"
     WORKFLOW = "workflow"
     CLI = "cli"
+    MESSAGE = "message"
     TRACE = "trace"
     ERROR = "error"
 
