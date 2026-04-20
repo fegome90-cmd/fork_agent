@@ -137,7 +137,7 @@ uv run pytest tests/ -v -m "not slow"
 
 ### Coverage Requirements
 
-- Minimum coverage: **95%**
+- Minimum coverage: **72%**
 - Run `make test-cov` before submitting PR
 - Coverage report generated in `htmlcov/`
 

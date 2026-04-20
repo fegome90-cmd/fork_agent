@@ -62,7 +62,6 @@ dev = [
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
     "ruff>=0.3.0",
-    "black>=24.0.0",
     "hypothesis>=6.90.0",
     "bandit>=1.7.0",
 ]
@@ -163,17 +162,6 @@ ignore = [
     "B008",
     "C901",
 ]
-
-[tool.black]
-line-length = 100
-target-version = ["py311"]
-include = "\\.pyi?$"
-extend_exclude = "\\.git|__pycache__|\\.tox|\\.venv|\\.env"
-
-[tool.isort]
-profile = "black"
-line-length = 100
-skip = [".venv", "venv"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

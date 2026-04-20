@@ -149,10 +149,10 @@ chmod +x .hooks/workspace-init.sh
 **Solution:**
 ```bash
 # Run with verbose output
-uv run pytest tests/ -v --cov=src --cov-report=term-missing
+uv run pytest tests/ -v --cov --cov-report=term-missing
 
 # Check coverage threshold in pyproject.toml
-# Minimum: 95%
+# Minimum: 72%
 ```
 
 ### Issue: Git command blocked

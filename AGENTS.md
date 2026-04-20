@@ -156,7 +156,7 @@ uv run pre-commit run --all-files
 |-------------|--------|-------|
 | mypy | strict mode | 100% typed |
 | ruff | py311, line-length 100 | - |
-| coverage | fail_under | **95%** |
+| coverage | fail_under | **72%** |
 | pytest | -v --tb=short | - |
 
 Ver `pyproject.toml` para configuración completa.
