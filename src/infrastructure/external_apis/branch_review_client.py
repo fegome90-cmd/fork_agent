@@ -72,7 +72,9 @@ class BranchReviewClient:
             token: Auth token (defaults to BRANCH_REVIEW_TOKEN env)
             timeout: Request timeout in seconds
         """
-        self.base_url = (base_url or os.getenv("BRANCH_REVIEW_URL", DEFAULT_BASE_URL) or DEFAULT_BASE_URL).rstrip("/")
+        self.base_url = (
+            base_url or os.getenv("BRANCH_REVIEW_URL", DEFAULT_BASE_URL) or DEFAULT_BASE_URL
+        ).rstrip("/")
         self.token = token or os.getenv("BRANCH_REVIEW_TOKEN", "")
         self.timeout = timeout
         self._client: httpx.Client | None = None

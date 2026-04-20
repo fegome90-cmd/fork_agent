@@ -676,9 +676,7 @@ def ship(
                         # Try to merge first
                         try:
                             current_branch = _get_current_branch() or "unknown"
-                            cross_branch = (
-                                current_branch != target_branch
-                            )
+                            cross_branch = current_branch != target_branch
                             if use_worktree and cross_branch:
                                 _merge_branch_via_temp_worktree(worktree_name, target_branch)
                             else:

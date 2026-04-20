@@ -88,7 +88,9 @@ class TelemetryRepositoryImpl(TelemetryRepository):
             session_id=row["session_id"],
             correlation_id=row["correlation_id"],
             parent_event_id=row["parent_event_id"],
-            attributes=types.MappingProxyType(self._deserialize_attributes(row["attributes"]) or {}),
+            attributes=types.MappingProxyType(
+                self._deserialize_attributes(row["attributes"]) or {}
+            ),
             metrics=types.MappingProxyType(self._deserialize_metrics(row["metrics"]) or {})
             if row["metrics"]
             else None,
@@ -168,7 +170,9 @@ class TelemetryRepositoryImpl(TelemetryRepository):
                             e.correlation_id,
                             e.parent_event_id,
                             self._serialize_attributes(dict(e.attributes)),
-                            self._serialize_metrics(dict(e.metrics) if e.metrics is not None else None),
+                            self._serialize_metrics(
+                                dict(e.metrics) if e.metrics is not None else None
+                            ),
                             e.expires_at,
                         )
                         for e in events
