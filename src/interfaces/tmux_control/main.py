@@ -192,8 +192,8 @@ async def create_session(
 async def destroy_session(
     session_name: str,
     _: str = Depends(verify_api_key),
-) -> dict[str, str]:
-    """Destroy a tmux session."""
+) -> dict[str, str | bool]:
+    """Destroy a tmux session."""""
     returncode, stdout, stderr = run_tmux(["kill-session", "-t", session_name])
 
     if returncode != 0:

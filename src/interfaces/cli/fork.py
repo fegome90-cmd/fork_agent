@@ -7,7 +7,8 @@ y ejecutar comandos de diagnóstico/del doctor.
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from typing import cast
 
 import typer
 
@@ -167,7 +168,7 @@ def doctor_status(
     print(f"Orphan sessions: {status['orphan_sessions_count']}")
     if status["orphan_sessions"]:
         print("Orphan session names:")
-        for session in status["orphan_sessions"]:
+        for session in cast(Iterable[str], status["orphan_sessions"]):
             print(f"  - {session}")
 
 

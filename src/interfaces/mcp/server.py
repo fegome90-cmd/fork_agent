@@ -63,7 +63,7 @@ def run_server(
         app = (
             mcp_server.sse_app(mount_path=mount_path)
             if transport == "sse"
-            else mcp_server.streamable_http_app(mount_path=mount_path)
+            else mcp_server.streamable_http_app(mount_path=mount_path)  # type: ignore[call-arg]
         )
         uvicorn.run(app, host=host, port=port)
     else:

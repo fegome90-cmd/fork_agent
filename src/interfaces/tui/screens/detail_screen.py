@@ -13,6 +13,7 @@ from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import RichLog, Static
 
+from src.application.services.memory_service import MemoryService
 from src.domain.entities.observation import Observation
 from src.interfaces.tui.widgets.type_badge import TypeBadge
 
@@ -33,7 +34,7 @@ class DetailScreen(Screen[None]):
         self._db_path = db_path
         self._obs_id = obs_id
         self._observation: Observation | None = None
-        self._service: object | None = None
+        self._service: MemoryService | None = None
 
     def compose(self) -> ComposeResult:
         with VerticalScroll():
@@ -49,7 +50,7 @@ class DetailScreen(Screen[None]):
     def on_mount(self) -> None:
         self._load_observation()
 
-    def _get_service(self) -> object:
+    def _get_service(self) -> MemoryService:
         if self._service is None:
             from src.infrastructure.persistence.container import (
                 create_container,
@@ -80,7 +81,8 @@ class DetailScreen(Screen[None]):
         # Replace TypeBadge — must remove old and add new
         old_badge = self.query_one(TypeBadge)
         new_badge = TypeBadge(obs.type or "unknown")
-        old_badge.replace(new_badge)
+        old_badge.mount(new_badge)
+        old_badge.remove()
 
         # Project info
         parts: list[str] = []
@@ -114,7 +116,7 @@ class DetailScreen(Screen[None]):
             self.query_one("#detail-metadata", Static).update("")
 
     def action_delete(self) -> None:
-        def _on_confirm(confirmed: bool) -> None:
+        def _on_confirm(confirmed: bool | None) -> None:
             if confirmed:
                 service = self._get_service()
                 service.delete(self._obs_id)

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -19,7 +19,7 @@ app = typer.Typer(help="Query memory events with structured filters.")
 
 def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     """Get database path from CLI context."""
-    current = ctx
+    current: Any = ctx
     while current:
         if hasattr(current, "params") and "db_path" in current.params:
             return Path(current.params["db_path"])
@@ -238,17 +238,18 @@ def timeline(
 
     for obs in filtered:
         ts = _format_timestamp_short(obs.timestamp)
-        event_type = obs.metadata.get("event_type", "unknown")
+        meta = obs.metadata or {}
+        event_type = meta.get("event_type", "unknown")
 
         # Add message_type for agent_message
-        extra = obs.metadata.get("extra", {}) if obs.metadata else {}
+        extra = meta.get("extra", {})
         if event_type == "agent_message" and extra.get("message_type"):
             event_type = f"{event_type}:{extra['message_type']}"
 
         # Build agent/session info
-        agent_id = obs.metadata.get("agent_id", "-")
-        session_name = obs.metadata.get("session_name", "")
-        task_id = obs.metadata.get("task_id", "-")
+        agent_id = meta.get("agent_id", "-")
+        session_name = meta.get("session_name", "")
+        task_id = meta.get("task_id", "-")
 
         agent_str = f"{agent_id}"
         if session_name and session_name != agent_id.split(":")[0]:
@@ -256,10 +257,10 @@ def timeline(
 
         # Build status
         status = ""
-        if obs.metadata.get("success") is True:
+        if meta.get("success") is True:
             status = "✓"
-        elif obs.metadata.get("success") is False:
-            error = obs.metadata.get("error_message", "")
+        elif meta.get("success") is False:
+            error = meta.get("error_message", "")
             status = f"✗ ({error[:30]}...)" if len(error) > 30 else f"✗ ({error})"
 
         typer.echo(f"{ts} | {event_type:25} | {agent_str:20} | {task_id:15} | {status}")

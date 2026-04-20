@@ -11,6 +11,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Input, Static
 
+from src.application.services.memory_service import MemoryService
 from src.domain.entities.observation import Observation
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class SearchScreen(Screen[None]):
         super().__init__()
         self._db_path = db_path
         self._initial_query = initial_query
-        self._service: object | None = None
+        self._service: MemoryService | None = None
         self._result_ids: list[str] = []
 
     def compose(self) -> ComposeResult:
@@ -56,7 +57,7 @@ class SearchScreen(Screen[None]):
         else:
             self.query_one("#search-input", Input).focus()
 
-    def _get_service(self) -> object:
+    def _get_service(self) -> MemoryService:
         if self._service is None:
             from src.infrastructure.persistence.container import (
                 create_container,

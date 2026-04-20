@@ -110,7 +110,7 @@ class SyncRepositoryImpl:
                     )
                 # Increment mutation_count in sync_status
                 conn.execute("UPDATE sync_status SET mutation_count = mutation_count + 1")
-                return row["seq"]
+                return int(row["seq"])
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to record mutation: {e}", e) from e
 

@@ -87,8 +87,8 @@ class DatabaseConnection:
             self._apply_pragmas(conn)
             # Use thread-local stack for nested contexts
             if not hasattr(_thread_local, "in_memory_stack"):
-                _thread_local.in_memory_stack = {}  # type: ignore[attr-defined]
-            stack = _thread_local.in_memory_stack  # type: ignore[assignment]
+                _thread_local.in_memory_stack = {}
+            stack = _thread_local.in_memory_stack
             if key not in stack:
                 stack[key] = []
             stack[key].append(conn)

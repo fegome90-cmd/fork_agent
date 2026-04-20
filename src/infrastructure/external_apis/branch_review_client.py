@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -55,7 +55,7 @@ class BranchReviewClient:
             )
 
         if isinstance(payload, dict):
-            return payload.get("data", payload)
+            return cast(dict[str, Any], payload.get("data", payload))
 
         return {"result": payload}
 
@@ -72,7 +72,7 @@ class BranchReviewClient:
             token: Auth token (defaults to BRANCH_REVIEW_TOKEN env)
             timeout: Request timeout in seconds
         """
-        self.base_url = (base_url or os.getenv("BRANCH_REVIEW_URL", DEFAULT_BASE_URL)).rstrip("/")
+        self.base_url = (base_url or os.getenv("BRANCH_REVIEW_URL", DEFAULT_BASE_URL) or DEFAULT_BASE_URL).rstrip("/")
         self.token = token or os.getenv("BRANCH_REVIEW_TOKEN", "")
         self.timeout = timeout
         self._client: httpx.Client | None = None

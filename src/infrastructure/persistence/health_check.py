@@ -124,7 +124,7 @@ class HealthCheckService:
             with self._connection as conn:
                 cursor = conn.execute("PRAGMA integrity_check")
                 result = cursor.fetchone()
-                return result[0] == "ok"
+                return str(result[0]) == "ok"
         except sqlite3.Error:
             return False
 
@@ -152,8 +152,9 @@ class HealthCheckService:
     @staticmethod
     def _format_bytes(size: int) -> str:
         """Format bytes to human-readable string."""
+        remaining: float = size
         for unit in ["B", "KB", "MB", "GB"]:
-            if size < 1024:
-                return f"{size:.1f} {unit}"
-            size /= 1024
-        return f"{size:.1f} TB"
+            if remaining < 1024:
+                return f"{remaining:.1f} {unit}"
+            remaining = remaining / 1024
+        return f"{remaining:.1f} TB"

@@ -19,7 +19,7 @@ try:
 
     _PSUTIL_AVAILABLE = True
 except ImportError:
-    psutil = None  # type: ignore[assignment]
+    psutil = None
     _PSUTIL_AVAILABLE = False
 
 

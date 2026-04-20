@@ -12,7 +12,9 @@ from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Static
 
+from src.application.services.memory_service import MemoryService
 from src.domain.entities.observation import Observation
+from src.infrastructure.persistence.health_check import HealthCheckService
 
 
 class StatsScreen(Screen[None]):
@@ -26,8 +28,8 @@ class StatsScreen(Screen[None]):
     def __init__(self, db_path: Path | None = None) -> None:
         super().__init__()
         self._db_path = db_path
-        self._service: object | None = None
-        self._health_check: object | None = None
+        self._service: MemoryService | None = None
+        self._health_check: HealthCheckService | None = None
 
     def compose(self) -> ComposeResult:
         with VerticalScroll():
@@ -44,7 +46,7 @@ class StatsScreen(Screen[None]):
     def on_mount(self) -> None:
         self._load_stats()
 
-    def _get_service(self) -> object:
+    def _get_service(self) -> MemoryService:
         if self._service is None:
             from src.infrastructure.persistence.container import (
                 create_container,
@@ -56,7 +58,7 @@ class StatsScreen(Screen[None]):
             self._service = container.memory_service()
         return self._service
 
-    def _get_health_check(self) -> object:
+    def _get_health_check(self) -> HealthCheckService:
         if self._health_check is None:
             from src.infrastructure.persistence.container import (
                 create_container,

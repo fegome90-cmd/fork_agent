@@ -130,7 +130,7 @@ class TaskDecomposer:
         core_tasks: list[Task],
     ) -> list[Task]:
         """Create integration tasks."""
-        tasks = []
+        tasks: list[Task] = []
 
         if not core_tasks:
             return tasks
@@ -156,7 +156,7 @@ class TaskDecomposer:
         core_tasks: list[Task],
     ) -> list[Task]:
         """Create optional/nice-to-have tasks."""
-        tasks = []
+        tasks: list[Task] = []
 
         if not core_tasks:
             return tasks

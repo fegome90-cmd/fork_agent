@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -31,7 +32,7 @@ def _should_auto_detect(ctx: typer.Context) -> bool:
 
 def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     """Get database path from CLI context."""
-    current = ctx
+    current: Any = ctx
     while current:
         if hasattr(current, "params") and "db_path" in current.params:
             return Path(current.params["db_path"])

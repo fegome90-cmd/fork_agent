@@ -15,7 +15,7 @@ app = typer.Typer()
 
 def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     """Get database path from CLI context."""
-    current = ctx
+    current: Any = ctx
     while current:
         if hasattr(current, "params") and "db_path" in current.params:
             return Path(current.params["db_path"])

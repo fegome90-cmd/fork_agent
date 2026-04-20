@@ -11,6 +11,7 @@ import tempfile
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import typer
 
@@ -72,11 +73,11 @@ class ShipPreflightError(Exception):
 def _get_hook_service() -> HookService:
     """Get HookService from ctx.obj if available (for testability), else use shared singleton."""
     try:
-        ctx = typer.get_current_context()
+        ctx = typer.get_current_context()  # type: ignore[attr-defined]
         if isinstance(ctx.obj, dict):
             if "hook_service" not in ctx.obj:
                 ctx.obj["hook_service"] = _get_shared_hook_service()
-            return ctx.obj["hook_service"]
+            return cast(HookService, ctx.obj["hook_service"])
     except RuntimeError:
         pass
     return _get_shared_hook_service()
@@ -674,9 +675,9 @@ def ship(
 
                         # Try to merge first
                         try:
-                            current_branch = _get_current_branch()
+                            current_branch = _get_current_branch() or "unknown"
                             cross_branch = (
-                                current_branch is not None and current_branch != target_branch
+                                current_branch != target_branch
                             )
                             if use_worktree and cross_branch:
                                 _merge_branch_via_temp_worktree(worktree_name, target_branch)
@@ -945,7 +946,7 @@ When done, write ## HUNT_COMPLETE ## as last line.
     findings_dir = f"/tmp/hunt-findings-{hunt_id}"
     Path(findings_dir).mkdir(exist_ok=True)
 
-    all_findings: list[dict[str, str]] = []
+    all_findings: list[dict[str, str | int]] = []
     for agent_name in sorted(selected_agents):
         src = f"/tmp/hunt-findings-{agent_name}-{hunt_id}.md"
         dst = f"{findings_dir}/hunt-findings-{agent_name}.md"
@@ -975,14 +976,15 @@ When done, write ## HUNT_COMPLETE ## as last line.
     # Count severity from structured headers [AGENT-NNN] SEVERITY
     critical_count = 0
     high_count = 0
-    for f in all_findings:
-        if Path(f["file"]).exists():
-            text = Path(f["file"]).read_text()
+    for finding in all_findings:
+        finding_file = cast(str, finding["file"])
+        if Path(finding_file).exists():
+            text = Path(finding_file).read_text()
             critical_count += len(re.findall(r"^\[[A-Z]+-[0-9]+\] +CRITICAL\b", text, re.MULTILINE))
             high_count += len(re.findall(r"^\[[A-Z]+-[0-9]+\] +HIGH\b", text, re.MULTILINE))
 
     # Save consolidated report
-    total_bugs = sum(f["bugs"] for f in all_findings)
+    total_bugs = sum(cast(int, finding["bugs"]) for finding in all_findings)
     report = f"Bug hunt {hunt_id}: {total_bugs} bugs found by {len(spawned)} agents."
 
     # Include consolidated report if available
@@ -1025,9 +1027,10 @@ When done, write ## HUNT_COMPLETE ## as last line.
         typer.echo(f"\nVerdict: PASS — {total_bugs} non-critical bugs found.")
 
     # Print summary of all findings
-    for f in all_findings:
-        if Path(f["file"]).exists():
-            typer.echo(f"\n--- {f['agent']} findings: {f['file']} ---")
+    for finding in all_findings:
+        finding_file = cast(str, finding["file"])
+        if Path(finding_file).exists():
+            typer.echo(f"\n--- {finding['agent']} findings: {finding['file']} ---")
 
 
 @app.command("status")

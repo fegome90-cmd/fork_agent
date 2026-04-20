@@ -11,6 +11,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Input, Static, TextArea
 
+from src.application.services.memory_service import MemoryService
 from src.domain.entities.observation import Observation
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class SaveScreen(Screen[None]):
     def __init__(self, db_path: Path | None = None) -> None:
         super().__init__()
         self._db_path = db_path
-        self._service: object | None = None
+        self._service: MemoryService | None = None
 
     def compose(self) -> ComposeResult:
         with VerticalScroll():
@@ -56,7 +57,7 @@ class SaveScreen(Screen[None]):
     def on_mount(self) -> None:
         self.query_one("#save-content", TextArea).focus()
 
-    def _get_service(self) -> object:
+    def _get_service(self) -> MemoryService:
         if self._service is None:
             from src.infrastructure.persistence.container import (
                 create_container,

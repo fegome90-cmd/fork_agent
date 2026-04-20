@@ -181,7 +181,7 @@ class ObservationRepository:
         """Return total number of observations."""
         with self._connection as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM observations")
-            return cursor.fetchone()[0]
+            return int(cursor.fetchone()[0])
 
     def get_by_id(self, observation_id: str) -> Observation:
         """Retrieve an observation by its ID.
@@ -507,7 +507,7 @@ class ObservationRepository:
                 WHERE LOWER(topic_key) = ? AND project IS NULL
                 LIMIT 1
             )"""
-            where_params: tuple[str, ...] = (normalized_key,)
+            where_params = (normalized_key,)
 
         sql = f"""
             UPDATE observations SET

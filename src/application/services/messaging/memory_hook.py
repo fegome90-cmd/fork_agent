@@ -1,3 +1,4 @@
+# mypy: disable-error-code=call-arg
 """Memory Hook for selective message capture - FASE 3.
 
 Captures important messages to memory with gates:

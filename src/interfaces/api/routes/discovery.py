@@ -1,6 +1,9 @@
 """Discovery routes for API self-documentation.
 
 These endpoints provide LLM-optimized "cards" that help external agents
+
+# mypy: disable-error-code=call-arg
+# Pydantic BaseModel fields with defaults aren't recognized without pydantic.mypy plugin
 self-discover how to use the Fork Agent API without needing verbose
 OpenAPI/Swagger documentation.
 """

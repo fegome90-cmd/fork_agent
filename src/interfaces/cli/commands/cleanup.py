@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import typer
 
@@ -23,7 +24,7 @@ def _get_cleanup_service_from_context(ctx: typer.Context) -> CleanupService:
     """
     # Try to get from injected context first
     if ctx.obj is not None and hasattr(ctx.obj, "cleanup_service"):
-        return ctx.obj.cleanup_service()
+        return cast(CleanupService, ctx.obj.cleanup_service())
 
     # Fallback: construct from db_path
     db_path = get_default_db_path()

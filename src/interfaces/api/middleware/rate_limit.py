@@ -104,15 +104,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with rate limiting."""
         if request.url.path in self.excluded_paths:
-            return await call_next(request)
+            return await call_next(request)  # type: ignore[no-any-return]
 
         client_id = self.key_func(request)
         is_allowed, remaining, retry_after = await self.limiter.is_allowed(client_id)
 
-        response = (
-            await call_next(request)
-            if is_allowed
-            else JSONResponse(
+        if is_allowed:
+            response: Response = await call_next(request)
+        else:
+            response = JSONResponse(
                 status_code=429,
                 content={
                     "error": {
@@ -131,7 +131,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "Retry-After": str(retry_after),
                 },
             )
-        )
 
         response.headers["X-RateLimit-Limit"] = str(self.limiter.requests_per_minute)
         response.headers["X-RateLimit-Remaining"] = str(remaining)

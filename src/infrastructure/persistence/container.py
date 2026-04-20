@@ -295,32 +295,32 @@ def get_container(db_path: Path | None = None) -> Container:
 
 def get_repository(db_path: Path | None = None) -> ObservationRepository:
     """Get the ObservationRepository instance."""
-    return get_container(db_path).observation_repository()  # type: ignore[no-any-return]
+    return get_container(db_path).observation_repository()
 
 
 def get_tmux_orchestrator() -> TmuxOrchestrator:
     """Get the singleton TmuxOrchestrator instance."""
-    return get_container().tmux_orchestrator()  # type: ignore[no-any-return]
+    return get_container().tmux_orchestrator()
 
 
 def get_memory_service(db_path: Path | None = None) -> MemoryService:
     """Get a MemoryService instance."""
-    return get_container(db_path).memory_service()  # type: ignore[no-any-return]
+    return get_container(db_path).memory_service()
 
 
 def get_session_service(db_path: Path | None = None) -> SessionService:
     """Get a SessionService instance."""
-    return get_container(db_path).session_service()  # type: ignore[no-any-return]
+    return get_container(db_path).session_service()
 
 
 def get_sync_service(db_path: Path | None = None) -> SyncService:
     """Get a SyncService instance."""
-    return get_container(db_path).sync_service()  # type: ignore[no-any-return]
+    return get_container(db_path).sync_service()
 
 
 def get_health_service(db_path: Path | None = None) -> HealthCheckService:
     """Get a HealthCheckService instance."""
-    return get_container(db_path).health_check_service()  # type: ignore[no-any-return]
+    return get_container(db_path).health_check_service()
 
 
 def get_health_check_service(db_path: Path | None = None) -> HealthCheckService:
@@ -338,12 +338,12 @@ def get_hook_service() -> HookService:
 
 def get_promise_repository(db_path: Path | None = None) -> PromiseContractRepository:
     """Get the singleton PromiseContractRepository instance."""
-    return get_container(db_path).promise_contract_repository()  # type: ignore[no-any-return]
+    return get_container(db_path).promise_contract_repository()
 
 
 def get_workspace_manager(db_path: Path | None = None) -> WorkspaceManager:
     """Get the WorkspaceManager instance via DI container."""
-    return get_container(db_path).workspace_manager()  # type: ignore[no-any-return]
+    return get_container(db_path).workspace_manager()
 
 
 def get_workflow_executor() -> WorkflowExecutor:
@@ -364,17 +364,17 @@ def get_workflow_executor() -> WorkflowExecutor:
 
 def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
     """Get a TelemetryService instance."""
-    return get_container(db_path).telemetry_service()  # type: ignore[no-any-return]
+    return get_container(db_path).telemetry_service()
 
 
 def get_cleanup_service(db_path: Path | None = None) -> CleanupService:
     """Get a CleanupService instance."""
-    return get_container(db_path).cleanup_service()  # type: ignore[no-any-return]
+    return get_container(db_path).cleanup_service()
 
 
 def get_scheduler_service(db_path: Path | None = None) -> SchedulerService:
     """Get a SchedulerService instance."""
-    return get_container(db_path).scheduler_service()  # type: ignore[no-any-return]
+    return get_container(db_path).scheduler_service()
 
 
 def detect_memory_db_path() -> Path:
@@ -418,14 +418,14 @@ def get_memory_service_auto() -> MemoryService:
 
 def get_message_store(db_path: Path | None = None) -> MessageStore:
     """Get the MessageStore instance."""
-    return get_container(db_path).message_repository()  # type: ignore[no-any-return]
+    return get_container(db_path).message_repository()
 
 
 def get_agent_messenger(db_path: Path | None = None) -> AgentMessenger:
     """Get the AgentMessenger instance."""
-    return get_container(db_path).agent_messenger()  # type: ignore[no-any-return]
+    return get_container(db_path).agent_messenger()
 
 
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
-    return get_container(db_path).database_connection()  # type: ignore[no-any-return]
+    return get_container(db_path).database_connection()

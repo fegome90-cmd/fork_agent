@@ -94,7 +94,7 @@ class GoalAnalyzer:
         if goal is None:
             return []
 
-        requirements = []
+        requirements: list[DerivedRequirement] = []
 
         # 1. Start with must_haves as explicit requirements
         for must_have in goal.must_haves:

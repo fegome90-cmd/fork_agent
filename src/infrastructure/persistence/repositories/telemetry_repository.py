@@ -51,24 +51,24 @@ class TelemetryRepositoryImpl(TelemetryRepository):
 
         self._tables_verified = True
 
-    def _serialize_attributes(self, attributes: dict) -> str:
+    def _serialize_attributes(self, attributes: dict[str, Any]) -> str:
         return json.dumps(dict(attributes))
 
-    def _deserialize_attributes(self, data: str | dict) -> dict:
+    def _deserialize_attributes(self, data: str | dict[str, Any]) -> dict[str, Any]:
         if isinstance(data, str):
-            return json.loads(data)
+            return json.loads(data)  # type: ignore[no-any-return]
         return data
 
-    def _serialize_metrics(self, metrics: dict | None) -> str | None:
+    def _serialize_metrics(self, metrics: dict[str, Any] | None) -> str | None:
         if metrics is None:
             return None
         return json.dumps(dict(metrics))
 
-    def _deserialize_metrics(self, data: str | dict | None) -> dict | None:
+    def _deserialize_metrics(self, data: str | dict[str, Any] | None) -> dict[str, Any] | None:
         if data is None:
             return None
         if isinstance(data, str):
-            return json.loads(data)
+            return json.loads(data)  # type: ignore[no-any-return]
         return data
 
     def _get_optional(self, row: sqlite3.Row, key: str, default: Any = None) -> Any:
@@ -88,8 +88,8 @@ class TelemetryRepositoryImpl(TelemetryRepository):
             session_id=row["session_id"],
             correlation_id=row["correlation_id"],
             parent_event_id=row["parent_event_id"],
-            attributes=types.MappingProxyType(self._deserialize_attributes(row["attributes"])),
-            metrics=types.MappingProxyType(self._deserialize_metrics(row["metrics"]))
+            attributes=types.MappingProxyType(self._deserialize_attributes(row["attributes"]) or {}),
+            metrics=types.MappingProxyType(self._deserialize_metrics(row["metrics"]) or {})
             if row["metrics"]
             else None,
             expires_at=row["expires_at"],
@@ -167,8 +167,8 @@ class TelemetryRepositoryImpl(TelemetryRepository):
                             e.session_id,
                             e.correlation_id,
                             e.parent_event_id,
-                            self._serialize_attributes(e.attributes),
-                            self._serialize_metrics(e.metrics),
+                            self._serialize_attributes(dict(e.attributes)),
+                            self._serialize_metrics(dict(e.metrics) if e.metrics is not None else None),
                             e.expires_at,
                         )
                         for e in events
@@ -202,7 +202,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         offset: int = 0,
     ) -> list[TelemetryEvent]:
         where_clauses = []
-        params = []
+        params: list[str | int] = []
 
         if event_type is not None:
             where_clauses.append("event_type = ?")
@@ -242,7 +242,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         end_time: int | None = None,
     ) -> int:
         where_clauses = []
-        params = []
+        params: list[str | int] = []
 
         if event_type is not None:
             where_clauses.append("event_type = ?")
@@ -265,7 +265,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
 
         with self._connection as conn:
             cursor = conn.execute(query, params)
-            return cursor.fetchone()["count"]
+            return int(cursor.fetchone()["count"])
 
     def aggregate_metric(
         self,
@@ -404,7 +404,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         limit: int = 100,
     ) -> list[SessionSummary]:
         where_clauses = []
-        params = []
+        params: list[str | int] = []
 
         if status is not None:
             where_clauses.append("status = ?")
@@ -439,7 +439,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         end_time: int | None = None,
     ) -> dict[str, int]:
         where_clauses = []
-        params = []
+        params: list[str | int] = []
 
         if start_time is not None:
             where_clauses.append("timestamp >= ?")
@@ -461,7 +461,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         end_time: int | None = None,
     ) -> dict[str, int]:
         where_clauses = []
-        params = []
+        params: list[str | int] = []
 
         if start_time is not None:
             where_clauses.append("timestamp >= ?")

@@ -74,7 +74,7 @@ def _get_enhanced_search_service() -> Any:
         from src.infrastructure.retrieval.v2.enhanced_search import EnhancedRetrievalSearchService
 
         repository = get_repository(_custom_db_path)
-        _enhanced_search_service = EnhancedRetrievalSearchService(repository)
+        _enhanced_search_service = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
     return _enhanced_search_service
 
 

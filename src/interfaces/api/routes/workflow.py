@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -34,7 +35,7 @@ async def create_plan(
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
     plan_id = f"plan-{uuid.uuid4().hex[:6]}"
-    data = {
+    data: dict[str, str | datetime | float | dict[str, int]] = {
         "plan_id": plan_id,
         "task": request.task,
         "status": "created",
@@ -49,7 +50,7 @@ async def execute_plan(
     _: str = Depends(verify_api_key),
 ) -> WorkflowResponse:
     execute_id = f"exec-{uuid.uuid4().hex[:6]}"
-    data = {
+    data: dict[str, str | datetime | float | dict[str, int]] = {
         "execute_id": execute_id,
         "plan_id": plan_id,
         "status": "running",
@@ -66,6 +67,7 @@ async def verify_plan(
     verify_id = f"verify-{uuid.uuid4().hex[:3]}"
     passed = True
     now = datetime.now()
+    data: dict[str, str | datetime | float | dict[str, int]] = {}
 
     try:
         repo = get_promise_repository()
@@ -129,7 +131,7 @@ async def ship_plan(
     # Persist SHIPPED state
     repo.update_state(contract.id, PromiseState.SHIPPED)
 
-    data = {
+    data: dict[str, str | datetime | float | dict[str, int]] = {
         "plan_id": plan_id,
         "branch": branch,
         "commit_message": commit_message,
@@ -154,8 +156,9 @@ async def get_plan_status(
                     "created_at": datetime.now(),
                 }
             )
-        return WorkflowResponse(
-            data={
+        response_data = cast(
+            dict[str, str | datetime | float | dict[str, int]],
+            {
                 "plan_id": plan_id,
                 "status": contract.state.value,
                 "promise_contract": {
@@ -164,8 +167,9 @@ async def get_plan_status(
                     "created_at": contract.created_at.isoformat() if contract.created_at else None,
                     "updated_at": contract.updated_at.isoformat() if contract.updated_at else None,
                 },
-            }
+            },
         )
+        return WorkflowResponse(data=response_data)
     except RepositoryError as e:
         logger.error(f"Repository error fetching contract: {e}")
         raise HTTPException(status_code=500, detail="Database error") from e

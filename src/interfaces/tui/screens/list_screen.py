@@ -11,6 +11,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
 
+from src.application.services.memory_service import MemoryService
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,11 +32,11 @@ class ListScreen(Screen[None]):
         super().__init__()
         self._db_path = db_path
         self._page = 0
-        self._service: object | None = None  # lazy init, cached
+        self._service: MemoryService | None = None  # lazy init, cached
         self._result_ids: list[str] = []
 
     def compose(self) -> ComposeResult:
-        table = DataTable()
+        table: DataTable = DataTable()
         table.add_columns("ID", "Type", "Project", "Topic Key", "Title", "Created")
         table.cursor_type = "row"
         yield table
@@ -43,7 +45,7 @@ class ListScreen(Screen[None]):
     def on_mount(self) -> None:
         self._load_data()
 
-    def _get_service(self) -> object:
+    def _get_service(self) -> MemoryService:
         if self._service is None:
             from src.infrastructure.persistence.container import (
                 create_container,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -43,7 +43,7 @@ def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
     the root context that has the db_path parameter.
     """
     # Walk up the context tree to find db_path
-    current = ctx
+    current: Any = ctx
     while current:
         if hasattr(current, "params") and "db_path" in current.params:
             return Path(current.params["db_path"])
@@ -88,7 +88,7 @@ def status(
         typer.echo("  No events recorded")
 
     typer.echo("\n--- Recent Sessions ---")
-    sessions = telemetry.repository.list_sessions(limit=5)  # type: ignore[attr-defined]
+    sessions = telemetry.repository.list_sessions(limit=5)
     if sessions:
         for s in sessions:
             typer.echo(
@@ -340,7 +340,7 @@ def dashboard(
         by_category[category] = by_category.get(category, 0) + count
 
     # Get session stats
-    sessions = telemetry.repository.list_sessions(status="ended", limit=100)  # type: ignore[attr-defined]
+    sessions = telemetry.repository.list_sessions(status="ended", limit=100)
 
     # Calculate averages
     ended_sessions = [s for s in sessions if s.duration_ms]
@@ -350,7 +350,7 @@ def dashboard(
         else 0
     )
 
-    active_sessions = telemetry.repository.list_sessions(status="active", limit=100)  # type: ignore[attr-defined]
+    active_sessions = telemetry.repository.list_sessions(status="active", limit=100)
 
     # Build dashboard
     typer.echo()

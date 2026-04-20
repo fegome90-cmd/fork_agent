@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -93,7 +94,7 @@ def status_cmd(ctx: typer.Context) -> None:
 
 def _get_db_path(ctx: typer.Context) -> Path:
     """Get database path from CLI context."""
-    current = ctx
+    current: Any = ctx
     while current:
         if hasattr(current, "params") and "db_path" in current.params:
             db_path = current.params["db_path"]

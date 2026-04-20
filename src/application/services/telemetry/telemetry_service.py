@@ -129,7 +129,10 @@ class TelemetryService:
         self.flush()
 
         # Update session summary
-        summary = self._repository.get_session_summary(self._session_id)
+        session_id = self._session_id
+        if session_id is None:
+            return
+        summary = self._repository.get_session_summary(session_id)
         if summary:
             from dataclasses import replace
 
@@ -198,7 +201,10 @@ class TelemetryService:
 
     def _update_session_summary(self, event: TelemetryEvent) -> None:
         """Update session summary with event counts."""
-        summary = self._repository.get_session_summary(self._session_id)
+        session_id = self._session_id
+        if session_id is None:
+            return
+        summary = self._repository.get_session_summary(session_id)
         if not summary:
             return
 
@@ -243,7 +249,7 @@ class TelemetryService:
         if updates:
             from dataclasses import replace
 
-            updated = replace(summary, **updates)
+            updated = replace(summary, **updates)  # type: ignore[arg-type]
             self._repository.save_session_summary(updated)
 
     # Convenience methods for common events
