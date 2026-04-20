@@ -11,6 +11,10 @@
 - [ ] `test` — Test additions/changes only
 - [ ] `chore` — CI, deps, tooling
 - [ ] `ci` — Workflow changes
+- [ ] `build` — Build system or dependencies
+- [ ] `perf` — Performance improvement
+- [ ] `style` — Formatting, linting, no logic change
+- [ ] `revert` — Revert a previous commit
 
 ## Context
 
