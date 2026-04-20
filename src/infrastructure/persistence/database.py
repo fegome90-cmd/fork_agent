@@ -43,9 +43,15 @@ class DatabaseConfig(BaseModel):
     @classmethod
     def expand_path(cls, v: Path | str) -> Path:
         path = Path(v).expanduser()
-        if not path.parent.exists() and str(path) != ":memory:":
-            path.parent.mkdir(parents=True, exist_ok=True)
-        return path
+        if str(path) == ":memory:":
+            return path
+        resolved = path.resolve()
+        if ".." in str(path) and not resolved.parent.exists():
+            raise ValueError(
+                f"Invalid database path: path traversal detected and parent does not exist: {path}"
+            )
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        return resolved
 
     @field_validator("busy_timeout_ms")
     @classmethod
@@ -101,6 +107,10 @@ class DatabaseConnection:
             )
             conn.row_factory = sqlite3.Row
             self._apply_pragmas(conn)
+            # Harden file permissions: owner read/write only
+            db_path = Path(str(self._config.db_path))
+            if db_path.exists():
+                db_path.chmod(0o600)
             setattr(_thread_local, key, conn)
         return getattr(_thread_local, key)  # type: ignore[no-any-return]
 
