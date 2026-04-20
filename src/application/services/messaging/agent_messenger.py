@@ -94,7 +94,7 @@ class AgentMessenger:
                 ["tmux", "has-session", "-t", target_session], capture_output=True
             )
             if check.returncode != 0:
-                logging.warning(f"Messaging target session not found: {target_session}")
+                logging.debug(f"Messaging target session not found: {target_session}")
                 return False
 
             # Set the message ID as a pane option (Side-channel)

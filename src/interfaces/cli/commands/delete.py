@@ -28,13 +28,15 @@ def _get_db_path_from_context(ctx: typer.Context) -> Path | None:
 def delete(
     ctx: typer.Context,
     observation_id: str = typer.Argument(..., help="Full ID or prefix of the observation"),
-    force: bool = typer.Option(False, "--force", "-f"),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip project ownership check"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
     project: str | None = typer.Option(
         None, "--project", "-p", help="Verify observation belongs to project"
     ),
 ) -> None:
     memory_service = ctx.obj
-    if not force and not typer.confirm(f"Delete observation {observation_id}?"):
+    # Confirmation: prompt unless --yes or --force
+    if not yes and not force and not typer.confirm(f"Delete observation {observation_id}?"):
         typer.echo("Cancelled")
         raise typer.Exit(0)  # noqa: B904
     try:
@@ -46,8 +48,7 @@ def delete(
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)  # noqa: B904
-    # Verify project ownership if --project given or auto-detected
-    # When --force is set, skip the project ownership check entirely
+    # Verify project ownership unless --force
     if not force:
         effective_project = project if project is not None else Path(os.getcwd()).name
         if resolved.project and resolved.project != effective_project:
