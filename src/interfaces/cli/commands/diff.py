@@ -46,6 +46,7 @@ def _get_diff_service(ctx: typer.Context) -> DiffService:
 
     if db_path:
         from src.infrastructure.persistence.container import get_repository
+
         repo = get_repository(Path(db_path))
     else:
         memory_service = ctx.obj
@@ -80,7 +81,9 @@ def _parse_timestamp(value: str) -> int:
             raise ValueError("Timestamp must be non-negative")
         return ts
     except ValueError:
-        raise ValueError(f"Invalid timestamp: {value} (expected Unix ms or relative like -1h)") from None
+        raise ValueError(
+            f"Invalid timestamp: {value} (expected Unix ms or relative like -1h)"
+        ) from None
 
 
 def _resolve_project(ctx: typer.Context, project: str | None) -> str | None:
@@ -106,15 +109,9 @@ def diff(
     before: str = typer.Option(None, "--before", help="Reference window end timestamp"),
     after: str = typer.Option(None, "--after", help="Target window start timestamp"),
     session: list[str] = typer.Option([], "--session", help="Session IDs (provide exactly 2)"),
-    project: str | None = typer.Option(
-        None, "--project", "-p", help="Filter by project"
-    ),
-    obs_type: str | None = typer.Option(
-        None, "--type", "-t", help="Filter by observation type"
-    ),
-    format: str = typer.Option(
-        "text", "--format", "-f", help="Output format: text, json"
-    ),
+    project: str | None = typer.Option(None, "--project", "-p", help="Filter by project"),
+    obs_type: str | None = typer.Option(None, "--type", "-t", help="Filter by observation type"),
+    format: str = typer.Option("text", "--format", "-f", help="Output format: text, json"),
 ) -> None:
     """Compare observations between two references.
 
@@ -171,7 +168,8 @@ def diff(
                 typer.echo("Error: Exactly 2 --session values required", err=True)
                 raise typer.Exit(1)
             result = svc.diff_by_session(
-                session[0], session[1],
+                session[0],
+                session[1],
                 project=effective_project,
                 obs_type=obs_type,
             )

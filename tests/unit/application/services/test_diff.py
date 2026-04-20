@@ -19,8 +19,12 @@ def _make_obs(
     type: str | None = None,
 ) -> Observation:
     return Observation(
-        id=id, timestamp=timestamp, content=content,
-        topic_key=topic_key, project=project, type=type,
+        id=id,
+        timestamp=timestamp,
+        content=content,
+        topic_key=topic_key,
+        project=project,
+        type=type,
     )
 
 
