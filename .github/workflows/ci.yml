@@ -1,14 +1,35 @@
 name: CI Pipeline
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main, develop]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/**"
   pull_request:
     branches: [main, develop]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/**"
+
+permissions:
+  contents: read
+  checks: write
+  security-events: write
 
 jobs:
   lint:
+    name: Lint (ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -16,6 +37,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,12 +53,35 @@ jobs:
       - name: Run ruff format check
         run: uv run ruff format --check src/ tests/
 
+  typecheck:
+    name: Typecheck (mypy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
       - name: Run mypy type checker
-        run: uv run mypy src/ --no-error-summary || true
-        # TODO: Remove || true once mypy errors are resolved (~145 errors in 40 files)
+        run: uv run mypy src/ --no-error-summary
 
   test:
+    name: Test (${{ matrix.os }} / ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +95,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -62,8 +108,17 @@ jobs:
       - name: Run tests
         run: uv run pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-fail-under=90
 
-      - name: Upload coverage report
+      - name: Upload coverage artifact
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
+          retention-days: 7
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        continue-on-error: true
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -72,7 +127,9 @@ jobs:
           name: codecov-umbrella
 
   security:
+    name: Security (bandit + audit)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -80,6 +137,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -89,8 +147,41 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Run bandit (security linter)
-        run: uv run bandit -r src/ -c pyproject.toml -f json --output bandit-report.json || true
+      - name: Run bandit
+        run: uv run bandit -r src/ -ll -f sarif -o bandit-report.sarif
+
+      - name: Upload bandit SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit-report.sarif
+          category: bandit
 
       - name: Check for known vulnerabilities
-        run: uv audit 2>/dev/null || echo "uv audit not available, skipping"
+        run: uv audit
+
+  check-commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          COMMIT_RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          INVALID=0
+          PATTERN='^(feat|fix|refactor|docs|test|chore|ci|build|perf|style|revert)(\(.+\))?: .+'
+
+          for sha in $(git rev-list "$COMMIT_RANGE"); do
+            msg=$(git log -1 --format='%s' "$sha")
+            if ! echo "$msg" | grep -qE "$PATTERN"; then
+              echo "::error file=.git/COMMIT_EDITMSG::$sha: '$msg' does not match conventional commit format"
+              INVALID=1
+            fi
+          done
+
+          exit $INVALID
