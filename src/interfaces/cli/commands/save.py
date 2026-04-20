@@ -84,6 +84,14 @@ def save(
     if not content or not content.strip():
         typer.echo("Error: Content cannot be empty", err=True)
         raise typer.Exit(1)  # noqa: B904
+    # Null bytes are silently truncated by SQLite — reject early (RIPPER-001/002)
+    if "\x00" in content:
+        typer.echo("Error: content must not contain null bytes", err=True)
+        raise typer.Exit(1)
+    # Path traversal in topic_key (RIPPER-008)
+    if topic_key is not None and (".." in topic_key):
+        typer.echo("Error: topic_key must not contain path traversal patterns (..)", err=True)
+        raise typer.Exit(1)
     # Build metadata from structured fields
     meta_dict: dict[str, Any] = {}
 

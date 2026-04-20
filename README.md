@@ -1,160 +1,164 @@
 # fork_agent
 
-**fork_agent** es una plataforma agéntica avanzada diseñada para transformar y optimizar la interacción con tu terminal. Su capacidad central reside en la habilidad `fork_terminal`, que permite "bifurcar" (fork) tu sesión actual a nuevas ventanas o sesiones de terminal paralelas. Esta funcionalidad es esencial para ejecutar comandos de forma controlada y auditable, gestionar flujos de trabajo complejos, aislar tareas o ejecutar operaciones concurrentes sin interrumpir tu proceso principal.
+Persistent memory, MCP server, and orchestration tools for AI coding agents.
 
-`fork_terminal` actúa como un orquestador, eligiendo la estrategia de ejecución más adecuada para cada solicitud del usuario. Puede lanzar:
-- **Comandos CLI Directos**: Para ejecuciones de shell estándar.
-- **Agentes de Codificación (AI Models)**: Integrando modelos como Claude Code, Codex CLI y Gemini CLI. Estos agentes permiten la generación inteligente de comandos, la ejecución de scripts y la interacción contextual, utilizando el historial de conversación para generar prompts avanzados, especialmente cuando se solicita un "resumen" de la tarea.
+SQLite-backed observation store with FTS5 search, 16-tool MCP server,
+interactive TUI, Obsidian export/import, and git-based sync.
+Python 3.11+ | MIT License
 
-Un "Cookbook" interno guía a `fork_agent` para seleccionar la herramienta idónea según la preferencia del usuario y el contexto, asegurando una ejecución eficiente y adaptada. El sistema promueve un entorno seguro y auditable, con recomendaciones clave para el uso de `--dry-run` o entornos aislados.
+---
 
-## Características Principales
+## Features
 
-- **Orquestación de Terminal**: Bifurca sesiones para gestionar tareas complejas y concurrentes.
-- **Mensajería Inter-Agente (IPC)**: Sistema de comunicación estructurado y silencioso entre sesiones de tmux con persistencia en base de datos.
-- **Soporte Multi-Agente Avanzado**:
+- **Memory Store** -- SQLite with FTS5 full-text search, short-ID prefix matching
+- **MCP Server** -- 16 tools over stdio, SSE, and streamable-http
+- **CLI** -- save, search, retrieve, list, get, update, delete, compact, sync, export, import, sessions, workflow, scheduling
+- **TUI** -- Textual-based browser with list, search, detail, save, and stats screens
+- **Obsidian** -- export/import with YAML frontmatter, dedup, path traversal protection
+- **Git Sync** -- chunk-based export/import to git remote for cross-machine persistence
+- **Compact** -- session summary save and context recovery after context-window resets
+- **Hooks** -- event-driven shell hooks (session, subagent lifecycle, git branch guard)
 
-  - **Raw CLI**: Ejecución directa de comandos de shell.
-  - **Claude Code**: Para interacciones programáticas asistidas por IA.
-  - **Codex CLI**: Generación y ejecución de código asistida.
-  - **Gemini CLI**: Integración con el potente modelo Gemini para comandos inteligentes.
-- **Contexto Conversacional**: Utiliza el historial del chat para enriquecer los prompts de los agentes, permitiendo resúmenes de trabajo y una ejecución más inteligente.
-- **Workflow Disciplinado**: Sistema de comandos con gates obligatorios (outline → execute → verify → ship).
-- **Hooks de Integración**: Eventos para tmux, memory traces y seguridad git.
-- **Multi-Plataforma Robusta**:
-  - **macOS**: Abre ventanas nativas de Terminal.
-  - **Windows**: Inicia nuevas ventanas de CMD.
-  - **Linux**: Prioriza emuladores de terminal comunes; si no los encuentra, crea sesiones de `tmux` desconectadas, ideal para entornos headless o remotos.
+---
 
-## Instalación
-
-1. **Clonar el repositorio:**
-   ```bash
-   git clone <repository-url>
-   cd fork_agent
-   ```
-
-2. **Configurar el entorno:**
-   ```bash
-   # Crear un entorno virtual
-   python3 -m venv .venv
-   source .venv/bin/activate
-
-   # Instalar dependencias
-   uv sync --all-extras
-   ```
-
-   *Nota: La herramienta principal usa librerías estándar de Python, pero los agentes específicos (como `gemini-cli` o `claude-code`) deben estar instalados y disponibles en tu PATH.*
-
-## Uso - Comandos CLI
-
-### Memoria
+## Quick Start
 
 ```bash
-# Guardar observación
-memory save "texto a recordar"
-
-# Buscar observaciones
-memory search "query"
-
-# Listar todas
-memory list
-
-# Obtener por ID
-memory get <id>
-
-# Eliminar
-memory delete <id>
+uv tool install .                                    # Install
+memory save "Refactored auth middleware" --type decision  # Save
+memory search "auth middleware"                       # Search
+memory health                                         # Verify
 ```
 
-### Workflow ( outline → execute → verify → ship )
+---
+
+## Installation
+
+### uv tool (recommended)
 
 ```bash
-# 1. Crear plan
-memory workflow outline "Implementar autenticación"
+uv tool install .
+```
 
-# 2. Ejecutar plan
+Installs `memory`, `memory-mcp`, `fork`, and `fork-api` globally.
+
+### pip
+
+```bash
+pip install fork_agent
+```
+
+### From source
+
+```bash
+git clone https://github.com/felipe-gonzalez/tmux_fork.git
+cd tmux_fork
+uv sync --all-extras
+uv run memory --help
+```
+
+---
+
+## CLI Reference
+
+### Core Memory
+
+| Command | Description |
+|---------|-------------|
+| `memory save "content"` | Save an observation |
+| `memory search "query"` | FTS5 full-text search |
+| `memory retrieve "query"` | Enhanced multi-signal retrieval |
+| `memory list` | List recent observations |
+| `memory get <id>` | Get by full or short ID prefix |
+| `memory delete <id>` | Delete observation |
+| `memory update <id> "new content"` | Update observation |
+| `memory context` | Recent session summaries |
+| `memory stats` | Database statistics |
+| `memory health` | Health check |
+
+### Save options
+
+```bash
+memory save "Fixed race condition in session handler" \
+  --type bugfix --project my-api \
+  --topic-key "auth/session-race" --title "Fix session race condition"
+```
+
+### Search and Query
+
+```bash
+memory search "database migration" --type bugfix --limit 10
+memory retrieve "how to handle concurrent writes" --project my-api
+memory query --type decision --project my-api --after 2026-01-01
+```
+
+### Sessions
+
+```bash
+memory session start --project my-api --goal "Refactor auth flow"
+memory session end
+memory session list
+```
+
+### Compact (context-window recovery)
+
+```bash
+memory compact save-summary --session-id abc123
+memory compact recover
+```
+
+### Export and Import
+
+```bash
+memory export obsidian -o ./my-vault --project my-api     # Obsidian export
+memory import obsidian -i ./my-vault --skip-duplicates   # Obsidian import
+memory sync export --project my-api                        # Git sync export
+memory sync import                                         # Git sync import
+memory sync status                                        # Sync status
+```
+
+### Project Management
+
+```bash
+memory project merge --from old-project --to canonical-project --dry-run
+```
+
+### Workflow (gated phases)
+
+```bash
+memory workflow outline "Implement user authentication"
 memory workflow execute
-
-# 3. Verificar (ejecuta tests)
 memory workflow verify
-
-# 4. Shipping (requiere verify)
 memory workflow ship
-
-# Ver estado
 memory workflow status
 ```
 
-### Programación de Tareas
+### Scheduling
 
 ```bash
-# Programar tarea
-memory schedule add "echo hello" 60
-
-# Listar tareas
+memory schedule add "run tests" 3600
 memory schedule list
-
-# Ver tarea
-memory schedule show <task_id>
-
-# Cancelar
-memory schedule cancel <task_id>
+memory schedule show <id>
+memory schedule cancel <id>
 ```
 
-### Workspace
+### Messaging (inter-agent IPC)
 
 ```bash
-# Crear workspace
-memory workspace create my-workspace
-
-# Listar workspaces
-memory workspace list
-
-# Entrar a workspace
-memory workspace enter my-workspace
-
-# Detectar workspace actual
-memory workspace detect
+memory message send agent1:1 "Task complete"
+memory message broadcast "All systems operational"
+memory message history agent1:1
 ```
 
-### Mensajería Inter-Agente (IPC)
-
-```bash
-# Enviar mensaje directo a un agente (session:window)
-fork message send agent1:1 "Tarea completada"
-
-# Broadcast a todos los agentes activos
-fork message broadcast "Status update: todos los sistemas OK"
-
-# Ver historial de mensajes de un agente
-fork message history agent1:1
-
-# Limpieza de mensajes viejos
-fork message cleanup --max-age 300
-```
-
+---
 
 ## MCP Server
 
-fork_agent includes a built-in MCP (Model Context Protocol) server for AI agent integrations. It exposes memory operations as MCP tools accessible from Claude Desktop, Cursor, and any MCP-compatible client.
+Expose memory as 16 MCP tools to any compatible client.
 
-### Install
+### Configuration
 
-```bash
-# pip (recommended)
-pip install fork_agent
-
-# uvx (one-off, no install)
-uvx fork_agent
-
-# uv tool (global)
-uv tool install fork_agent
-```
-
-### Claude Desktop Configuration
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to your client config:
 
 ```json
 {
@@ -166,189 +170,128 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### Available MCP Tools (17)
+### Client-specific paths
 
-| Tool | Description |
-|------|-------------|
-| `memory_save` | Save observation with metadata |
-| `memory_search` | FTS5 full-text search |
-| `memory_retrieve` | Enhanced retrieval with pipeline v2 (dedup, ranking, bridges) |
-| `memory_get` | Get by ID |
-| `memory_list` | List with pagination |
-| `memory_update` | Update existing observation |
-| `memory_delete` | Delete observation |
-| `memory_context` | Recent session summaries |
-| `memory_stats` | Database statistics |
-| `memory_session_start` | Start session |
-| `memory_session_end` | End session |
-| `memory_session_summary` | Save session summary |
-| `memory_suggest_topic_key` | Suggest stable topic key |
-| `memory_save_prompt` | Save user prompt |
-| `memory_capture_passive` | Extract learnings from text |
-| `memory_merge_projects` | Consolidate projects |
-| `memory_timeline` | Observations in time range |
+| Client | Config path |
+|--------|------------|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Cursor | `.cursor/mcp.json` (project root) |
+| n8n | MCP bridge config |
 
-See [docs/mcp-setup.md](docs/mcp-setup.md) for full setup guide with all clients, custom DB path, and verification steps.
+### Transports
 
-## Hooks de Integración
+```bash
+memory-mcp                                    # stdio (default)
+memory-mcp --transport sse --port 8080        # SSE
+memory-mcp --transport streamable-http --port 8080  # Streamable HTTP
+```
 
-Sistema de eventos inspirado en claudikins-kernel para automatización:
-
-| Hook | Evento | Descripción |
-|------|--------|-------------|
-| `workspace-init.sh` | SessionStart | Inicializa workspace |
-| `tmux-session-per-agent.sh` | SubagentStart | Crea tmux session por agente |
-| `memory-trace-writer.sh` | SubagentStop | Escribe trace a `.claude/traces/` |
-| `git-branch-guard.sh` | PreToolUse | Bloquea git peligroso |
-
-### Eventos Soportados
-
-- **SessionStart**: Nueva sesión iniciada
-- **SubagentStart**: Agente comienza
-- **SubagentStop**: Agente termina
-- **PreToolUse**: Antes de ejecutar tool
-- **UserCommand**: Comando CLI ejecutado
-- **FileWritten**: Archivo escrito
-
-### Workflow Events
-
-Eventos del workflow (outline → execute → verify → ship):
-
-- **WorkflowOutlineStart**: Plan 开始
-- **WorkflowOutlineComplete**: Plan 完成
-- **WorkflowExecuteStart**: 执行开始
-- **WorkflowExecuteComplete**: 执行完成
-- **WorkflowVerifyStart**: 验证开始
-- **WorkflowVerifyComplete**: 验证完成
-- **WorkflowShipStart**: Shipping 开始
-- **WorkflowShipComplete**: Shipping 完成
-
-### Worktree Events
-
-Eventos de ciclo de vida de worktrees:
-
-- **WorktreeCreated**: Worktree creado
-- **WorktreeMerged**: Worktree mergeado a branch
-- **WorktreeRemoved**: Worktree eliminado
-
-
-### Configuración
-
-Los hooks se configuran en `.hooks/hooks.json`:
+### Custom database path
 
 ```json
 {
-  "hooks": {
-    "SessionStart": [{ "matcher": ".*", "hooks": [{"type": "command", "command": ".hooks/workspace-init.sh"}] }],
-    "SubagentStart": [{ "matcher": ".*", "hooks": [{"type": "command", "command": ".hooks/tmux-session-per-agent.sh"}] }]
+  "mcpServers": {
+    "memory": {
+      "command": "memory-mcp",
+      "args": ["--db", "/path/to/memory.db"]
+    }
   }
 }
 ```
 
-### Seguridad Git
+### Available tools
 
-El hook `git-branch-guard.sh` implementa allowlist de comandos:
+`memory_save`, `memory_search`, `memory_get`, `memory_list`, `memory_update`,
+`memory_delete`, `memory_context`, `memory_stats`, `memory_timeline`,
+`memory_session_start`, `memory_session_end`, `memory_session_summary`,
+`memory_suggest_topic_key`, `memory_save_prompt`, `memory_capture_passive`,
+`memory_merge_projects`. See [docs/mcp-setup.md](docs/mcp-setup.md).
 
-- ✅ **Permitidos**: add, commit, status, diff, log, show, blame, branch, fetch
-- ❌ **Bloqueados**: checkout, switch, reset, clean, push, pull, rebase, merge, stash, cherry-pick
+---
 
-## Interfaces
-
-### API REST (FastAPI)
-
-```bash
-# Iniciar servidor
-uvicorn src.interfaces.api.main:app --host 127.0.0.1 --port 8080
-
-# Endpoints principales
-POST /api/v1/memory         # Crear observación
-GET  /api/v1/memory/{id}     # Obtener por ID
-GET  /api/v1/memory/search   # Buscar (full-text)
-GET  /api/v1/memory/query    # Query con filtros
-GET  /api/v1/system/health   # Health check
-```
-
-Auth: `X-API-Key` header (configurar via `API_KEY` env var).
-
-### MCP Server (stdio/SSE/HTTP)
+## TUI
 
 ```bash
-# stdio (Claude Desktop, Cursor)
-memory-mcp
-
-# SSE
-memory-mcp --transport sse --port 8081
-
-# 16 herramientas: memory_save, memory_search, memory_get, memory_list,
-# memory_delete, memory_context, memory_update, memory_stats, memory_timeline,
-# memory_session_start/end/summary, memory_retrieve, memory_suggest_topic_key,
-# memory_save_prompt, memory_capture_passive, memory_merge_projects
+memory tui
+memory tui --db /path/to/custom.db
 ```
 
-### TUI (Textual)
+| Key | Action | Key | Action |
+|-----|--------|-----|--------|
+| `s` `/` | Search | `a` | Save |
+| `S` | Stats | `d` | Detail |
+| `q` | Quit | | |
 
-```bash
-memory tui              # Navegador interactivo
-memory tui --db /path   # DB específica
-```
+5 screens: List, Search, Detail, Save, Stats.
 
-Teclas: `s` buscar, `a` agregar, `S` stats, `d` detalle, `q` salir.
+---
 
-### Trifecta Context Engine (v2)
+## Architecture
 
-Context engine para sub-agentes con routing automático (21 features, 110 NL triggers).
-
-```bash
-trifecta ctx plan --task "search observations" --segment .   # Route to feature
-trifecta ctx search -q "database" -s . -l 5                    # Search context
-trifecta index -r .                                           # Rebuild index
-```
-
-## Estado del Proyecto
-
-| Componente | Estado | Tests |
-|-----------|--------|-------|
-| Memory CLI | Completo | 1876 |
-| API REST | Completo | 65 |
-| MCP Server | Completo (16 tools) | - |
-| TUI | Completo (5 screens) | - |
-| Sync Pipeline | Completo | 49 |
-| Trifecta v2 | Integrado (21 features) | - |
-| CI | Verde (0 failures, 0 lint errors) | - |
-
-## Uso - Programático
-
-```python
-from src.application.services.orchestration.hook_service import HookService
-from src.application.services.orchestration.events import SessionStartEvent
-
-# Cargar hooks y dispatch eventos
-service = HookService()
-service.dispatch(SessionStartEvent(session_id='mi-sesion'))
-```
-
-## Estructura del Proyecto
+DDD / Ports and Adapters with dependency injection.
 
 ```
 src/
-├── domain/              # Entidades inmutables, Protocol (ports)
-├── application/         # Services, Use Cases
-│   ├── services/
-│   │   ├── orchestration/  # Eventos, actions, specs, hook_service
-│   │   └── workflow/       # Estado persistente
-├── infrastructure/     # DB, DI, platform-specific
-│   └── orchestration/  # RuleLoader, ShellActionRunner
-└── interfaces/         # CLI (Typer)
-    └── commands/      # save, search, list, workflow, schedule
-
-.hooks/                 # Hook scripts
-.claude/               # Estado (plan-state.json, traces/)
+  domain/           Entities (frozen dataclasses), Protocol ports
+  application/      Services, use cases, orchestration, workflow
+  infrastructure/   SQLite repositories, migrations, DI container
+  interfaces/
+    cli/commands/   Typer CLI
+    tui/screens/    Textual TUI (5 screens)
+    api/            FastAPI REST
+    mcp/            MCP server (16 tools, 3 transports)
 ```
 
-## Notas por Plataforma
+```
+CLI / TUI / MCP / API --> application/services --> domain/ports --> infrastructure/persistence
+```
 
-- **Usuarios de Linux**: Asegúrense de tener `tmux` instalado (`sudo apt install tmux`). La herramienta crea sesiones desconectadas para evitar bloquear tu shell actual.
-  - Listar sesiones activas: `tmux ls`
-  - Conectarse a una sesión: `tmux attach -t <nombre_sesion>`
+---
 
-- Este repo esta hecho en base al desarrollador indydevdan y el crédito de toda esta idea es totalmente suyo.
+## Configuration
+
+| Setting | Default | Override |
+|---------|---------|----------|
+| Database path | `~/.local/share/fork/memory.db` | `--db` flag or `FORK_MEMORY_DB` env |
+| API key | None | `API_KEY` env var |
+
+Default path follows XDG Base Directory specification (`XDG_DATA_HOME`).
+
+---
+
+## Development
+
+```bash
+# Install dependencies
+uv sync --all-extras
+
+# Run tests
+uv run pytest tests/ -v
+
+# Run tests with coverage
+uv run pytest tests/ --cov=src --cov-report=term-missing
+
+# Lint
+uv run ruff check src/ tests/
+
+# Format
+uv run ruff format src/ tests/
+
+# Type-check
+uv run mypy src/
+
+# Run all checks
+uv run pre-commit run --all-files
+```
+
+---
+
+## Documentation
+
+- [docs/mcp-setup.md](docs/mcp-setup.md) -- MCP server setup for all clients
+- [docs/engram-parity-roadmap.md](docs/engram-parity-roadmap.md) -- Feature parity roadmap
+- [AGENTS.md](AGENTS.md) -- Agent development guide
+
+## License
+
+MIT

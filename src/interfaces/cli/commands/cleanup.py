@@ -48,6 +48,10 @@ def cleanup(
     """
     cleanup_service = _get_cleanup_service_from_context(ctx)
 
+    if days <= 0:
+        typer.echo("Error: days must be a positive integer", err=True)
+        raise typer.Exit(1)
+
     if dry_run:
         typer.echo(f"🔍 DRY RUN - Preview of observations older than {days} days:")
         typer.echo("-" * 50)

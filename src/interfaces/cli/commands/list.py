@@ -37,7 +37,15 @@ def list_observations(
     project: str | None = typer.Option(None, "--project", "-p", help="Filter by project (auto-detected from CWD)"),
 ) -> None:
     memory_service = ctx.obj
+    if offset < 0:
+        typer.echo("Error: offset must be >= 0", err=True)
+        raise typer.Exit(1)
+    if limit < 0:
+        typer.echo("Error: limit must be >= 0", err=True)
+        raise typer.Exit(1)
     effective_project = project if project is not None else (_auto_detect_project() if _should_auto_detect(ctx) else None)
+    if project is None and effective_project is not None:
+        typer.echo(f"Note: Auto-filtering by project '{effective_project}' (use --project to override, or --project '' for all)", err=True)
     results = memory_service.get_recent(limit=limit, offset=offset, type=obs_type, project=effective_project)
 
     if not results:

@@ -28,8 +28,10 @@ def obsidian(
     observations = service.get_recent(limit=limit or 1000, project=project)
 
     # CLI-level safety net: exclude observations without matching project
+    # Normalize to match how save stores project names (lowercased)
     if project:
-        observations = [o for o in observations if o.project == project]
+        normalized = project.strip().lower().rstrip("/")
+        observations = [o for o in observations if o.project == normalized]
     if type_:
         observations = [o for o in observations if o.type == type_]
     if topic_key:

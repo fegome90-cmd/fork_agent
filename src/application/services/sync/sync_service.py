@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import time
+import uuid as uuid_mod
 from contextlib import closing
 from pathlib import Path
 from typing import Any, Protocol
@@ -449,15 +450,27 @@ class SyncService:
 
                 try:
                     obs_dict = json.loads(line)
+
+                    # Validate UUID format at import boundary (RIPPER-009)
+                    obs_id = obs_dict.get("id", "")
+                    try:
+                        uuid_mod.UUID(obs_id)
+                    except (ValueError, AttributeError):
+                        # Log warning but allow legacy/interop non-UUID IDs through
+                        logger.debug(
+                            "Non-UUID id on import: %s — allowing for compatibility",
+                            str(obs_id)[:50],
+                        )
+
                     # Validate type against allowed values
                     obs_type = obs_dict.get("type")
                     if obs_type is not None:
                         from src.domain.entities.observation import Observation as _Obs
                         if obs_type not in _Obs._ALLOWED_TYPES:
-                            logger.warning("Skipping obs %s with invalid type: %s", obs_dict.get("id", "?"), obs_type)
+                            logger.warning("Skipping obs %s with invalid type: %s", obs_id, obs_type)
                             obs_type = None
                     observation = Observation(
-                        id=obs_dict["id"],
+                        id=obs_id,
                         timestamp=obs_dict["timestamp"],
                         content=obs_dict["content"],
                         metadata=obs_dict.get("metadata"),

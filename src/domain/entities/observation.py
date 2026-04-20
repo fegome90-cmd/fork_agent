@@ -75,6 +75,9 @@ class Observation:
             raise ValueError("timestamp must be non-negative")
         if not isinstance(self.content, str):
             raise TypeError("content must be a string")
+        # Null bytes are silently truncated by SQLite — reject early (RIPPER-001/002)
+        if "\x00" in self.content:
+            raise ValueError("content must not contain null bytes (\\x00)")
         if not self.content:
             raise ValueError("content must not be empty")
         if self.metadata is not None and not isinstance(self.metadata, dict):
@@ -89,6 +92,8 @@ class Observation:
             raise ValueError("topic_key must not be empty")
         if self.topic_key is not None and " " in self.topic_key:
             raise ValueError("topic_key must not contain spaces")
+        if self.topic_key is not None and "\x00" in self.topic_key:
+            raise ValueError("topic_key must not contain null bytes")
         if self.topic_key is not None and len(self.topic_key) > self._MAX_TOPIC_KEY_LENGTH:
             raise ValueError(
                 f"topic_key must not exceed {self._MAX_TOPIC_KEY_LENGTH} characters "
@@ -106,3 +111,5 @@ class Observation:
             raise TypeError("project must be a string or None")
         if self.project is not None and not self.project.strip():
             raise ValueError("project must not be empty or whitespace-only")
+        if self.project is not None and "\x00" in self.project:
+            raise ValueError("project must not contain null bytes")
