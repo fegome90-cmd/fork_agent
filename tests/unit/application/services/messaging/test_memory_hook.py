@@ -392,10 +392,13 @@ class TestDedup:
         # Should have only 1 observation
         observations = memory_service.get_recent(limit=10)
         message_observations = [
-            o for o in observations
+            o
+            for o in observations
             if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
-        assert len(message_observations) == 1, f"Expected 1 observation, got {len(message_observations)}"
+        assert len(message_observations) == 1, (
+            f"Expected 1 observation, got {len(message_observations)}"
+        )
 
     def test_different_message_id_creates_separate_observations(
         self,
@@ -429,7 +432,8 @@ class TestDedup:
         # Should have 2 observations
         observations = memory_service.get_recent(limit=10)
         message_observations = [
-            o for o in observations
+            o
+            for o in observations
             if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_observations) == 2

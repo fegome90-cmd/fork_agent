@@ -82,12 +82,16 @@ class TestAgentMessengerSend:
             # 3. display-message (alert)
 
             # Check for set-option call
-            set_opt_call = next((c for c in mock_run.call_args_list if "set-option" in c[0][0]), None)
+            set_opt_call = next(
+                (c for c in mock_run.call_args_list if "set-option" in c[0][0]), None
+            )
             assert set_opt_call is not None
             assert "@last_fork_msg" in set_opt_call[0][0]
 
             # Check for display-message call (discreet)
-            display_msg_call = next((c for c in mock_run.call_args_list if "display-message" in c[0][0]), None)
+            display_msg_call = next(
+                (c for c in mock_run.call_args_list if "display-message" in c[0][0]), None
+            )
             assert display_msg_call is not None
             assert "FORK: Msg from leader:0" in display_msg_call[0][0]
 

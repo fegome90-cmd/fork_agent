@@ -192,7 +192,10 @@ def remove(name: str, force: bool, yes: bool) -> None:
     # Strip allowed separators and check minimum meaningful length
     stripped = name.replace("-", "").replace("_", "")
     if not name or not stripped.isalnum() or len(stripped) < 2:
-        click.echo(f"Error: Invalid workspace name '{name}' (must contain at least 2 alphanumeric characters)", err=True)
+        click.echo(
+            f"Error: Invalid workspace name '{name}' (must contain at least 2 alphanumeric characters)",
+            err=True,
+        )
         sys.exit(1)
 
     # Confirmation prompt unless --yes is passed

@@ -111,26 +111,26 @@ class VerifyRunner:
                 # Extract numbers
                 parts = line.split()
                 for i, part in enumerate(parts):
-                    clean_part = part.rstrip(',')
+                    clean_part = part.rstrip(",")
                     if clean_part == "passed" and i > 0:
                         with contextlib.suppress(ValueError):
-                            test_count += int(parts[i - 1].rstrip(','))
+                            test_count += int(parts[i - 1].rstrip(","))
                     elif clean_part == "failed" and i > 0:
                         with contextlib.suppress(ValueError):
-                            fail_count += int(parts[i - 1].rstrip(','))
+                            fail_count += int(parts[i - 1].rstrip(","))
 
         # Also check stderr
         for line in result.stderr.split("\n"):
             if " passed" in line or " failed" in line:
                 parts = line.split()
                 for i, part in enumerate(parts):
-                    clean_part = part.rstrip(',')
+                    clean_part = part.rstrip(",")
                     if clean_part == "passed" and i > 0:
                         with contextlib.suppress(ValueError):
-                            test_count += int(parts[i - 1].rstrip(','))
+                            test_count += int(parts[i - 1].rstrip(","))
                     elif clean_part == "failed" and i > 0:
                         with contextlib.suppress(ValueError):
-                            fail_count += int(parts[i - 1].rstrip(','))
+                            fail_count += int(parts[i - 1].rstrip(","))
 
         test_results: VerifyResults = {
             "passed": result.returncode == 0,

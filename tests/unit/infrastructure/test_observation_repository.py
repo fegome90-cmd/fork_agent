@@ -372,7 +372,9 @@ class TestObservationRepositorySearch:
 
         repo = ObservationRepository(db_connection)
         repo.create(
-            Observation(id="fts-multi-001", timestamp=1700000000000, content="React component pattern")
+            Observation(
+                id="fts-multi-001", timestamp=1700000000000, content="React component pattern"
+            )
         )
 
         result = repo.search("React comp")
@@ -535,7 +537,9 @@ class TestObservationRepositoryErrorHandling:
         with pytest.raises(RepositoryError):
             repo.search("test")
 
-    def test_get_by_timestamp_range_handles_database_error(self, uninitialized_db_path: Path) -> None:
+    def test_get_by_timestamp_range_handles_database_error(
+        self, uninitialized_db_path: Path
+    ) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
@@ -594,7 +598,9 @@ class TestObservationRepositoryUpsertTopicKey:
 
         repo = ObservationRepository(db_connection)
         obs_global = Observation(id="global", timestamp=1000, content="G", topic_key="t")
-        obs_proj = Observation(id="p1", timestamp=1000, content="P1", topic_key="t", project="proj1")
+        obs_proj = Observation(
+            id="p1", timestamp=1000, content="P1", topic_key="t", project="proj1"
+        )
         repo.create(obs_global)
         repo.create(obs_proj)
 
@@ -604,7 +610,9 @@ class TestObservationRepositoryUpsertTopicKey:
         assert res_g.id == "global"
 
         # Update proj1 specifically
-        upd_proj = Observation(id="any", timestamp=2000, content="P1-upd", topic_key="t", project="proj1")
+        upd_proj = Observation(
+            id="any", timestamp=2000, content="P1-upd", topic_key="t", project="proj1"
+        )
         res_p = repo.upsert_topic_key(upd_proj)
         assert res_p.id == "p1"
 

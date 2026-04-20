@@ -1,4 +1,5 @@
 """Pytest fixtures para tests de API."""
+
 import os
 
 import pytest

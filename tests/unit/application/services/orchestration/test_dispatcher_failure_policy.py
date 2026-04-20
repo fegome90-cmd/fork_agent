@@ -1,4 +1,5 @@
 """Tests for FailurePolicy integration in EventDispatcher."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock

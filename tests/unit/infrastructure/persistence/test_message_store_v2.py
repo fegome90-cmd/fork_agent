@@ -1,4 +1,3 @@
-
 import pytest
 
 from src.domain.entities.message import AgentMessage, MessageType
@@ -13,14 +12,12 @@ def temp_db(tmp_path):
     conn = DatabaseConnection(config=config)
     return conn
 
+
 def test_message_store_saves_and_retrieves(temp_db):
     store = MessageStore(connection=temp_db)
 
     msg = AgentMessage.create(
-        from_agent="s1:0",
-        to_agent="s2:0",
-        message_type=MessageType.COMMAND,
-        payload="ping"
+        from_agent="s1:0", to_agent="s2:0", message_type=MessageType.COMMAND, payload="ping"
     )
 
     store.save(msg)

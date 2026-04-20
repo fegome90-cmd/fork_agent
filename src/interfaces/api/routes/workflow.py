@@ -16,6 +16,7 @@ from src.interfaces.api.models import WorkflowPlanRequest, WorkflowResponse
 
 logger = logging.getLogger(__name__)
 
+
 class ShipRequest(BaseModel):
     branch: str = Field(..., min_length=1, max_length=200)
     commit_message: str = Field(..., min_length=1, max_length=1000)

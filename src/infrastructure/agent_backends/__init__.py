@@ -52,9 +52,7 @@ def get_available_backends() -> list[AgentBackend]:
         List of backend instances that are installed and ready.
     """
     return [
-        backend
-        for name in _BACKENDS
-        if (backend := get_backend(name)) and backend.is_available()
+        backend for name in _BACKENDS if (backend := get_backend(name)) and backend.is_available()
     ]
 
 

@@ -320,8 +320,7 @@ class TestEventIdempotency:
         # Should have only 1 of each event type (idempotency working)
         observations = memory_service.search("task_started")
         task_started_events = [
-            o for o in observations
-            if o.metadata and o.metadata.get("run_id") == run_id
+            o for o in observations if o.metadata and o.metadata.get("run_id") == run_id
         ]
 
         # With idempotency, same run_id + task_id + event_type should dedupe
@@ -387,7 +386,8 @@ class TestEventInvariants:
         # Get all terminal events for this run_id/task_id
         all_observations = memory_service.get_recent(limit=100)
         terminal_events = [
-            o for o in all_observations
+            o
+            for o in all_observations
             if o.metadata
             and o.metadata.get("run_id") == run_id
             and o.metadata.get("task_id") == task.id
@@ -436,7 +436,8 @@ class TestEventInvariants:
         # Verify task_failed exists
         all_observations = memory_service.get_recent(limit=100)
         failed_events = [
-            o for o in all_observations
+            o
+            for o in all_observations
             if o.metadata
             and o.metadata.get("run_id") == run_id
             and o.metadata.get("event_type") == "task_failed"

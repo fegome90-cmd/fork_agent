@@ -1,4 +1,5 @@
 """Git-based sync backend for pushing and pulling sync chunks."""
+
 from __future__ import annotations
 
 import logging
@@ -56,7 +57,11 @@ class GitSyncBackend:
 
         # Stage chunk files (relative to sync_dir for cleaner git paths)
         for path in chunk_paths:
-            rel = path.relative_to(self._sync_dir) if path.is_relative_to(self._sync_dir) else path.name
+            rel = (
+                path.relative_to(self._sync_dir)
+                if path.is_relative_to(self._sync_dir)
+                else path.name
+            )
             self._run_git("add", str(rel))
 
         if message is None:

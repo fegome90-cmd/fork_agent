@@ -261,7 +261,9 @@ class TestListWorkspaces(TestWorkspaceE2E):
     """Tests for listing workspaces."""
 
     def test_list_workspaces_after_creation(
-        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
+        self,
+        workspace_manager: WorkspaceManager,
+        git_repo: Path,  # noqa: ARG002
     ) -> None:
         """Test list workspaces after creation."""
         # Initially empty (only main repo)
@@ -277,7 +279,9 @@ class TestListWorkspaces(TestWorkspaceE2E):
         assert any(wt.name == "list-test-1" for wt in worktrees)
 
     def test_list_multiple_workspaces(
-        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
+        self,
+        workspace_manager: WorkspaceManager,
+        git_repo: Path,  # noqa: ARG002
     ) -> None:
         """Test listing multiple workspaces."""
         # Create multiple workspaces
@@ -295,7 +299,9 @@ class TestListWorkspaces(TestWorkspaceE2E):
         assert "multi-3" in names
 
     def test_list_workspaces_includes_details(
-        self, workspace_manager: WorkspaceManager, git_repo: Path  # noqa: ARG002
+        self,
+        workspace_manager: WorkspaceManager,
+        git_repo: Path,  # noqa: ARG002
     ) -> None:
         """Test that list includes correct workspace details."""
         workspace_manager.create_workspace("detail-test")

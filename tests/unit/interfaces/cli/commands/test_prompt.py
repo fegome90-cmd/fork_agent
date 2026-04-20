@@ -81,7 +81,9 @@ class TestPromptSave:
 
     @patch("src.interfaces.cli.commands.prompt._ensure_prompt_tables")
     @patch("src.interfaces.cli.commands.prompt.DatabaseConnection")
-    def test_save_with_all_optional_fields(self, mock_db_cls: MagicMock, _mock_ensure: MagicMock) -> None:
+    def test_save_with_all_optional_fields(
+        self, mock_db_cls: MagicMock, _mock_ensure: MagicMock
+    ) -> None:
         from src.interfaces.cli.commands.prompt import app
 
         mock_conn = MagicMock()
@@ -90,7 +92,18 @@ class TestPromptSave:
 
         runner.invoke(
             app,
-            ["save", "full prompt", "--role", "coder", "--model", "gpt-4", "--provider", "openai", "--session-id", "sess-1"],
+            [
+                "save",
+                "full prompt",
+                "--role",
+                "coder",
+                "--model",
+                "gpt-4",
+                "--provider",
+                "openai",
+                "--session-id",
+                "sess-1",
+            ],
             standalone_mode=False,
         )
 
@@ -110,7 +123,14 @@ class TestPromptSearch:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
-            {"id": 1, "prompt_text": "test prompt for search", "role": "", "model": "", "provider": "", "session_id": None},
+            {
+                "id": 1,
+                "prompt_text": "test prompt for search",
+                "role": "",
+                "model": "",
+                "provider": "",
+                "session_id": None,
+            },
         ]
         mock_db_cls.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_db_cls.return_value.__exit__ = MagicMock(return_value=False)
@@ -122,7 +142,9 @@ class TestPromptSearch:
 
     @patch("src.interfaces.cli.commands.prompt._ensure_prompt_tables")
     @patch("src.interfaces.cli.commands.prompt.DatabaseConnection")
-    def test_empty_search_returns_nothing(self, mock_db_cls: MagicMock, _mock_ensure: MagicMock) -> None:
+    def test_empty_search_returns_nothing(
+        self, mock_db_cls: MagicMock, _mock_ensure: MagicMock
+    ) -> None:
         from src.interfaces.cli.commands.prompt import app
 
         mock_conn = MagicMock()
@@ -136,13 +158,31 @@ class TestPromptSearch:
 
     @patch("src.interfaces.cli.commands.prompt._ensure_prompt_tables")
     @patch("src.interfaces.cli.commands.prompt.DatabaseConnection")
-    def test_search_ranks_by_relevance(self, mock_db_cls: MagicMock, _mock_ensure: MagicMock) -> None:
+    def test_search_ranks_by_relevance(
+        self, mock_db_cls: MagicMock, _mock_ensure: MagicMock
+    ) -> None:
         from src.interfaces.cli.commands.prompt import app
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
-            {"id": 1, "prompt_text": "exact match", "role": "", "model": "", "provider": "", "session_id": None, "rank": -1.0},
-            {"id": 2, "prompt_text": "partial match only", "role": "", "model": "", "provider": "", "session_id": None, "rank": -0.5},
+            {
+                "id": 1,
+                "prompt_text": "exact match",
+                "role": "",
+                "model": "",
+                "provider": "",
+                "session_id": None,
+                "rank": -1.0,
+            },
+            {
+                "id": 2,
+                "prompt_text": "partial match only",
+                "role": "",
+                "model": "",
+                "provider": "",
+                "session_id": None,
+                "rank": -0.5,
+            },
         ]
         mock_db_cls.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_db_cls.return_value.__exit__ = MagicMock(return_value=False)
@@ -169,8 +209,24 @@ class TestPromptList:
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value.fetchall.return_value = [
-            {"id": 2, "prompt_text": "recent prompt", "role": "", "model": "kimi", "provider": "", "session_id": None, "timestamp": 1000},
-            {"id": 1, "prompt_text": "older prompt", "role": "", "model": "", "provider": "", "session_id": None, "timestamp": 500},
+            {
+                "id": 2,
+                "prompt_text": "recent prompt",
+                "role": "",
+                "model": "kimi",
+                "provider": "",
+                "session_id": None,
+                "timestamp": 1000,
+            },
+            {
+                "id": 1,
+                "prompt_text": "older prompt",
+                "role": "",
+                "model": "",
+                "provider": "",
+                "session_id": None,
+                "timestamp": 500,
+            },
         ]
         mock_db_cls.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_db_cls.return_value.__exit__ = MagicMock(return_value=False)
@@ -201,20 +257,26 @@ class TestPromptStats:
 
     @patch("src.interfaces.cli.commands.prompt._ensure_prompt_tables")
     @patch("src.interfaces.cli.commands.prompt.DatabaseConnection")
-    def test_stats_aggregates_by_model(self, mock_db_cls: MagicMock, _mock_ensure: MagicMock) -> None:
+    def test_stats_aggregates_by_model(
+        self, mock_db_cls: MagicMock, _mock_ensure: MagicMock
+    ) -> None:
         from src.interfaces.cli.commands.prompt import app
 
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = [
             MagicMock(fetchone=lambda: {"cnt": 5}),
-            MagicMock(fetchall=lambda: [
-                {"model": "gpt-4", "cnt": 3},
-                {"model": "claude-3", "cnt": 2},
-            ]),
-            MagicMock(fetchall=lambda: [
-                {"provider": "openai", "cnt": 3},
-                {"provider": "anthropic", "cnt": 2},
-            ]),
+            MagicMock(
+                fetchall=lambda: [
+                    {"model": "gpt-4", "cnt": 3},
+                    {"model": "claude-3", "cnt": 2},
+                ]
+            ),
+            MagicMock(
+                fetchall=lambda: [
+                    {"provider": "openai", "cnt": 3},
+                    {"provider": "anthropic", "cnt": 2},
+                ]
+            ),
         ]
         mock_db_cls.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_db_cls.return_value.__exit__ = MagicMock(return_value=False)
@@ -247,9 +309,17 @@ class TestPromptIntegration:
     def test_fts_search_returns_matching_rows(self) -> None:
         conn = _create_in_memory_db()
 
-        conn.execute("INSERT INTO prompts (prompt_text, model) VALUES (?, ?)", ("python async patterns", "gpt-4"))
-        conn.execute("INSERT INTO prompts (prompt_text, model) VALUES (?, ?)", ("rust ownership rules", "claude-3"))
-        conn.execute("INSERT INTO prompts (prompt_text, model) VALUES (?, ?)", ("python type hints", "gpt-4"))
+        conn.execute(
+            "INSERT INTO prompts (prompt_text, model) VALUES (?, ?)",
+            ("python async patterns", "gpt-4"),
+        )
+        conn.execute(
+            "INSERT INTO prompts (prompt_text, model) VALUES (?, ?)",
+            ("rust ownership rules", "claude-3"),
+        )
+        conn.execute(
+            "INSERT INTO prompts (prompt_text, model) VALUES (?, ?)", ("python type hints", "gpt-4")
+        )
 
         rows = conn.execute("""
             SELECT p.prompt_text FROM prompts_fts f

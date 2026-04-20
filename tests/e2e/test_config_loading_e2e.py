@@ -178,7 +178,9 @@ class TestConfigLoadingE2E:
         config = ForkAgentConfig()
 
         # Try to modify - should raise error
-        with pytest.raises((TypeError, ValueError)):  # pydantic validates on init, frozen prevents mutation
+        with pytest.raises(
+            (TypeError, ValueError)
+        ):  # pydantic validates on init, frozen prevents mutation
             config.workspace.default_layout = "SIBLING"  # type: ignore
 
     def test_load_config_with_partial_values(self, tmp_path: Path) -> None:

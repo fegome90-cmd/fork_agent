@@ -30,7 +30,6 @@ root_app.add_typer(doctor_app)
 root_app.add_typer(message_app, name="message")
 
 
-
 def create_fork_cli(
     fork_terminal: ForkTerminalFn,
 ) -> Callable[[], int]:

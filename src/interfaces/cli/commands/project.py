@@ -12,7 +12,9 @@ app = typer.Typer(help="Project management commands")
 @app.command("merge")
 def merge(
     ctx: typer.Context,
-    from_projects: str = typer.Option(..., "--from", "-f", help="Comma-separated source project(s) to merge FROM"),
+    from_projects: str = typer.Option(
+        ..., "--from", "-f", help="Comma-separated source project(s) to merge FROM"
+    ),
     to_project: str = typer.Option(..., "--to", "-t", help="Target project to merge INTO"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview changes without applying"),
     force: bool = typer.Option(False, "--force", help="Skip confirmation prompt"),

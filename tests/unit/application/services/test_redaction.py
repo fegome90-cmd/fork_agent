@@ -1,4 +1,5 @@
 """Tests for privacy redaction module."""
+
 from __future__ import annotations
 
 from src.application.services.redaction import (
@@ -34,7 +35,9 @@ class TestRedactContent:
         assert was is True
 
     def test_bearer_token_redacted(self) -> None:
-        content, was = redact_content("Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig")
+        content, was = redact_content(
+            "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig"
+        )
         assert content == "Authorization: Bearer [REDACTED]"
         assert was is True
 
@@ -95,13 +98,15 @@ class TestRedactMetadata:
         assert was is True
 
     def test_metadata_nested(self) -> None:
-        meta, was = redact_metadata({
-            "config": {
-                "password": "hunter2",
-                "host": "localhost",
-            },
-            "public": "visible",
-        })
+        meta, was = redact_metadata(
+            {
+                "config": {
+                    "password": "hunter2",
+                    "host": "localhost",
+                },
+                "public": "visible",
+            }
+        )
         assert meta["config"]["password"] == "[REDACTED]"
         assert meta["config"]["host"] == "localhost"
         assert meta["public"] == "visible"

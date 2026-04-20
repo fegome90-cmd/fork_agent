@@ -39,16 +39,16 @@ class UnsupportedSchemaError(StateError):
     """Raised when schema version is not supported."""
 
 
-
-
 class VerifyResults(TypedDict, total=False):
     """Results from test runner execution."""
+
     passed: bool
     exit_code: int
     test_count: int
     fail_count: int
     duration_ms: int
     error: str | None
+
 
 class WorkflowPhase(StrEnum):
     PLANNING = "planning"

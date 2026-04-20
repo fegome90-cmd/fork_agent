@@ -157,6 +157,7 @@ class MemoryHook:
 
         # Create metadata manually (not using factory to control idempotency_key)
         import time
+
         timestamp_ms = int(time.time() * 1000)
 
         metadata = MemoryEventMetadata(

@@ -18,6 +18,7 @@ runner = CliRunner()
 @dataclass(frozen=True)
 class FakeObservation:
     """Minimal observation stand-in for CLI tests."""
+
     id: str
     timestamp: int
     content: str
@@ -72,13 +73,20 @@ class TestSaveSummary:
             app,
             [
                 "save-summary",
-                "--goal", "Refactor DB",
-                "--instructions", "Use clean architecture",
-                "--discoveries", "bug in repo, slow query",
-                "--accomplished", "Migrated schema",
-                "--next-steps", "Add indexes,Run benchmarks",
-                "--files", "repo.py,models.py",
-                "--project", "myapp",
+                "--goal",
+                "Refactor DB",
+                "--instructions",
+                "Use clean architecture",
+                "--discoveries",
+                "bug in repo, slow query",
+                "--accomplished",
+                "Migrated schema",
+                "--next-steps",
+                "Add indexes,Run benchmarks",
+                "--files",
+                "repo.py,models.py",
+                "--project",
+                "myapp",
             ],
             obj=mock_memory,
         )
@@ -369,9 +377,12 @@ class TestFileOps:
             app,
             [
                 "file-ops",
-                "--read", "a.py,b.py",
-                "--written", "c.py",
-                "--edited", "d.py",
+                "--read",
+                "a.py,b.py",
+                "--written",
+                "c.py",
+                "--edited",
+                "d.py",
             ],
             obj=mock_memory,
         )

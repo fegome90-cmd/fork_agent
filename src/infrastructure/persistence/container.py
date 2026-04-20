@@ -204,7 +204,6 @@ class Container(containers.DeclarativeContainer):
     )
 
 
-
 def create_container(
     db_path: Path | None = None,
     export_dir: Path | None = None,
@@ -415,6 +414,7 @@ def get_memory_service_auto() -> MemoryService:
     """
     db_path = detect_memory_db_path()
     return get_memory_service(db_path)
+
 
 def get_message_store(db_path: Path | None = None) -> MessageStore:
     """Get the MessageStore instance."""

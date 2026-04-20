@@ -34,13 +34,7 @@ def plan_query(query: str) -> QueryPlan:
     concepts = extract_concepts(query)
 
     concept_terms = sorted(concepts.concepts)
-    synonym_terms = sorted(
-        {
-            synonym
-            for values in concepts.synonyms.values()
-            for synonym in values
-        }
-    )
+    synonym_terms = sorted({synonym for values in concepts.synonyms.values() for synonym in values})
 
     expanded_lines: list[str] = [
         normalized.sanitized,
@@ -56,20 +50,26 @@ def plan_query(query: str) -> QueryPlan:
             expanded_lines.append(term)
 
     if concepts.question_type == "where":
-        expanded_lines.extend([
-            f"{normalized.simplified} endpoint route api",
-            f"{' '.join(concept_terms)} post endpoint",
-        ])
+        expanded_lines.extend(
+            [
+                f"{normalized.simplified} endpoint route api",
+                f"{' '.join(concept_terms)} post endpoint",
+            ]
+        )
     if concepts.question_type == "when":
-        expanded_lines.extend([
-            f"{normalized.simplified} policy rule lifecycle",
-            f"{' '.join(concept_terms)} guidance decision",
-        ])
+        expanded_lines.extend(
+            [
+                f"{normalized.simplified} policy rule lifecycle",
+                f"{' '.join(concept_terms)} guidance decision",
+            ]
+        )
     if concepts.question_type == "how":
-        expanded_lines.extend([
-            f"{normalized.simplified} procedure workflow",
-            f"{' '.join(concept_terms)} create post",
-        ])
+        expanded_lines.extend(
+            [
+                f"{normalized.simplified} procedure workflow",
+                f"{' '.join(concept_terms)} create post",
+            ]
+        )
 
     return QueryPlan(
         original=query,

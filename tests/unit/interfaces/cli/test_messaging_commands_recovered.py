@@ -70,7 +70,9 @@ class TestMessageCommands:
 
     @patch("src.interfaces.cli.commands.message.get_agent_messenger")
     @patch("src.application.services.messaging.message_protocol.cleanup_temp_files")
-    def test_cleanup_messages(self, mock_cleanup_fs: MagicMock, mock_get_messenger: MagicMock, runner: CliRunner) -> None:
+    def test_cleanup_messages(
+        self, mock_cleanup_fs: MagicMock, mock_get_messenger: MagicMock, runner: CliRunner
+    ) -> None:
         """Should cleanup messages."""
         mock_messenger = MagicMock()
         mock_messenger.store.cleanup_expired.return_value = 5

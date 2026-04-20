@@ -102,7 +102,9 @@ class SearchScreen(Screen[None]):
         self._result_ids = []
 
         for obs in results:
-            title = obs.title or (obs.content[:40] + "..." if len(obs.content) > 40 else obs.content)
+            title = obs.title or (
+                obs.content[:40] + "..." if len(obs.content) > 40 else obs.content
+            )
             table.add_row(
                 obs.id[:8],
                 obs.type or "",

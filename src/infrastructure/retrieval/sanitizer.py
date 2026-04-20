@@ -27,9 +27,7 @@ def tokenize_for_fts(query: str) -> list[str]:
         return []
 
     return [
-        token
-        for token in normalized.split(" ")
-        if token and token.upper() not in _RESERVED_WORDS
+        token for token in normalized.split(" ") if token and token.upper() not in _RESERVED_WORDS
     ]
 
 

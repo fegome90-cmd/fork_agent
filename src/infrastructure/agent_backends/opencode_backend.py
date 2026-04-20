@@ -92,9 +92,7 @@ class OpencodeBackend:
             f"[fork-agent] primary model failed, retrying fallback model: {fallback_model}"
         )
 
-        primary_cmd = (
-            f"{quoted_executable} run -m {shlex.quote(primary_model)} {shlex.quote(task)}"
-        )
+        primary_cmd = f"{quoted_executable} run -m {shlex.quote(primary_model)} {shlex.quote(task)}"
 
         if fallback_model == primary_model:
             return primary_cmd

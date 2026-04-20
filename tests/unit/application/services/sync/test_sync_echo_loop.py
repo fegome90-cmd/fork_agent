@@ -3,6 +3,7 @@
 Bug 1: Import operations must not create ghost mutations that get re-exported.
 Bug 2: upsert_topic_key must record mutations (was dead code after return).
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -100,6 +101,7 @@ def _wire_repos(db_path: Path):
 # Bug 2: upsert_topic_key must record mutations
 # ---------------------------------------------------------------------------
 
+
 class TestUpsertTopicKeyMutation:
     """Bug 2: _record_mutation was dead code (after return) in upsert_topic_key."""
 
@@ -141,6 +143,7 @@ class TestUpsertTopicKeyMutation:
         obs_repo.create(_make_obs("tk-p", "original", topic_key="payload-test", project="testproj"))
 
         import json
+
         updated = Observation(
             id="tk-p",
             timestamp=2000,
@@ -163,6 +166,7 @@ class TestUpsertTopicKeyMutation:
 # ---------------------------------------------------------------------------
 # Bug 1: Echo loop prevention
 # ---------------------------------------------------------------------------
+
 
 class TestEchoLoopPrevention:
     """Import must not create ghost mutations that get re-exported."""

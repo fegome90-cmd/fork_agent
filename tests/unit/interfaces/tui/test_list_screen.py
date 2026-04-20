@@ -87,7 +87,9 @@ class TestListScreen:
         mock_container = MagicMock()
         mock_container.memory_service.return_value = mock_service
 
-        with patch("src.infrastructure.persistence.container.create_container", return_value=mock_container):
+        with patch(
+            "src.infrastructure.persistence.container.create_container", return_value=mock_container
+        ):
             screen = ListScreen(db_path=None)
             svc1 = screen._get_service()
             svc2 = screen._get_service()
@@ -118,8 +120,20 @@ class TestListScreen:
 
         mock_service = MagicMock()
         mock_service.get_recent.return_value = [
-            _make_obs(id="abc12345" + "x" * 25, type="decision", project="proj", topic_key="key", title="Hello"),
-            _make_obs(id="def67890" + "x" * 25, type="bugfix", project="proj2", topic_key="key2", title="World"),
+            _make_obs(
+                id="abc12345" + "x" * 25,
+                type="decision",
+                project="proj",
+                topic_key="key",
+                title="Hello",
+            ),
+            _make_obs(
+                id="def67890" + "x" * 25,
+                type="bugfix",
+                project="proj2",
+                topic_key="key2",
+                title="World",
+            ),
         ]
         mock_container.return_value.memory_service.return_value = mock_service
 

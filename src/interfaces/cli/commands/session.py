@@ -13,13 +13,16 @@ app = typer.Typer()
 
 def _get_session_service(db_path: Path | None = None) -> SessionService:
     from src.infrastructure.persistence.container import get_session_service
+
     return get_session_service(db_path)
 
 
 @app.command()
 def start(
     _ctx: typer.Context,
-    project: str = typer.Option(None, "--project", "-p", help="Project name (auto-detected if not provided)"),
+    project: str = typer.Option(
+        None, "--project", "-p", help="Project name (auto-detected if not provided)"
+    ),
     goal: str = typer.Option(None, "--goal", "-g", help="Session goal/description"),
     instructions: str = typer.Option(
         None, "--instructions", "-i", help="Session instructions/constraints"

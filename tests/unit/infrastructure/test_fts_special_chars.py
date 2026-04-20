@@ -16,8 +16,7 @@ def db_connection(tmp_path: Path) -> DatabaseConnection:
     db_path = tmp_path / "test.db"
     config = DatabaseConfig(db_path=db_path)
     migrations_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "src/infrastructure/persistence/migrations"
+        Path(__file__).parent.parent.parent.parent / "src/infrastructure/persistence/migrations"
     )
     run_migrations(config, migrations_dir)
     return DatabaseConnection(config)

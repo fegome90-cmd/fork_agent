@@ -186,4 +186,5 @@ class TestCreateContainer:
             assert container is not None
             # Verify custom path was used
             from unittest.mock import ANY
+
             mock_migrate.assert_called_once_with(custom_path, ANY)

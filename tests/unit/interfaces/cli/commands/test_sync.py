@@ -1,4 +1,5 @@
 """Tests for CLI sync commands (export, import, status, push, pull, log)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,6 +19,7 @@ class TestExportCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["export"])
 
         assert result.exit_code == 0
@@ -32,6 +34,7 @@ class TestExportCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["export"])
 
         assert result.exit_code == 0
@@ -45,6 +48,7 @@ class TestExportCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["export", "--project", "alpha"])
 
         assert result.exit_code == 0
@@ -52,13 +56,16 @@ class TestExportCommand:
 
     def test_export_with_custom_output_dir(self) -> None:
         """Custom output dir triggers create_container with export_dir."""
-        with patch("src.interfaces.cli.commands.sync.create_container") as mock_container, \
-             patch("src.interfaces.cli.commands.sync.get_sync_service"):
+        with (
+            patch("src.interfaces.cli.commands.sync.create_container") as mock_container,
+            patch("src.interfaces.cli.commands.sync.get_sync_service"),
+        ):
             mock_svc = MagicMock()
             mock_svc.export_observations.return_value = [Path("/custom/chunk.jsonl.gz")]
             mock_container.return_value.sync_service.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["export", "--output-dir", "/custom"])
 
         assert result.exit_code == 0
@@ -80,6 +87,7 @@ class TestImportCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["import", "/tmp/chunk1.jsonl.gz"])
 
         assert result.exit_code == 0
@@ -93,16 +101,19 @@ class TestImportCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
-            result = runner.invoke(sync_app, [
-                "import", "/tmp/chunk1.jsonl.gz", "--source", "remote"
-            ])
+
+            result = runner.invoke(
+                sync_app, ["import", "/tmp/chunk1.jsonl.gz", "--source", "remote"]
+            )
 
         assert result.exit_code == 0
         mock_svc.import_observations.assert_called_once()
         call_kwargs = mock_svc.import_observations.call_args
-        assert call_kwargs.kwargs.get("source") == "remote" or \
-               call_kwargs[1].get("source") == "remote" or \
-               "source" in str(call_kwargs)
+        assert (
+            call_kwargs.kwargs.get("source") == "remote"
+            or call_kwargs[1].get("source") == "remote"
+            or "source" in str(call_kwargs)
+        )
 
 
 class TestStatusCommand:
@@ -121,6 +132,7 @@ class TestStatusCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["status"])
 
         assert result.exit_code == 0
@@ -142,6 +154,7 @@ class TestStatusCommand:
             mock_get.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["status"])
 
         assert result.exit_code == 0
@@ -157,6 +170,7 @@ class TestPushCommand:
             mock_make.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["push"])
 
         assert result.exit_code == 0
@@ -164,8 +178,10 @@ class TestPushCommand:
 
     def test_push_success(self) -> None:
         """Push with mutations succeeds."""
-        with patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make, \
-             patch("src.interfaces.cli.commands.sync.GitSyncBackend") as mock_git_cls:
+        with (
+            patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make,
+            patch("src.interfaces.cli.commands.sync.GitSyncBackend") as mock_git_cls,
+        ):
             mock_svc = MagicMock()
             mock_svc.export_incremental.return_value = [Path("data/sync/chunk.jsonl.gz")]
             mock_make.return_value = mock_svc
@@ -174,6 +190,7 @@ class TestPushCommand:
             mock_git_cls.return_value = mock_git
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["push"])
 
         assert result.exit_code == 0
@@ -181,8 +198,10 @@ class TestPushCommand:
 
     def test_push_failure(self) -> None:
         """Push failure exits with code 1."""
-        with patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make, \
-             patch("src.interfaces.cli.commands.sync.GitSyncBackend") as mock_git_cls:
+        with (
+            patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make,
+            patch("src.interfaces.cli.commands.sync.GitSyncBackend") as mock_git_cls,
+        ):
             mock_svc = MagicMock()
             mock_svc.export_incremental.return_value = [Path("data/sync/chunk.jsonl.gz")]
             mock_make.return_value = mock_svc
@@ -191,6 +210,7 @@ class TestPushCommand:
             mock_git_cls.return_value = mock_git
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["push"])
 
         assert result.exit_code == 1
@@ -206,6 +226,7 @@ class TestPullCommand:
             mock_git_cls.return_value = mock_git
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["pull"])
 
         assert result.exit_code == 0
@@ -213,8 +234,10 @@ class TestPullCommand:
 
     def test_pull_with_chunks(self) -> None:
         """Pull with chunks triggers import."""
-        with patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make, \
-             patch("src.interfaces.cli.commands.sync.GitSyncBackend") as mock_git_cls:
+        with (
+            patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make,
+            patch("src.interfaces.cli.commands.sync.GitSyncBackend") as mock_git_cls,
+        ):
             mock_git = MagicMock()
             mock_git.pull.return_value = [
                 Path("data/sync/chunk_001.jsonl.gz"),
@@ -224,11 +247,14 @@ class TestPullCommand:
 
             mock_svc = MagicMock()
             mock_svc.import_mutations.return_value = {
-                "inserted": 2, "updated": 0, "deleted": 0,
+                "inserted": 2,
+                "updated": 0,
+                "deleted": 0,
             }
             mock_make.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["pull"])
 
         assert result.exit_code == 0
@@ -245,6 +271,7 @@ class TestLogCommand:
             mock_make.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["log"])
 
         assert result.exit_code == 0
@@ -257,16 +284,31 @@ class TestLogCommand:
         with patch("src.interfaces.cli.commands.sync._make_sync_service") as mock_make:
             mock_svc = MagicMock()
             mock_svc.get_mutations_since.return_value = [
-                SyncMutation(seq=1, entity="observation", entity_key="obs-1",
-                             op="insert", payload="{}", source="local",
-                             project="", created_at=1700000000000),
-                SyncMutation(seq=2, entity="observation", entity_key="obs-2",
-                             op="delete", payload="{}", source="local",
-                             project="", created_at=1700000000000),
+                SyncMutation(
+                    seq=1,
+                    entity="observation",
+                    entity_key="obs-1",
+                    op="insert",
+                    payload="{}",
+                    source="local",
+                    project="",
+                    created_at=1700000000000,
+                ),
+                SyncMutation(
+                    seq=2,
+                    entity="observation",
+                    entity_key="obs-2",
+                    op="delete",
+                    payload="{}",
+                    source="local",
+                    project="",
+                    created_at=1700000000000,
+                ),
             ]
             mock_make.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["log"])
 
         assert result.exit_code == 0
@@ -282,15 +324,23 @@ class TestLogCommand:
             mock_svc = MagicMock()
             # Return 5 mutations; CLI will slice to limit
             mutations = [
-                SyncMutation(seq=i, entity="observation", entity_key=f"obs-{i}",
-                             op="insert", payload="{}", source="local",
-                             project="", created_at=1700000000000)
+                SyncMutation(
+                    seq=i,
+                    entity="observation",
+                    entity_key=f"obs-{i}",
+                    op="insert",
+                    payload="{}",
+                    source="local",
+                    project="",
+                    created_at=1700000000000,
+                )
                 for i in range(1, 6)
             ]
             mock_svc.get_mutations_since.return_value = mutations
             mock_make.return_value = mock_svc
 
             from src.interfaces.cli.commands.sync import app as sync_app
+
             result = runner.invoke(sync_app, ["log", "--limit", "3"])
 
         assert result.exit_code == 0

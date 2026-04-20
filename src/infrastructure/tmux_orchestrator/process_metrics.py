@@ -5,6 +5,7 @@ Returns zeroed metrics on any failure.
 
 REQ-12: Process metrics for agent session monitoring.
 """
+
 from __future__ import annotations
 
 import logging

@@ -51,9 +51,7 @@ class SaveScreen(Screen[None]):
             yield Static("[bold]Preview[/bold]", id="preview-label")
             yield Static("", id="save-preview")
             yield Static("", id="save-validation")
-        yield Static(
-            "[dim][ctrl+s] Save  [Escape] Cancel[/dim]", id="save-footer"
-        )
+        yield Static("[dim][ctrl+s] Save  [Escape] Cancel[/dim]", id="save-footer")
 
     def on_mount(self) -> None:
         self.query_one("#save-content", TextArea).focus()

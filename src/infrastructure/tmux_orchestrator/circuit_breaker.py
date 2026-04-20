@@ -68,7 +68,10 @@ class TmuxCircuitBreaker:
     @property
     def state(self) -> CircuitState:
         with self._lock:
-            if self._state == CircuitState.OPEN and time.time() - self._last_failure_time >= self._recovery_timeout:
+            if (
+                self._state == CircuitState.OPEN
+                and time.time() - self._last_failure_time >= self._recovery_timeout
+            ):
                 self._state = CircuitState.HALF_OPEN
                 self._half_open_calls = 0
             return self._state

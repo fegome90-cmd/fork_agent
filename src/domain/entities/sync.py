@@ -1,4 +1,5 @@
 """Sync entities for mutation tracking and chunk management."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

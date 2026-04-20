@@ -81,9 +81,7 @@ def _build_indicators(obs) -> str:
 def query(
     ctx: typer.Context,
     agent: Annotated[str, typer.Option("--agent", "-a", help="Filter by agent ID")] = "",
-    run: Annotated[
-        str | None, typer.Option("--run", "-r", help="Filter by run ID")
-    ] = None,
+    run: Annotated[str | None, typer.Option("--run", "-r", help="Filter by run ID")] = None,
     event_type: Annotated[
         str | None, typer.Option("--event-type", "-e", help="Filter by event type")
     ] = None,
@@ -96,9 +94,7 @@ def query(
         str | None,
         typer.Option("--since", help="Time filter (e.g., '24h', '7d', or ISO date)"),
     ] = None,
-    json_output: Annotated[
-        bool, typer.Option("--json", "-j", help="Output as JSON")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", "-j", help="Output as JSON")] = False,
 ) -> None:
     """Query memory events with structured filters.
 
@@ -128,9 +124,7 @@ def query(
     # Filter by run_id
     if run:
         observations = [
-            obs
-            for obs in observations
-            if obs.metadata and obs.metadata.get("run_id") == run
+            obs for obs in observations if obs.metadata and obs.metadata.get("run_id") == run
         ]
 
     # Filter by event_type
@@ -162,9 +156,7 @@ def query(
                 typer.echo(f"Invalid --since format: {since}", err=True)
                 raise typer.Exit(1)  # noqa: B904
         if cutoff_ms:
-            observations = [
-                obs for obs in observations if obs.timestamp >= cutoff_ms
-            ]
+            observations = [obs for obs in observations if obs.timestamp >= cutoff_ms]
 
     # Sort by timestamp DESC
     observations.sort(key=lambda o: o.timestamp, reverse=True)
@@ -207,9 +199,7 @@ def query(
 
             indicator_str = f" [{indicators}]" if indicators else ""
 
-            typer.echo(
-                f"{ts} | {event:20} | {summary:40} | {run_id}/{task_id}{indicator_str}"
-            )
+            typer.echo(f"{ts} | {event:20} | {summary:40} | {run_id}/{task_id}{indicator_str}")
 
 
 @app.command()
@@ -235,11 +225,7 @@ def timeline(
     observations = memory.get_recent(limit=scan_limit, offset=0)
 
     # Filter by run_id
-    filtered = [
-        obs
-        for obs in observations
-        if obs.metadata and obs.metadata.get("run_id") == run
-    ]
+    filtered = [obs for obs in observations if obs.metadata and obs.metadata.get("run_id") == run]
 
     if not filtered:
         typer.echo(f"No events found for run: {run}")
@@ -276,6 +262,4 @@ def timeline(
             error = obs.metadata.get("error_message", "")
             status = f"✗ ({error[:30]}...)" if len(error) > 30 else f"✗ ({error})"
 
-        typer.echo(
-            f"{ts} | {event_type:25} | {agent_str:20} | {task_id:15} | {status}"
-        )
+        typer.echo(f"{ts} | {event_type:25} | {agent_str:20} | {task_id:15} | {status}")

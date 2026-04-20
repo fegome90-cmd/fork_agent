@@ -1,4 +1,5 @@
 """Tests for HIGH issues #5 (idempotent spawn) and #6 (Agent RLock)."""
+
 from __future__ import annotations
 
 import threading

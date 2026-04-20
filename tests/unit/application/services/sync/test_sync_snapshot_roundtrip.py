@@ -3,6 +3,7 @@
 Validates export_observations and import_observations with various
 chunk sizes, project filters, and field preservation.
 """
+
 from __future__ import annotations
 
 import json
@@ -142,16 +143,20 @@ class TestFullSnapshotExport:
         export_dir = tmp_path / "sync"
         svc_a = SyncService(observation_repo=obs_a, sync_repo=sync_a, export_dir=export_dir)
 
-        obs_a.create(Observation(
-            id="fields-1", timestamp=9999, content="full field test",
-            metadata={"env": "test", "version": 2},
-            idempotency_key="ik-fields-1",
-            project="myproject",
-            type="decision",
-            topic_key="myproject/decision-1",
-            revision_count=3,
-            session_id="sess-abc",
-        ))
+        obs_a.create(
+            Observation(
+                id="fields-1",
+                timestamp=9999,
+                content="full field test",
+                metadata={"env": "test", "version": 2},
+                idempotency_key="ik-fields-1",
+                project="myproject",
+                type="decision",
+                topic_key="myproject/decision-1",
+                revision_count=3,
+                session_id="sess-abc",
+            )
+        )
 
         chunks = svc_a.export_observations()
         assert len(chunks) == 1
@@ -245,6 +250,7 @@ class TestFullSnapshotExport:
 
         # Verify only alpha observations in chunk
         import gzip
+
         with gzip.open(chunks[0], "rt") as f:
             lines = [json.loads(line) for line in f if line.strip()]
         assert len(lines) == 3

@@ -3,6 +3,7 @@
 These tests spin up real tmux processes without proper cleanup, causing
 the full test suite to hang. Skip until the module is properly wired.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

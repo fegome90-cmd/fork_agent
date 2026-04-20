@@ -162,9 +162,7 @@ class PromiseContractRepository:
 
         # Validate transition is allowed
         if not current.can_transition_to(state):
-            raise RepositoryError(
-                f"Invalid transition from {current.state.value} to {state.value}"
-            )
+            raise RepositoryError(f"Invalid transition from {current.state.value} to {state.value}")
 
         now = datetime.now().isoformat()
         try:

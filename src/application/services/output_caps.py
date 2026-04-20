@@ -10,9 +10,7 @@ from __future__ import annotations
 
 CHARS_PER_TOKEN: int = 4
 DEFAULT_MAX_TOKENS: int = 8000
-_TRUNCATION_MARKER: str = (
-    "\n[... truncated, use memory_get with id for full content]"
-)
+_TRUNCATION_MARKER: str = "\n[... truncated, use memory_get with id for full content]"
 
 
 def estimate_tokens(text: str) -> int:
@@ -20,9 +18,7 @@ def estimate_tokens(text: str) -> int:
     return len(text) // CHARS_PER_TOKEN
 
 
-def truncate_content(
-    content: str, max_tokens: int
-) -> tuple[str, bool]:
+def truncate_content(content: str, max_tokens: int) -> tuple[str, bool]:
     """Truncate *content* to fit within *max_tokens*.
 
     When truncation is needed the marker is appended *inside* the budget.
@@ -43,9 +39,7 @@ def truncate_content(
     return "", True
 
 
-def cap_response(
-    observations: list[dict], max_tokens: int = DEFAULT_MAX_TOKENS
-) -> list[dict]:
+def cap_response(observations: list[dict], max_tokens: int = DEFAULT_MAX_TOKENS) -> list[dict]:
     """Fit serialized observation dicts within *max_tokens* budget.
 
     Each dict should have a ``"content"`` key.  Observations are processed
@@ -117,7 +111,7 @@ def cap_response(
             if len(content) + marker_len <= safe_content_chars:
                 capped["content"] = content + _TRUNCATION_MARKER
             elif safe_content_chars >= marker_len:
-                capped["content"] = content[:safe_content_chars - marker_len] + _TRUNCATION_MARKER
+                capped["content"] = content[: safe_content_chars - marker_len] + _TRUNCATION_MARKER
             elif safe_content_chars > 0:
                 capped["content"] = content[:safe_content_chars]
             else:
@@ -135,7 +129,7 @@ def cap_response(
                 final = _json.dumps(capped)
                 if len(final) > remaining_chars:
                     # Still too big — hard truncate
-                    capped["content"] = content[:max(0, safe_content_chars - marker_len)]
+                    capped["content"] = content[: max(0, safe_content_chars - marker_len)]
                     final = _json.dumps(capped)
                     if len(final) > remaining_chars:
                         capped["content"] = ""

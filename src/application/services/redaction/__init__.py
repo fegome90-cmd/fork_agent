@@ -1,4 +1,5 @@
 """Privacy redaction service for memory content."""
+
 from __future__ import annotations
 
 import re
@@ -13,17 +14,34 @@ _PRIVATE_TAG_RE = re.compile(
 # Common secret patterns (API keys, tokens, passwords)
 _SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Generic API key patterns
-    (re.compile(r'(api[_-]?key\s*[:=]\s*["\']?)([A-Za-z0-9_\-]{20,})(["\']?)', re.IGNORECASE), r'\1[REDACTED]\3'),
+    (
+        re.compile(r'(api[_-]?key\s*[:=]\s*["\']?)([A-Za-z0-9_\-]{20,})(["\']?)', re.IGNORECASE),
+        r"\1[REDACTED]\3",
+    ),
     # Bearer tokens
-    (re.compile(r'(Bearer\s+)([A-Za-z0-9_\-\.]{20,})', re.IGNORECASE), r'\1[REDACTED]'),
+    (re.compile(r"(Bearer\s+)([A-Za-z0-9_\-\.]{20,})", re.IGNORECASE), r"\1[REDACTED]"),
     # Generic tokens/secrets
-    (re.compile(r'(token\s*[:=]\s*["\']?)([A-Za-z0-9_\-\.]{20,})(["\']?)', re.IGNORECASE), r'\1[REDACTED]\3'),
-    (re.compile(r'(secret\s*[:=]\s*["\']?)([A-Za-z0-9_\-\.]{20,})(["\']?)', re.IGNORECASE), r'\1[REDACTED]\3'),
-    (re.compile(r'(password\s*[:=]\s*["\']?)([^\s"\']{8,})(["\']?)', re.IGNORECASE), r'\1[REDACTED]\3'),
+    (
+        re.compile(r'(token\s*[:=]\s*["\']?)([A-Za-z0-9_\-\.]{20,})(["\']?)', re.IGNORECASE),
+        r"\1[REDACTED]\3",
+    ),
+    (
+        re.compile(r'(secret\s*[:=]\s*["\']?)([A-Za-z0-9_\-\.]{20,})(["\']?)', re.IGNORECASE),
+        r"\1[REDACTED]\3",
+    ),
+    (
+        re.compile(r'(password\s*[:=]\s*["\']?)([^\s"\']{8,})(["\']?)', re.IGNORECASE),
+        r"\1[REDACTED]\3",
+    ),
     # AWS keys
-    (re.compile(r'(AKIA[A-Z0-9]{16})'), r'[REDACTED_AWS_KEY]'),
+    (re.compile(r"(AKIA[A-Z0-9]{16})"), r"[REDACTED_AWS_KEY]"),
     # Private keys (PEM)
-    (re.compile(r'-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA )?PRIVATE KEY-----'), r'[REDACTED_PRIVATE_KEY]'),
+    (
+        re.compile(
+            r"-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA )?PRIVATE KEY-----"
+        ),
+        r"[REDACTED_PRIVATE_KEY]",
+    ),
 ]
 
 
@@ -75,11 +93,22 @@ def redact_metadata(metadata: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     was_redacted = False
     result: dict[str, Any] = {}
 
-    _SENSITIVE_KEYS = frozenset({
-        "password", "secret", "token", "api_key", "apikey",
-        "auth", "credential", "private_key", "access_token",
-        "refresh_token", "session_token", "Authorization",
-    })
+    _SENSITIVE_KEYS = frozenset(
+        {
+            "password",
+            "secret",
+            "token",
+            "api_key",
+            "apikey",
+            "auth",
+            "credential",
+            "private_key",
+            "access_token",
+            "refresh_token",
+            "session_token",
+            "Authorization",
+        }
+    )
 
     for key, value in metadata.items():
         key_lower = key.lower()

@@ -1,4 +1,5 @@
 """Sync command for CLI."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -21,15 +22,11 @@ app = typer.Typer(help="Sync operations: export, import, status")
 @app.command(name="export")
 def export_cmd(
     ctx: typer.Context,
-    project: str | None = typer.Option(
-        None, "--project", "-p", help="Optional project filter"
-    ),
+    project: str | None = typer.Option(None, "--project", "-p", help="Optional project filter"),
     output_dir: Path | None = typer.Option(
         None, "--output-dir", "-o", help="Output directory for export"
     ),
-    chunk_size: int = typer.Option(
-        100, "--chunk-size", "-c", help="Observations per chunk"
-    ),
+    chunk_size: int = typer.Option(100, "--chunk-size", "-c", help="Observations per chunk"),
 ) -> None:
     """Export observations to gzipped JSONL chunks."""
     if output_dir is not None:
@@ -83,16 +80,12 @@ def status_cmd(ctx: typer.Context) -> None:
     typer.echo(f"  Latest sequence: {sync_status['latest_seq']}")
     typer.echo(f"  Last export seq: {sync_status['last_export_seq']}")
     if sync_status["last_export_at"]:
-        last_export = datetime.fromtimestamp(
-            sync_status["last_export_at"] / 1000
-        ).isoformat()
+        last_export = datetime.fromtimestamp(sync_status["last_export_at"] / 1000).isoformat()
         typer.echo(f"  Last export: {last_export}")
     else:
         typer.echo("  Last export: never")
     if sync_status["last_import_at"]:
-        last_import = datetime.fromtimestamp(
-            sync_status["last_import_at"] / 1000
-        ).isoformat()
+        last_import = datetime.fromtimestamp(sync_status["last_import_at"] / 1000).isoformat()
         typer.echo(f"  Last import: {last_import}")
     else:
         typer.echo("  Last import: never")
@@ -183,5 +176,9 @@ def log_cmd(
     typer.echo(f"{'SEQ':>6}  {'OP':<8}  {'ENTITY':<14}  {'SOURCE':<10}  {'TIME'}")
     typer.echo("-" * 70)
     for m in mutations:
-        ts = datetime.fromtimestamp(m.created_at / 1000).strftime("%Y-%m-%d %H:%M") if m.created_at else "-"
+        ts = (
+            datetime.fromtimestamp(m.created_at / 1000).strftime("%Y-%m-%d %H:%M")
+            if m.created_at
+            else "-"
+        )
         typer.echo(f"{m.seq:>6}  {m.op:<8}  {m.entity_key[:14]:<14}  {m.source:<10}  {ts}")

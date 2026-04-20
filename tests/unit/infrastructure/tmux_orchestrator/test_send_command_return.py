@@ -1,4 +1,5 @@
 """Tests for send_command return type change (bool -> int)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

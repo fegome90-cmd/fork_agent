@@ -2,6 +2,7 @@
 
 Uses real git subprocess calls with bare remote repos.
 """
+
 from __future__ import annotations
 
 import gzip
@@ -14,6 +15,7 @@ from src.infrastructure.sync.git_sync import GitSyncBackend
 def _write_chunk(path: Path, data: dict) -> None:
     """Write a single dict as a gzipped JSONL line."""
     import json
+
     with gzip.open(path, "wt") as f:
         f.write(json.dumps(data) + "\n")
 
@@ -44,7 +46,8 @@ class TestGitPushPullRoundtrip:
         clone_dir = tmp_path / "clone"
         subprocess.run(
             ["git", "clone", str(bare), str(clone_dir)],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
 
         clone_git = GitSyncBackend(sync_dir=clone_dir, remote_url=str(bare))

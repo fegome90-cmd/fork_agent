@@ -52,11 +52,11 @@ def decode_message(raw: str) -> AgentMessage | None:
     start_index = raw.find("# F:")
     if start_index != -1:
         # Extract 8-char ID (securely)
-        suffix = raw[start_index + 4:].strip()
+        suffix = raw[start_index + 4 :].strip()
         if not suffix:
             return None
 
-        id_part = suffix.split()[0] # Take until whitespace
+        id_part = suffix.split()[0]  # Take until whitespace
         id_short = id_part[:8]
 
         temp_file = FORK_MSG_TEMP_DIR / f"fork_msg_{id_short}.json"
@@ -141,6 +141,7 @@ def cleanup_temp_files(max_age_seconds: int = 60) -> int:
     Default is 60 seconds as these files are ephemeral handoffs.
     """
     import time
+
     removed = 0
     if not FORK_MSG_TEMP_DIR.exists():
         return removed

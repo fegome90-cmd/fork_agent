@@ -90,12 +90,8 @@ class StatsScreen(Screen[None]):
             if obs.project:
                 by_project[obs.project] += 1
 
-        self.query_one("#stats-by-type", Static).update(
-            self._render_bar_chart(dict(by_type))
-        )
-        self.query_one("#stats-by-project", Static).update(
-            self._render_bar_chart(dict(by_project))
-        )
+        self.query_one("#stats-by-type", Static).update(self._render_bar_chart(dict(by_type)))
+        self.query_one("#stats-by-project", Static).update(self._render_bar_chart(dict(by_project)))
 
         # 7-day activity
         now = datetime.now()
@@ -108,16 +104,12 @@ class StatsScreen(Screen[None]):
             recent_obs: list[Observation] = service.get_by_time_range(start_ms, end_ms)
             for obs in recent_obs:
                 if obs.timestamp:
-                    day_str = datetime.fromtimestamp(
-                        obs.timestamp / 1000
-                    ).strftime("%Y-%m-%d")
+                    day_str = datetime.fromtimestamp(obs.timestamp / 1000).strftime("%Y-%m-%d")
                     by_day[day_str] += 1
         except Exception:
             pass  # get_by_time_range may not be available in all backends
 
-        self.query_one("#stats-activity", Static).update(
-            self._render_bar_chart(dict(by_day))
-        )
+        self.query_one("#stats-activity", Static).update(self._render_bar_chart(dict(by_day)))
 
     @staticmethod
     def _render_bar_chart(data: dict[str, int], max_bar: int = 30) -> str:

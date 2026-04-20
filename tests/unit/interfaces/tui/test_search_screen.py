@@ -15,7 +15,15 @@ def _make_obs(
     topic_key: str | None = "key",
     title: str | None = "Title",
 ) -> Observation:
-    return Observation(id=id, timestamp=1_700_000_000_000, content=content, type=type, project=project, topic_key=topic_key, title=title)
+    return Observation(
+        id=id,
+        timestamp=1_700_000_000_000,
+        content=content,
+        type=type,
+        project=project,
+        topic_key=topic_key,
+        title=title,
+    )
 
 
 class TestSearchScreen:
@@ -63,13 +71,17 @@ class TestSearchScreen:
         mock_table = MagicMock()
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#search-input": MagicMock(value="hello"),
-            "#type-filter": MagicMock(value=""),
-            "#project-filter": MagicMock(value=""),
-            "#search-results": mock_table,
-            "#search-status": mock_static,
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#search-input": MagicMock(value="hello"),
+                "#type-filter": MagicMock(value=""),
+                "#project-filter": MagicMock(value=""),
+                "#search-results": mock_table,
+                "#search-status": mock_static,
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             screen._do_search()
 
         mock_service.search.assert_called_once_with("hello", limit=100, project=None)
@@ -83,12 +95,16 @@ class TestSearchScreen:
 
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#search-input": MagicMock(value="  "),
-            "#type-filter": MagicMock(value=""),
-            "#project-filter": MagicMock(value=""),
-            "#search-status": mock_static,
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#search-input": MagicMock(value="  "),
+                "#type-filter": MagicMock(value=""),
+                "#project-filter": MagicMock(value=""),
+                "#search-status": mock_static,
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             screen._do_search()
 
         mock_service.search.assert_not_called()
@@ -109,13 +125,17 @@ class TestSearchScreen:
         mock_table = MagicMock()
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#search-input": MagicMock(value="test"),
-            "#type-filter": MagicMock(value="decision"),
-            "#project-filter": MagicMock(value=""),
-            "#search-results": mock_table,
-            "#search-status": mock_static,
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#search-input": MagicMock(value="test"),
+                "#type-filter": MagicMock(value="decision"),
+                "#project-filter": MagicMock(value=""),
+                "#search-results": mock_table,
+                "#search-status": mock_static,
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             screen._do_search()
 
         assert mock_table.add_row.call_count == 1
@@ -136,13 +156,17 @@ class TestSearchScreen:
         mock_table = MagicMock()
         mock_static = MagicMock()
 
-        with patch.object(screen, "query_one", side_effect=lambda s, _w=None: {
-            "#search-input": MagicMock(value="test"),
-            "#type-filter": MagicMock(value=""),
-            "#project-filter": MagicMock(value=""),
-            "#search-results": mock_table,
-            "#search-status": mock_static,
-        }.get(s if isinstance(s, str) else "", MagicMock())):
+        with patch.object(
+            screen,
+            "query_one",
+            side_effect=lambda s, _w=None: {
+                "#search-input": MagicMock(value="test"),
+                "#type-filter": MagicMock(value=""),
+                "#project-filter": MagicMock(value=""),
+                "#search-results": mock_table,
+                "#search-status": mock_static,
+            }.get(s if isinstance(s, str) else "", MagicMock()),
+        ):
             screen._do_search()
 
         assert mock_table.add_row.call_count == 2

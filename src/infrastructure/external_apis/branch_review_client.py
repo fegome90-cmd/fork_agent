@@ -32,17 +32,27 @@ class BranchReviewClient:
         try:
             payload = response.json()
         except Exception:
-            payload = {"data": None, "error": {"code": "INVALID_RESPONSE", "message": response.text}}
+            payload = {
+                "data": None,
+                "error": {"code": "INVALID_RESPONSE", "message": response.text},
+            }
 
         if response.status_code >= 400:
             error = payload.get("error") if isinstance(payload, dict) else None
             if error:
-                raise BranchReviewError(error.get("code", f"HTTP_{response.status_code}"), error.get("message", "Request failed"))
-            raise BranchReviewError(f"HTTP_{response.status_code}", f"Request failed: {response.reason_phrase}")
+                raise BranchReviewError(
+                    error.get("code", f"HTTP_{response.status_code}"),
+                    error.get("message", "Request failed"),
+                )
+            raise BranchReviewError(
+                f"HTTP_{response.status_code}", f"Request failed: {response.reason_phrase}"
+            )
 
         if isinstance(payload, dict) and payload.get("error"):
             error = payload["error"]
-            raise BranchReviewError(error.get("code", "UNKNOWN_ERROR"), error.get("message", "Request failed"))
+            raise BranchReviewError(
+                error.get("code", "UNKNOWN_ERROR"), error.get("message", "Request failed")
+            )
 
         if isinstance(payload, dict):
             return payload.get("data", payload)

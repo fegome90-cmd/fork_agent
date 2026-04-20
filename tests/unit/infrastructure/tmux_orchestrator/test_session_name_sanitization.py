@@ -1,4 +1,5 @@
 """Tests for REQ-11: Session name sanitization."""
+
 from __future__ import annotations
 
 import pytest

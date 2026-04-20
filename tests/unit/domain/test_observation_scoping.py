@@ -1,4 +1,5 @@
 """Tests for project and type fields on Observation entity (scoping)."""
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError

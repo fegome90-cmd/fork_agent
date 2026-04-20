@@ -89,9 +89,7 @@ class TestExportObsidianFilters:
     def test_filter_by_topic_key_prefix(self, mock_service: MagicMock) -> None:
         from src.interfaces.cli.commands.export import app
 
-        result = runner.invoke(
-            app, ["--dry-run", "--topic-key", "g10/"], obj=mock_service
-        )
+        result = runner.invoke(app, ["--dry-run", "--topic-key", "g10/"], obj=mock_service)
 
         assert result.exit_code == 0
         assert "Would export 1 observations" in result.stdout
@@ -99,9 +97,7 @@ class TestExportObsidianFilters:
     def test_filter_no_match(self, mock_service: MagicMock) -> None:
         from src.interfaces.cli.commands.export import app
 
-        result = runner.invoke(
-            app, ["--dry-run", "--project", "nonexistent"], obj=mock_service
-        )
+        result = runner.invoke(app, ["--dry-run", "--project", "nonexistent"], obj=mock_service)
 
         assert result.exit_code == 0
         assert "Would export 0 observations" in result.stdout

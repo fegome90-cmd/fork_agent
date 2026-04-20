@@ -67,7 +67,8 @@ class TestMemoryHookIntegration:
         # Verify no message observations
         observations = memory.get_recent(limit=10)
         message_obs = [
-            o for o in observations
+            o
+            for o in observations
             if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 0, "Toggle OFF should not capture any messages"
@@ -101,7 +102,8 @@ class TestMemoryHookIntegration:
         # Verify observation
         observations = memory.get_recent(limit=10)
         message_obs = [
-            o for o in observations
+            o
+            for o in observations
             if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 1, "Should capture exactly 1 message"
@@ -152,7 +154,8 @@ class TestMemoryHookIntegration:
         # Should have only 1 observation
         observations = memory.get_recent(limit=10)
         message_obs = [
-            o for o in observations
+            o
+            for o in observations
             if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 1, "Retry should not create duplicate"
@@ -183,7 +186,8 @@ class TestMemoryHookIntegration:
         # Verify broadcast flag in metadata
         observations = memory.get_recent(limit=10)
         message_obs = [
-            o for o in observations
+            o
+            for o in observations
             if o.metadata and o.metadata.get("event_type") == "agent_message"
         ]
         assert len(message_obs) == 1

@@ -16,6 +16,7 @@ TRUNCATION_MARKER = "\n[... truncated, use memory_get with id for full content]"
 # estimate_tokens
 # ---------------------------------------------------------------------------
 
+
 class TestEstimateTokens:
     def test_empty_string(self) -> None:
         assert estimate_tokens("") == 0
@@ -33,6 +34,7 @@ class TestEstimateTokens:
 # ---------------------------------------------------------------------------
 # truncate_content
 # ---------------------------------------------------------------------------
+
 
 class TestTruncateContent:
     def test_small_content_unchanged(self) -> None:
@@ -65,6 +67,7 @@ class TestTruncateContent:
 # ---------------------------------------------------------------------------
 # cap_response
 # ---------------------------------------------------------------------------
+
 
 def _obs(content: str, **extra: object) -> dict:
     """Helper to build a minimal observation dict."""

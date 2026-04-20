@@ -60,7 +60,9 @@ def client(api_key, test_db):
     with (
         patch("src.interfaces.api.routes.system.pm2_service", mock_pm2),
         patch("src.interfaces.api.routes.system.get_available_backends", return_value=[]),
-        patch("src.interfaces.api.routes.system.list_all_backends", return_value=["pi", "opencode"]),
+        patch(
+            "src.interfaces.api.routes.system.list_all_backends", return_value=["pi", "opencode"]
+        ),
         patch("src.interfaces.api.routes.agents._restore_sessions_from_disk", return_value=0),
         patch("src.interfaces.api.main._run_gc", return_value=(0, 0)),
     ):
@@ -133,7 +135,9 @@ def test_create_observation_stores_sensitive_data(client: TestClient):
     """Verify that PII is redacted at storage (service layer redaction)."""
     response = client.post(
         "/api/v1/memory",
-        json={"content": "my API key is api_key=sk-1234567890abcdef1234567890 and password=supersecret123"},
+        json={
+            "content": "my API key is api_key=sk-1234567890abcdef1234567890 and password=supersecret123"
+        },
     )
     assert response.status_code == 201
     data = response.json()

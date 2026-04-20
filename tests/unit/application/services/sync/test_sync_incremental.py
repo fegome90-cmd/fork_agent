@@ -1,4 +1,5 @@
 """Tests for incremental sync: mutation tracking, export/import, git backend."""
+
 from __future__ import annotations
 
 import gzip
@@ -16,7 +17,10 @@ from src.infrastructure.sync.git_sync import GitSyncBackend
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_obs(obs_id: str = "test-1", content: str = "hello", obs_type: str | None = None) -> Observation:
+
+def _make_obs(
+    obs_id: str = "test-1", content: str = "hello", obs_type: str | None = None
+) -> Observation:
     return Observation(
         id=obs_id,
         timestamp=1000,
@@ -90,22 +94,49 @@ def _make_test_db() -> tuple[sqlite3.Connection, Path]:
 # Mutation entity validation
 # ---------------------------------------------------------------------------
 
+
 class TestSyncEntities:
     def test_sync_chunk_valid(self) -> None:
-        chunk = SyncChunk(chunk_id="c1", source="local", imported_at=100, observation_count=5, checksum="sha256:abc")
+        chunk = SyncChunk(
+            chunk_id="c1",
+            source="local",
+            imported_at=100,
+            observation_count=5,
+            checksum="sha256:abc",
+        )
         assert chunk.chunk_id == "c1"
 
     def test_sync_chunk_empty_id_fails(self) -> None:
         with pytest.raises(ValueError, match="chunk_id cannot be empty"):
-            SyncChunk(chunk_id="", source="local", imported_at=100, observation_count=5, checksum="abc")
+            SyncChunk(
+                chunk_id="", source="local", imported_at=100, observation_count=5, checksum="abc"
+            )
 
     def test_sync_mutation_valid(self) -> None:
-        m = SyncMutation(seq=1, entity="observation", entity_key="id1", op="insert", payload="{}", source="local", project="", created_at=100)
+        m = SyncMutation(
+            seq=1,
+            entity="observation",
+            entity_key="id1",
+            op="insert",
+            payload="{}",
+            source="local",
+            project="",
+            created_at=100,
+        )
         assert m.op == "insert"
 
     def test_sync_mutation_bad_op_fails(self) -> None:
         with pytest.raises(ValueError, match="op must be one of"):
-            SyncMutation(seq=1, entity="obs", entity_key="k", op="replace", payload="{}", source="local", project="", created_at=100)
+            SyncMutation(
+                seq=1,
+                entity="obs",
+                entity_key="k",
+                op="replace",
+                payload="{}",
+                source="local",
+                project="",
+                created_at=100,
+            )
 
     def test_sync_status_defaults(self) -> None:
         s = SyncStatus()
@@ -116,6 +147,7 @@ class TestSyncEntities:
 # ---------------------------------------------------------------------------
 # Mutation tracking via observation repo
 # ---------------------------------------------------------------------------
+
 
 class TestMutationTracking:
     def test_create_records_mutation(self) -> None:
@@ -189,6 +221,7 @@ class TestMutationTracking:
 # Incremental export/import
 # ---------------------------------------------------------------------------
 
+
 class TestIncrementalSync:
     def test_export_incremental_empty(self, tmp_path: Path) -> None:
         """No mutations → no chunks."""
@@ -203,7 +236,9 @@ class TestIncrementalSync:
         db_conn = DatabaseConnection(config=DatabaseConfig(db_path=db_path))
         sync_repo = SyncRepositoryImpl(connection=db_conn)
         obs_repo = ObservationRepository(connection=db_conn, sync_repo=sync_repo)
-        service = SyncService(observation_repo=obs_repo, sync_repo=sync_repo, export_dir=tmp_path / "sync")
+        service = SyncService(
+            observation_repo=obs_repo, sync_repo=sync_repo, export_dir=tmp_path / "sync"
+        )
 
         paths = service.export_incremental()
         assert paths == []
@@ -333,7 +368,9 @@ class TestIncrementalSync:
         db_conn = DatabaseConnection(config=DatabaseConfig(db_path=db))
         sync_repo = SyncRepositoryImpl(connection=db_conn)
         obs_repo = ObservationRepository(connection=db_conn, sync_repo=sync_repo)
-        svc = SyncService(observation_repo=obs_repo, sync_repo=sync_repo, export_dir=tmp_path / "sync")
+        svc = SyncService(
+            observation_repo=obs_repo, sync_repo=sync_repo, export_dir=tmp_path / "sync"
+        )
 
         obs_repo.create(_make_obs("inc-1", "once"))
         chunks1 = svc.export_incremental()
@@ -347,6 +384,7 @@ class TestIncrementalSync:
 # ---------------------------------------------------------------------------
 # GitSyncBackend
 # ---------------------------------------------------------------------------
+
 
 class TestGitSyncBackend:
     def test_init_repo(self, tmp_path: Path) -> None:

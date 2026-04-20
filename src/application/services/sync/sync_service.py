@@ -1,4 +1,5 @@
 """Sync service for export/import operations with mutation tracking."""
+
 from __future__ import annotations
 
 import gzip
@@ -26,36 +27,27 @@ class ObservationRepositoryProtocol(Protocol):
         limit: int | None = None,
         offset: int | None = None,
         type: str | None = None,
-    ) -> list[Observation]:
-        ...
+    ) -> list[Observation]: ...
 
-    def count(self) -> int:
-        ...
+    def count(self) -> int: ...
 
-    def create(self, observation: Observation) -> None:
-        ...
+    def create(self, observation: Observation) -> None: ...
 
-    def get_by_id(self, observation_id: str) -> Observation:
-        ...
+    def get_by_id(self, observation_id: str) -> Observation: ...
 
-    def delete(self, observation_id: str) -> None:
-        ...
+    def delete(self, observation_id: str) -> None: ...
 
-    def update(self, observation: Observation) -> None:
-        ...
+    def update(self, observation: Observation) -> None: ...
 
 
 class SyncRepositoryProtocol(Protocol):
     """Protocol for sync repository dependencies."""
 
-    def record_chunk(self, chunk: SyncChunk) -> None:
-        ...
+    def record_chunk(self, chunk: SyncChunk) -> None: ...
 
-    def get_chunk_by_id(self, chunk_id: str) -> SyncChunk | None:
-        ...
+    def get_chunk_by_id(self, chunk_id: str) -> SyncChunk | None: ...
 
-    def list_chunks(self, source: str | None = None) -> list[SyncChunk]:
-        ...
+    def list_chunks(self, source: str | None = None) -> list[SyncChunk]: ...
 
     def record_mutation(
         self,
@@ -65,17 +57,13 @@ class SyncRepositoryProtocol(Protocol):
         payload: str,
         source: str,
         project: str,
-    ) -> int:
-        ...
+    ) -> int: ...
 
-    def get_mutations_since(self, seq: int, limit: int | None = None) -> list[SyncMutation]:
-        ...
+    def get_mutations_since(self, seq: int, limit: int | None = None) -> list[SyncMutation]: ...
 
-    def get_latest_seq(self) -> int:
-        ...
+    def get_latest_seq(self) -> int: ...
 
-    def get_status(self) -> SyncStatus:
-        ...
+    def get_status(self) -> SyncStatus: ...
 
     def update_status(
         self,
@@ -83,8 +71,7 @@ class SyncRepositoryProtocol(Protocol):
         last_import_at: int | None = None,
         last_export_seq: int | None = None,
         mutation_count: int | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class SyncService:
@@ -168,7 +155,9 @@ class SyncService:
 
         # Advance watermark — use export_max_seq for incremental,
         # global latest_seq for full dump.
-        watermark_seq = export_max_seq if export_max_seq is not None else self._sync_repo.get_latest_seq()
+        watermark_seq = (
+            export_max_seq if export_max_seq is not None else self._sync_repo.get_latest_seq()
+        )
         self._sync_repo.update_status(
             last_export_at=timestamp,
             last_export_seq=watermark_seq,
@@ -220,11 +209,7 @@ class SyncService:
                 obs_data.pop(m.entity_key, None)
             elif m.op in ("insert", "update"):
                 try:
-                    payload = (
-                        json.loads(m.payload)
-                        if isinstance(m.payload, str)
-                        else m.payload
-                    )
+                    payload = json.loads(m.payload) if isinstance(m.payload, str) else m.payload
                     obs_data[m.entity_key] = payload
                 except (json.JSONDecodeError, KeyError) as e:
                     logger.warning(
@@ -245,9 +230,7 @@ class SyncService:
                     from src.domain.entities.observation import Observation as _Obs
 
                     if obs_type not in _Obs._ALLOWED_TYPES:
-                        logger.warning(
-                            "Skipping obs %s with invalid type: %s", obs_id, obs_type
-                        )
+                        logger.warning("Skipping obs %s with invalid type: %s", obs_id, obs_type)
                         obs_type = None
                 obs = Observation(
                     id=payload.get("id", obs_id),
@@ -358,9 +341,7 @@ class SyncService:
 
         actual = f"sha256:{hasher.hexdigest()}"
         if actual != expected:
-            raise ValueError(
-                f"Manifest checksum mismatch: expected {expected}, got {actual}"
-            )
+            raise ValueError(f"Manifest checksum mismatch: expected {expected}, got {actual}")
         return True
 
     def import_observations(
@@ -466,8 +447,11 @@ class SyncService:
                     obs_type = obs_dict.get("type")
                     if obs_type is not None:
                         from src.domain.entities.observation import Observation as _Obs
+
                         if obs_type not in _Obs._ALLOWED_TYPES:
-                            logger.warning("Skipping obs %s with invalid type: %s", obs_id, obs_type)
+                            logger.warning(
+                                "Skipping obs %s with invalid type: %s", obs_id, obs_type
+                            )
                             obs_type = None
                     observation = Observation(
                         id=obs_id,
@@ -768,7 +752,11 @@ class SyncService:
     def _apply_mutation(self, mutation: dict[str, Any]) -> str:
         """Apply a single mutation. Returns the count key."""
         op = mutation["op"]
-        payload = json.loads(mutation["payload"]) if isinstance(mutation["payload"], str) else mutation["payload"]
+        payload = (
+            json.loads(mutation["payload"])
+            if isinstance(mutation["payload"], str)
+            else mutation["payload"]
+        )
 
         if op == "delete":
             try:

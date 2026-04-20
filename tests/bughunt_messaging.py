@@ -16,12 +16,14 @@ from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 pytestmark = pytest.mark.bughunt
 
+
 @pytest.fixture
 def messenger(tmp_path):
     conn = DatabaseConnection.from_path(tmp_path / "test.db")
     store = MessageStore(connection=conn)
     orchestrator = TmuxOrchestrator(safety_mode=False)
     return AgentMessenger(orchestrator=orchestrator, store=store)
+
 
 def test_large_message_payload_preservation(messenger, tmp_path):
     """
@@ -36,14 +38,16 @@ def test_large_message_payload_preservation(messenger, tmp_path):
         from_agent="leader:0",
         to_agent="fork-target:0",
         message_type=MessageType.COMMAND,
-        payload=large_payload
+        payload=large_payload,
     )
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
 
         # We also need to patch FORK_MSG_TEMP_DIR inside message_protocol
-        with patch("src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR", tmp_path):
+        with patch(
+            "src.application.services.messaging.message_protocol.FORK_MSG_TEMP_DIR", tmp_path
+        ):
             messenger.send(msg)
 
             # Find the set-option call (new side-channel)
@@ -67,6 +71,7 @@ def test_large_message_payload_preservation(messenger, tmp_path):
             assert len(decoded.payload) == 2000
             assert decoded.payload == large_payload
             assert decoded.id == msg.id
+
 
 def test_expired_temp_files_cleanup_leak(_messenger, tmp_path):
     """

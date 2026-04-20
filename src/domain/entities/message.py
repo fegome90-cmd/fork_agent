@@ -58,10 +58,10 @@ class AgentMessage:
     def created_at_iso(self) -> str:
         """Get the creation time as an ISO-formatted string."""
         from datetime import datetime
+
         return datetime.fromtimestamp(self.created_at / 1000, tz=UTC).isoformat()
 
     @classmethod
-
     def create(
         cls,
         from_agent: str,

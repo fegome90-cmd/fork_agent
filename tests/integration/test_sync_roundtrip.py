@@ -2,6 +2,7 @@
 
 Tests create_container → export → import into a fresh container → verify data.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -43,12 +44,20 @@ class TestSyncRoundtripIntegration:
 
         repo_a.create(_make_obs("rud-1", "original"))
         repo_a.create(_make_obs("rud-2", "keep"))
-        repo_a.update(Observation(
-            id="rud-1", timestamp=2000, content="updated",
-            metadata=None, idempotency_key="ik-rud-1",
-            project=None, type=None, topic_key=None,
-            revision_count=2, session_id="sess-integ",
-        ))
+        repo_a.update(
+            Observation(
+                id="rud-1",
+                timestamp=2000,
+                content="updated",
+                metadata=None,
+                idempotency_key="ik-rud-1",
+                project=None,
+                type=None,
+                topic_key=None,
+                revision_count=2,
+                session_id="sess-integ",
+            )
+        )
         repo_a.delete("rud-2")
 
         # Export from A
@@ -65,7 +74,7 @@ class TestSyncRoundtripIntegration:
         # then update on rud-1 and delete on rud-2.
         assert counts["inserted"] >= 2  # rud-1 + rud-2 (via insert mutations)
         assert counts["updated"] >= 1  # rud-1
-        assert counts["deleted"] == 1   # rud-2
+        assert counts["deleted"] == 1  # rud-2
 
         # Verify final state: only rud-1 with "updated" content
         repo_b = container_b.observation_repository()
@@ -83,7 +92,9 @@ class TestSyncRoundtripIntegration:
         sync_a._export_dir = export_dir
 
         obs = Observation(
-            id="fields-rt", timestamp=9999, content="all fields",
+            id="fields-rt",
+            timestamp=9999,
+            content="all fields",
             metadata={"env": "prod", "v": 3},
             idempotency_key="ik-fields-rt",
             project="proj-x",
@@ -163,12 +174,20 @@ class TestSyncRoundtripIntegration:
         repo_a.create(_make_obs("seq-3", "delete-me"))
 
         # Update seq-2
-        repo_a.update(Observation(
-            id="seq-2", timestamp=2000, content="updated",
-            metadata=None, idempotency_key="ik-seq-2",
-            project=None, type=None, topic_key=None,
-            revision_count=2, session_id="sess-integ",
-        ))
+        repo_a.update(
+            Observation(
+                id="seq-2",
+                timestamp=2000,
+                content="updated",
+                metadata=None,
+                idempotency_key="ik-seq-2",
+                project=None,
+                type=None,
+                topic_key=None,
+                revision_count=2,
+                session_id="sess-integ",
+            )
+        )
 
         # Delete seq-3
         repo_a.delete("seq-3")

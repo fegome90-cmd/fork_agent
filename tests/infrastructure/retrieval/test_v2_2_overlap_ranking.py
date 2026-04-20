@@ -60,6 +60,8 @@ class TestOverlapRanking:
             top_n=3,
         )
 
-        assert "question 0" in expansions or "question 1" in expansions or "question 2" in expansions
+        assert (
+            "question 0" in expansions or "question 1" in expansions or "question 2" in expansions
+        )
         assert "question 9" not in expansions
         assert len(expansions) < 10

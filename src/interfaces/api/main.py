@@ -40,6 +40,7 @@ GC_MIN_AGE_SECONDS = int(os.getenv("GC_MIN_AGE_SECONDS", "300"))
 @dataclass
 class _GcState:
     """Mutable state for GC status tracking."""
+
     last_run_at: datetime | None = None
     cleaned_count: int = 0
     failed_count: int = 0
@@ -122,6 +123,7 @@ async def _gc_loop() -> None:
         except Exception:
             logger.exception("gc: error in gc loop")
 
+
 _shutdown_event = None
 
 
@@ -149,6 +151,7 @@ async def lifespan(_app: FastAPI):
 
     # 1. Restore persisted sessions from disk before any GC
     from src.interfaces.api.routes.agents import _restore_sessions_from_disk
+
     restored = _restore_sessions_from_disk()
     if restored > 0:
         logger.info("gc: startup restore complete", extra={"restored_count": restored})
