@@ -716,7 +716,9 @@ class TestObservationRepositoryGetBySessionId:
         ids = {o.id for o in results}
         assert ids == {"o1", "o3"}
 
-    def test_get_by_session_id_ignores_null_session(self, db_connection: DatabaseConnection) -> None:
+    def test_get_by_session_id_ignores_null_session(
+        self, db_connection: DatabaseConnection
+    ) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )
@@ -729,7 +731,9 @@ class TestObservationRepositoryGetBySessionId:
         assert len(results) == 1
         assert results[0].id == "o2"
 
-    def test_get_by_session_id_returns_ordered_by_timestamp_desc(self, db_connection: DatabaseConnection) -> None:
+    def test_get_by_session_id_returns_ordered_by_timestamp_desc(
+        self, db_connection: DatabaseConnection
+    ) -> None:
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
         )

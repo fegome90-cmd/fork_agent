@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.application.services.diff_result import DiffItem, DiffResult
 from src.application.services.memory_service import MemoryService
 from src.domain.entities.observation import Observation
 

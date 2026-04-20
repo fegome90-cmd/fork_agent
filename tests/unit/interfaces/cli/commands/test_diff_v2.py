@@ -5,11 +5,9 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
-import pytest
 from typer.testing import CliRunner
 
 from src.application.services.diff_service import DiffEntry, DiffResult
-from src.application.services.diff_formatter import DiffFormatter
 
 runner = CliRunner()
 
@@ -86,7 +84,9 @@ class TestDiffById:
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["o1", "o2", "--format", "json", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app, ["o1", "o2", "--format", "json", "--project", ""], obj=mock_service
+        )
         assert result.exit_code == 0
         parsed = json.loads(result.output)
         assert parsed["diffs"][0]["status"] == "modified"
@@ -114,7 +114,9 @@ class TestDiffById:
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["o1", "o2", "--format", "json", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app, ["o1", "o2", "--format", "json", "--project", ""], obj=mock_service
+        )
         assert result.exit_code == 0
         parsed = json.loads(result.output)
         assert parsed["diffs"][0]["status"] == "unchanged"
@@ -127,14 +129,20 @@ class TestDiffBySession:
         from src.domain.entities.observation import Observation
         from src.interfaces.cli.commands.diff import app
 
-        s1_obs = [Observation(id="o1", timestamp=1000, content="v1", topic_key="t1", session_id="s1")]
-        s2_obs = [Observation(id="o2", timestamp=2000, content="v2", topic_key="t1", session_id="s2")]
+        s1_obs = [
+            Observation(id="o1", timestamp=1000, content="v1", topic_key="t1", session_id="s1")
+        ]
+        s2_obs = [
+            Observation(id="o2", timestamp=2000, content="v2", topic_key="t1", session_id="s2")
+        ]
 
         mock_repo = _mock_repo_for_session(s1_obs, s2_obs)
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--session", "s1", "--session", "s2", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app, ["--session", "s1", "--session", "s2", "--project", ""], obj=mock_service
+        )
         assert result.exit_code == 0
         assert "[~]" in result.output or "modified" in result.output.lower()
 
@@ -143,18 +151,41 @@ class TestDiffBySession:
         from src.interfaces.cli.commands.diff import app
 
         s1_obs = [
-            Observation(id="o1", timestamp=1000, content="a", topic_key="t1", project="alpha", session_id="s1"),
-            Observation(id="o2", timestamp=1001, content="b", topic_key="t2", project="beta", session_id="s1"),
+            Observation(
+                id="o1",
+                timestamp=1000,
+                content="a",
+                topic_key="t1",
+                project="alpha",
+                session_id="s1",
+            ),
+            Observation(
+                id="o2",
+                timestamp=1001,
+                content="b",
+                topic_key="t2",
+                project="beta",
+                session_id="s1",
+            ),
         ]
         s2_obs = [
-            Observation(id="o3", timestamp=2000, content="c", topic_key="t1", project="alpha", session_id="s2"),
+            Observation(
+                id="o3",
+                timestamp=2000,
+                content="c",
+                topic_key="t1",
+                project="alpha",
+                session_id="s2",
+            ),
         ]
 
         mock_repo = _mock_repo_for_session(s1_obs, s2_obs)
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--session", "s1", "--session", "s2", "--project", "alpha"], obj=mock_service)
+        result = runner.invoke(
+            app, ["--session", "s1", "--session", "s2", "--project", "alpha"], obj=mock_service
+        )
         assert result.exit_code == 0
         # Only t1 (alpha) should appear, not t2 (beta)
         assert "t2" not in result.output
@@ -166,7 +197,9 @@ class TestDiffBySession:
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--session", "empty", "--session", "s2", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app, ["--session", "empty", "--session", "s2", "--project", ""], obj=mock_service
+        )
         assert result.exit_code == 1
         assert "Error" in result.output
 
@@ -174,14 +207,22 @@ class TestDiffBySession:
         from src.domain.entities.observation import Observation
         from src.interfaces.cli.commands.diff import app
 
-        s1_obs = [Observation(id="o1", timestamp=1000, content="a", topic_key="t1", session_id="s1")]
-        s2_obs = [Observation(id="o2", timestamp=2000, content="b", topic_key="t2", session_id="s2")]
+        s1_obs = [
+            Observation(id="o1", timestamp=1000, content="a", topic_key="t1", session_id="s1")
+        ]
+        s2_obs = [
+            Observation(id="o2", timestamp=2000, content="b", topic_key="t2", session_id="s2")
+        ]
 
         mock_repo = _mock_repo_for_session(s1_obs, s2_obs)
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--session", "s1", "--session", "s2", "--format", "json", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app,
+            ["--session", "s1", "--session", "s2", "--format", "json", "--project", ""],
+            obj=mock_service,
+        )
         assert result.exit_code == 0
         parsed = json.loads(result.output)
         assert "diffs" in parsed
@@ -211,7 +252,9 @@ class TestDiffByTimestamp:
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--before", "1000", "--after", "2000", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app, ["--before", "1000", "--after", "2000", "--project", ""], obj=mock_service
+        )
         assert result.exit_code == 0
         assert "[~]" in result.output or "modified" in result.output.lower()
 
@@ -229,7 +272,11 @@ class TestDiffByTimestamp:
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--before", "1000", "--after", "2000", "--type", "decision", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app,
+            ["--before", "1000", "--after", "2000", "--type", "decision", "--project", ""],
+            obj=mock_service,
+        )
         assert result.exit_code == 0
         # Only decision type should appear
         assert "t1" in result.output
@@ -239,7 +286,9 @@ class TestDiffByTimestamp:
 
         mock_service = _make_mock_memory_service()
 
-        result = runner.invoke(app, ["--before", "not-a-number", "--after", "2000"], obj=mock_service)
+        result = runner.invoke(
+            app, ["--before", "not-a-number", "--after", "2000"], obj=mock_service
+        )
         assert result.exit_code == 1
         assert "Error" in result.output
 
@@ -256,7 +305,9 @@ class TestDiffByTimestamp:
 
         mock_service = _make_mock_memory_service()
 
-        result = runner.invoke(app, ["--before", "1000", "--after", "2000", "--format", "yaml"], obj=mock_service)
+        result = runner.invoke(
+            app, ["--before", "1000", "--after", "2000", "--format", "yaml"], obj=mock_service
+        )
         assert result.exit_code == 1
         assert "format" in result.output.lower()
 
@@ -269,7 +320,9 @@ class TestDiffByTimestamp:
         mock_service = MagicMock()
         mock_service._repository = mock_repo
 
-        result = runner.invoke(app, ["--before", "1000", "--after", "2000", "--project", ""], obj=mock_service)
+        result = runner.invoke(
+            app, ["--before", "1000", "--after", "2000", "--project", ""], obj=mock_service
+        )
         assert result.exit_code == 0
         assert "No differences found" in result.output
 
@@ -306,5 +359,7 @@ class TestDiffMutualExclusivity:
 
         mock_service = _make_mock_memory_service()
 
-        result = runner.invoke(app, ["--session", "s1", "--session", "s2", "--before", "1000"], obj=mock_service)
+        result = runner.invoke(
+            app, ["--session", "s1", "--session", "s2", "--before", "1000"], obj=mock_service
+        )
         assert result.exit_code == 1

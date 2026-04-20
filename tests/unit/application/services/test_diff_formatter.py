@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
-from src.application.services.diff_service import DiffEntry, DiffResult
 from src.application.services.diff_formatter import DiffFormatter
+from src.application.services.diff_service import DiffEntry, DiffResult
 
 
 def _make_entry(
@@ -48,21 +46,27 @@ class TestDiffFormatterFormatText:
 
     def test_added_entry_shows_plus(self) -> None:
         entry = _make_entry(status="added", content="new content")
-        result = _make_result(entries=(entry,), summary={"added": 1, "removed": 0, "modified": 0, "unchanged": 0})
+        result = _make_result(
+            entries=(entry,), summary={"added": 1, "removed": 0, "modified": 0, "unchanged": 0}
+        )
         output = DiffFormatter.format_text(result)
         assert "[+]" in output
         assert "added" in output.lower()
 
     def test_removed_entry_shows_minus(self) -> None:
         entry = _make_entry(status="removed", content="old content")
-        result = _make_result(entries=(entry,), summary={"added": 0, "removed": 1, "modified": 0, "unchanged": 0})
+        result = _make_result(
+            entries=(entry,), summary={"added": 0, "removed": 1, "modified": 0, "unchanged": 0}
+        )
         output = DiffFormatter.format_text(result)
         assert "[-]" in output
         assert "removed" in output.lower()
 
     def test_modified_entry_shows_tilde(self) -> None:
         entry = _make_entry(status="modified", content="new", previous_content="old")
-        result = _make_result(entries=(entry,), summary={"added": 0, "removed": 0, "modified": 1, "unchanged": 0})
+        result = _make_result(
+            entries=(entry,), summary={"added": 0, "removed": 0, "modified": 1, "unchanged": 0}
+        )
         output = DiffFormatter.format_text(result)
         assert "[~]" in output
         assert "modified" in output.lower()
@@ -83,14 +87,18 @@ class TestDiffFormatterFormatText:
     def test_content_preview_truncated(self) -> None:
         long_content = "x" * 200
         entry = _make_entry(status="added", content=long_content)
-        result = _make_result(entries=(entry,), summary={"added": 1, "removed": 0, "modified": 0, "unchanged": 0})
+        result = _make_result(
+            entries=(entry,), summary={"added": 1, "removed": 0, "modified": 0, "unchanged": 0}
+        )
         output = DiffFormatter.format_text(result)
         # Content should be truncated in preview
         assert len(output) < len(long_content) + 100
 
     def test_uses_ansi_colors(self) -> None:
         entry = _make_entry(status="added", content="colored")
-        result = _make_result(entries=(entry,), summary={"added": 1, "removed": 0, "modified": 0, "unchanged": 0})
+        result = _make_result(
+            entries=(entry,), summary={"added": 1, "removed": 0, "modified": 0, "unchanged": 0}
+        )
         output = DiffFormatter.format_text(result)
         assert "\033[" in output  # ANSI escape sequence
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,8 +20,12 @@ def _make_obs(
     session_id: str | None = None,
 ) -> Observation:
     return Observation(
-        id=id, timestamp=timestamp, content=content,
-        topic_key=topic_key, project=project, type=type,
+        id=id,
+        timestamp=timestamp,
+        content=content,
+        topic_key=topic_key,
+        project=project,
+        type=type,
         session_id=session_id,
     )
 
@@ -37,8 +40,12 @@ class TestDiffEntry:
 
     def test_fields(self) -> None:
         entry = DiffEntry(
-            status="modified", topic_key="t", content="new",
-            previous_content="old", observation_id="o2", previous_id="o1",
+            status="modified",
+            topic_key="t",
+            content="new",
+            previous_content="old",
+            observation_id="o2",
+            previous_id="o1",
         )
         assert entry.status == "modified"
         assert entry.topic_key == "t"
@@ -51,14 +58,20 @@ class TestDiffResult:
 
     def test_frozen(self) -> None:
         result = DiffResult(
-            reference_label="a", target_label="b", entries=(), summary={},
+            reference_label="a",
+            target_label="b",
+            entries=(),
+            summary={},
         )
         with pytest.raises(AttributeError):
             result.summary = {}  # type: ignore[misc]
 
     def test_empty(self) -> None:
         result = DiffResult(
-            reference_label="a", target_label="b", entries=(), summary={},
+            reference_label="a",
+            target_label="b",
+            entries=(),
+            summary={},
         )
         assert result.entries == ()
         assert result.summary == {}
@@ -218,12 +231,40 @@ class TestDiffServiceDiffBySession:
         svc = self._make_service()
         svc._repo.get_by_session_id.side_effect = [
             [
-                _make_obs(id="o1", timestamp=1000, content="a", topic_key="t1", project="alpha", session_id="s1"),
-                _make_obs(id="o2", timestamp=1001, content="b", topic_key="t2", project="beta", session_id="s1"),
+                _make_obs(
+                    id="o1",
+                    timestamp=1000,
+                    content="a",
+                    topic_key="t1",
+                    project="alpha",
+                    session_id="s1",
+                ),
+                _make_obs(
+                    id="o2",
+                    timestamp=1001,
+                    content="b",
+                    topic_key="t2",
+                    project="beta",
+                    session_id="s1",
+                ),
             ],
             [
-                _make_obs(id="o3", timestamp=2000, content="c", topic_key="t1", project="alpha", session_id="s2"),
-                _make_obs(id="o4", timestamp=2001, content="d", topic_key="t3", project="beta", session_id="s2"),
+                _make_obs(
+                    id="o3",
+                    timestamp=2000,
+                    content="c",
+                    topic_key="t1",
+                    project="alpha",
+                    session_id="s2",
+                ),
+                _make_obs(
+                    id="o4",
+                    timestamp=2001,
+                    content="d",
+                    topic_key="t3",
+                    project="beta",
+                    session_id="s2",
+                ),
             ],
         ]
         result = svc.diff_by_session("s1", "s2", project="alpha")
@@ -234,12 +275,20 @@ class TestDiffServiceDiffBySession:
         svc = self._make_service()
         svc._repo.get_by_session_id.side_effect = [
             [
-                _make_obs(id="r1", timestamp=1000, content="removed", topic_key="removed", session_id="s1"),
-                _make_obs(id="r2", timestamp=1001, content="v1", topic_key="modified", session_id="s1"),
+                _make_obs(
+                    id="r1", timestamp=1000, content="removed", topic_key="removed", session_id="s1"
+                ),
+                _make_obs(
+                    id="r2", timestamp=1001, content="v1", topic_key="modified", session_id="s1"
+                ),
             ],
             [
-                _make_obs(id="a1", timestamp=2000, content="added", topic_key="added", session_id="s2"),
-                _make_obs(id="a2", timestamp=2001, content="v2", topic_key="modified", session_id="s2"),
+                _make_obs(
+                    id="a1", timestamp=2000, content="added", topic_key="added", session_id="s2"
+                ),
+                _make_obs(
+                    id="a2", timestamp=2001, content="v2", topic_key="modified", session_id="s2"
+                ),
             ],
         ]
         result = svc.diff_by_session("s1", "s2")
@@ -286,6 +335,7 @@ class TestDiffServiceDiffById:
     def test_not_found_raises(self) -> None:
         svc = self._make_service()
         from src.application.exceptions import ObservationNotFoundError
+
         svc._repo.get_by_id.side_effect = ObservationNotFoundError("not found")
         with pytest.raises(ObservationNotFoundError):
             svc.diff_by_id("nonexistent", "o2")

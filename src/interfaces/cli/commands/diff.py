@@ -34,7 +34,6 @@ def _should_auto_detect(ctx: typer.Context) -> bool:
 def _get_diff_service(ctx: typer.Context) -> DiffService:
     """Create a DiffService from the CLI context."""
     from src.application.services.diff_service import DiffService
-    from src.interfaces.cli.dependencies import get_memory_service
 
     # Get db_path from context to create an isolated service
     db_path = None
@@ -81,7 +80,7 @@ def _parse_timestamp(value: str) -> int:
             raise ValueError("Timestamp must be non-negative")
         return ts
     except ValueError:
-        raise ValueError(f"Invalid timestamp: {value} (expected Unix ms or relative like -1h)")
+        raise ValueError(f"Invalid timestamp: {value} (expected Unix ms or relative like -1h)") from None
 
 
 def _resolve_project(ctx: typer.Context, project: str | None) -> str | None:
@@ -156,7 +155,7 @@ def diff(
         svc = _get_diff_service(ctx)
     except Exception as e:
         typer.echo(f"Error: Failed to initialize diff service: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     effective_project = _resolve_project(ctx, project)
 
@@ -185,12 +184,12 @@ def diff(
                 before_ms = _parse_timestamp(before)
             except ValueError as e:
                 typer.echo(f"Error: {e}", err=True)
-                raise typer.Exit(1)
+                raise typer.Exit(1) from e
             try:
                 after_ms = _parse_timestamp(after)
             except ValueError as e:
                 typer.echo(f"Error: {e}", err=True)
-                raise typer.Exit(1)
+                raise typer.Exit(1) from e
             if before_ms >= after_ms:
                 typer.echo("Error: --before must be before --after", err=True)
                 raise typer.Exit(1)
@@ -203,7 +202,7 @@ def diff(
 
     except ValueError as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     except Exception as e:
         # Handle ObservationNotFoundError and similar
         err_msg = str(e)
@@ -211,7 +210,7 @@ def diff(
             typer.echo(f"Error: {e}", err=True)
         else:
             typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     if format == "json":
         typer.echo(DiffFormatter.format_json(result))

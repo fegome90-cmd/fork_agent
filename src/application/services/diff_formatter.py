@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.application.services.diff_service import DiffEntry, DiffResult
+from src.application.services.diff_service import DiffResult
 
 # ANSI color codes
 _GREEN = "\033[32m"
