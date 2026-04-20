@@ -216,7 +216,7 @@ def _restore_sessions_from_disk() -> int:
 
 
 @router.get("/sessions/gc/status", response_model=GcStatusResponse)
-async def get_gc_status() -> GcStatusResponse:
+async def get_gc_status(_: str = Depends(verify_api_key)) -> GcStatusResponse:
     """Get GC (garbage collector) status.
 
     Returns information about the last GC run, including counts of cleaned/failed sessions,

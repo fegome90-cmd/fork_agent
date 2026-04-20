@@ -19,6 +19,10 @@ from src.application.exceptions import (
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
+# MCP has no dedicated NOT_FOUND code — use INVALID_PARAMS for client errors
+# and INTERNAL_ERROR for server errors.
+_NOT_FOUND_FALLBACK = INVALID_PARAMS
+
 logger = logging.getLogger("memory-mcp")
 
 
@@ -136,11 +140,11 @@ def _serialize_sessions(sessions: list[Any]) -> list[dict[str, Any]]:
 def _map_error(e: Exception) -> McpError:
     """Map domain exceptions to MCP error codes."""
     if isinstance(e, ObservationNotFoundError):
-        return McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
+        return McpError(ErrorData(code=_NOT_FOUND_FALLBACK, message=str(e)))
     if isinstance(e, ValueError):
         return McpError(ErrorData(code=INVALID_PARAMS, message=str(e)))
     if isinstance(e, SessionNotFoundError):
-        return McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
+        return McpError(ErrorData(code=_NOT_FOUND_FALLBACK, message=str(e)))
     if isinstance(e, MemoryError):
         return McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
     return McpError(ErrorData(code=INTERNAL_ERROR, message=f"Internal error: {e}"))

@@ -420,9 +420,9 @@ class TestSerializeSessions:
 
 
 class TestMapErrorObservationNotFound:
-    def test_observation_not_found_returns_internal_error(self) -> None:
+    def test_observation_not_found_returns_invalid_params(self) -> None:
         from mcp.shared.exceptions import McpError
-        from mcp.types import INTERNAL_ERROR
+        from mcp.types import INVALID_PARAMS
 
         from src.application.exceptions import ObservationNotFoundError
         from src.interfaces.mcp.tools import _map_error
@@ -431,7 +431,7 @@ class TestMapErrorObservationNotFound:
         result = _map_error(err)
 
         assert isinstance(result, McpError)
-        assert result.error.code == INTERNAL_ERROR
+        assert result.error.code == INVALID_PARAMS
 
 
 class TestMapErrorValueError:
@@ -449,9 +449,9 @@ class TestMapErrorValueError:
 
 
 class TestMapErrorSessionNotFound:
-    def test_session_not_found_returns_internal_error(self) -> None:
+    def test_session_not_found_returns_invalid_params(self) -> None:
         from mcp.shared.exceptions import McpError
-        from mcp.types import INTERNAL_ERROR
+        from mcp.types import INVALID_PARAMS
 
         from src.application.exceptions import SessionNotFoundError
         from src.interfaces.mcp.tools import _map_error
@@ -460,7 +460,7 @@ class TestMapErrorSessionNotFound:
         result = _map_error(err)
 
         assert isinstance(result, McpError)
-        assert result.error.code == INTERNAL_ERROR
+        assert result.error.code == INVALID_PARAMS
 
 
 class TestMapErrorMemoryError:

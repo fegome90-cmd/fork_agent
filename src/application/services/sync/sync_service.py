@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import time
+from contextlib import closing
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -228,10 +229,11 @@ class SyncService:
                     )
 
         # Reconstruct Observation objects
+        # Note: obs_data only contains keys that were inserted/updated AFTER
+        # their last deletion (or never deleted). Keys removed by delete mutations
+        # are popped from obs_data, so no deleted_ids check is needed here.
         observations: list[Observation] = []
         for obs_id, payload in obs_data.items():
-            if obs_id in deleted_ids:
-                continue
             try:
                 obs_type = payload.get("type")
                 if obs_type is not None:
@@ -429,8 +431,14 @@ class SyncService:
         """
         imported = 0
 
-        with gzip.open(chunk_path, "rt", encoding="utf-8") as f:
-            for line in f:
+        try:
+            gz = gzip.open(chunk_path, "rt", encoding="utf-8")  # noqa: SIM115
+        except OSError as e:
+            logger.warning("Skipping corrupt/invalid chunk %s: %s", chunk_path, e)
+            return 0
+
+        with closing(gz):
+            for line in gz:
                 line = line.strip()
                 if not line:
                     continue
@@ -696,14 +704,20 @@ class SyncService:
         self._disable_obs_mutation_recording()
         try:
             for chunk_path in chunk_paths:
-                chunk_id = chunk_path.stem
+                chunk_id = chunk_path.stem.replace(".jsonl", "")
                 if self._sync_repo.get_chunk_by_id(chunk_id) is not None:
                     logger.debug("Skipping already-imported chunk: %s", chunk_id)
                     continue
 
                 obs_count = 0
-                with gzip.open(chunk_path, "rt", encoding="utf-8") as f:
-                    for line in f:
+                try:
+                    gz = gzip.open(chunk_path, "rt", encoding="utf-8")  # noqa: SIM115
+                except OSError as e:
+                    logger.warning("Skipping corrupt/invalid mutation chunk %s: %s", chunk_path, e)
+                    continue
+
+                with closing(gz):
+                    for line in gz:
                         line = line.strip()
                         if not line:
                             continue
@@ -770,14 +784,18 @@ class SyncService:
                 try:
                     self._observation_repo.update(observation)
                     return "updated"
-                except Exception:
-                    # If update fails (not found), try insert
-                    logger.debug("Sync update failed, trying insert", exc_info=True)
-                    try:
-                        self._observation_repo.create(observation)
-                        return "inserted"
-                    except Exception:
-                        logger.debug("Sync fallback insert failed", exc_info=True)
-                        return "skipped"
+                except Exception as update_err:
+                    # Only fall back to insert if observation not found
+                    err_str = str(update_err).lower()
+                    if "not found" in err_str:
+                        logger.debug("Sync update not found, trying insert", exc_info=True)
+                        try:
+                            self._observation_repo.create(observation)
+                            return "inserted"
+                        except Exception:
+                            logger.debug("Sync fallback insert failed", exc_info=True)
+                    else:
+                        logger.warning("Sync update failed: %s", update_err)
+                    return "skipped"
 
         return "skipped"

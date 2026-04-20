@@ -42,7 +42,7 @@ class MemoryService:
 
         existing_for_topic = None
         if topic_key:
-            existing_for_topic = self._repository.get_by_topic_key(topic_key, project=None)
+            existing_for_topic = self._repository.get_by_topic_key(topic_key, project=project)
 
         observation = Observation(
             id=str(uuid.uuid4()),

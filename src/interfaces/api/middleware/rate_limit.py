@@ -86,15 +86,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def _default_key_func(request: Request) -> str:
-        """Get client identifier from request."""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
+        """Get client identifier from request.
 
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
-
+        Priority: X-API-Key > client IP. X-Forwarded-For is NOT trusted
+        without a known reverse proxy — using it allows trivial rate limit
+        bypass by spoofing the header.
+        """
         api_key = request.headers.get("X-API-Key")
         if api_key:
             return f"apikey:{hash(api_key)}"

@@ -17,7 +17,11 @@ from src.interfaces.api.routes.agents import SessionStore, _restore_sessions_fro
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    from src.interfaces.api.dependencies import verify_api_key
+
+    app.dependency_overrides[verify_api_key] = lambda: "test-key"
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 class TestRestoreSessionsFromDisk:

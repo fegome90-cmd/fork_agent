@@ -26,6 +26,12 @@ class TestBug21UpsertNoDuplicates:
     """BUG-21/22: Same topic_key with different project should update, not duplicate."""
 
     def test_upsert_changes_project(self, db_connection: DatabaseConnection) -> None:
+        """BUG-21/22: Same topic_key with different project creates separate obs.
+
+        With project-scoped topic_key lookup, saving with a different project
+        does NOT update the existing cross-project observation — it creates a new one.
+        This prevents cross-project contamination.
+        """
         from src.application.services.memory_service import MemoryService
         from src.infrastructure.persistence.repositories.observation_repository import (
             ObservationRepository,
@@ -42,7 +48,8 @@ class TestBug21UpsertNoDuplicates:
             type="decision",
         )
 
-        # Second save with same topic_key but project B — should UPDATE, not duplicate
+        # Second save with same topic_key but project B — creates NEW obs
+        # (project-scoped: does NOT find project-a's obs)
         obs2 = service.save(
             content="upsert test content updated",
             topic_key="test/upsert-dup",
@@ -50,15 +57,15 @@ class TestBug21UpsertNoDuplicates:
             type="pattern",
         )
 
-        assert obs2.id == obs1.id, "Should be same observation (upsert)"
+        # Different observations — project-scoped prevents cross-project upsert
+        assert obs2.id != obs1.id, "Different projects should create separate observations"
         assert obs2.project == "project-b"
-        assert obs2.type == "pattern"
-        assert obs2.revision_count == 2
+        assert obs1.project == "project-a"
 
-        # Verify no duplicates in DB
+        # Verify both exist in DB
         all_obs = repo.get_all()
         matching = [o for o in all_obs if o.topic_key == "test/upsert-dup"]
-        assert len(matching) == 1, f"Expected 1, got {len(matching)} duplicates"
+        assert len(matching) == 2, f"Expected 2 (one per project), got {len(matching)}"
 
     def test_upsert_changes_type_only(self, db_connection: DatabaseConnection) -> None:
         from src.application.services.memory_service import MemoryService
