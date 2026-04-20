@@ -32,7 +32,6 @@ updates:
       - "fegome90-cmd"
     labels:
       - "dependencies"
-      - "github-actions"
-      - "automated"
+      - "ci"
     commit-message:
       prefix: "ci"
