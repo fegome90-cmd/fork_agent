@@ -1,0 +1,39 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conventional-commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          COMMIT_RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          INVALID=0
+          PATTERN='^(feat|fix|refactor|docs|test|chore|ci|build|perf|style|revert)(\(.+\))?: .+'
+
+          for sha in $(git rev-list "$COMMIT_RANGE"); do
+            msg=$(git log -1 --format='%s' "$sha")
+            if ! echo "$msg" | grep -qE "$PATTERN"; then
+              echo "::error file=.git/COMMIT_EDITMSG::$sha: '$msg' does not match conventional commit format"
+              INVALID=1
+            fi
+          done
+
+          exit $INVALID

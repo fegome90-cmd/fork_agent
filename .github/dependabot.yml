@@ -9,12 +9,12 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "America/Montevideo"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     reviewers:
       - "fegome90-cmd"
     labels:
       - "dependencies"
-      - "automated"
+      - "ci"
     commit-message:
       prefix: "deps"
       prefix-development: "deps-dev"

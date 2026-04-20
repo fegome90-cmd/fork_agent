@@ -1,0 +1,14 @@
+# CODEOWNERS
+
+# Default owner for everything
+* @fegome90-cmd
+
+# GitHub workflows and CI configuration
+.github/ @fegome90-cmd
+
+# Source code
+src/ @fegome90-cmd
+
+# Project configuration
+pyproject.toml @fegome90-cmd
+uv.lock @fegome90-cmd
