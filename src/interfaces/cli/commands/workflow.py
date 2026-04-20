@@ -426,7 +426,7 @@ def execute(
     parallel: bool = typer.Option(False, "--parallel", help="Run tasks in parallel"),
     model: str = typer.Option("opencode/glm-5-free", "--model", "-m", help="Agent model to use"),
     messaging: bool = typer.Option(
-        False, "--messaging", help="Enable inter-agent messaging for coordination"
+        True, "--messaging", help="Enable inter-agent messaging for coordination (default: enabled)"
     ),
 ) -> None:
     """Execute workflow plan tasks.
@@ -492,7 +492,7 @@ def execute(
 def verify(
     run_tests: bool = typer.Option(True, "--tests/--no-tests", help="Run tests"),
     messaging: bool = typer.Option(
-        False, "--messaging", help="Enable inter-agent messaging for coordination"
+        True, "--messaging", help="Enable inter-agent messaging for coordination (default: enabled)"
     ),
 ) -> None:
     plan = _check_plan_exists()
