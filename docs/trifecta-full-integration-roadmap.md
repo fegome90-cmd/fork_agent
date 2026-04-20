@@ -588,3 +588,59 @@ Sprint 5 (Day 7-10):  WO-8                            (final milestone, ~10h)
 3. **Trifecta version compatibility**: changes to `telemetry.py` require a Trifecta release. Mitigate: PR to trifecta_dope, or fork the fix.
 4. **Context pack freshness**: auto-sync may be slow on large repos. Mitigate: 4h staleness threshold, async rebuild.
 5. **WO-7 scope creep**: daemon unification may reveal more duplication. Mitigate: time-box audit to 1h, escalate if >2 implementations found.
+
+## Session Summary — 2026-04-20
+
+### P4 Status: ALL COMPLETE (8/8 WOs + Bug Hunt)
+
+| WO | Description | Status | Commits |
+|----|-------------|--------|---------|
+| WO-1 | ctx stats unicode fix | DONE | c0a4880e |
+| WO-2 | session append wiring | DONE | script |
+| WO-3 | daemon warmup automation | DONE | script |
+| WO-4 | ctx build/sync auto-trigger | DONE | script |
+| WO-5 | AST snippet wiring | DONE | script |
+| WO-6 | FTS5 fallback integration | DONE | script |
+| WO-7 | LSP daemon unification | DONE | 28422c70 |
+| WO-8 | LSP hover completion | DONE | d7b10553 |
+
+### Additional Fixes (post-WO-8)
+
+| Fix | Severity | Description |
+|-----|----------|-------------|
+| Socket/pid/lock path divergence | HIGH | 9 weak points in DaemonManager |
+| LSP handshake notification loop | HIGH | Pyright sends window/logMessage before init response |
+| Auto-didOpen before hover | MEDIUM | Pyright needs didOpen for hover data |
+| DaemonRunner path SSOT | HIGH | Runner also needed daemon_paths fix |
+| Race condition TypeError | CRITICAL | _acquire_singleton_lock returned bare False |
+| Silent socket failure | HIGH | Directory at socket path not detected |
+| Warmup grep mismatch | HIGH | grep -q "running" matched "not running" |
+| Nonexistent repo traceback | MEDIUM | mkdir log parent before opening |
+| Orphan kill on timeout | MEDIUM | proc.kill() on startup timeout |
+
+### Bug Hunt Results (real-world-bug-hunter skill)
+
+- **Agents**: 3 (Ripper, Walker, Sniper)
+- **Tests**: 28 test groups, 65+ individual scenarios
+- **Bugs Found**: 9 (1 CRITICAL, 3 HIGH, 3 MEDIUM, 2 LOW)
+- **Bugs Fixed**: 7
+- **Bugs Closed**: 2 (non-reproducible / expected behavior)
+- **Verdict**: PASS — 0 CRITICAL remaining, 0 HIGH remaining
+
+### Key Metrics
+
+| Metric | Before | After |
+|--------|--------|-------|
+| daemon start | Timeout | ~1s |
+| daemon status | "not running" | Correct PID |
+| LSP hover | FAILED/DEGRADED | FULL lsp_pyright |
+| daemon stop | Can't find PID | Clean |
+| Orphan processes | 11+ accumulated | 0 |
+| Concurrent requests | Untested | 5 simultaneous |
+| Crash recovery | Untested | Restart after SIGKILL |
+| Cross-repo isolation | Untested | Independent sockets |
+
+### Merged to trifecta_dope main
+
+Branch `feat/wo8-lsp-hover-completion` merged 2026-04-20.
+5 commits pushed to origin/main.
