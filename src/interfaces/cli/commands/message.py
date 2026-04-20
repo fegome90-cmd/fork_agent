@@ -23,7 +23,7 @@ def send_message(
     payload: Annotated[str, typer.Argument(help="Message content")],
     from_agent: Annotated[str, typer.Option(help="Source agent ID")] = "cli:0",
     type: Annotated[
-        str, typer.Option("--type", help="Message type (COMMAND/EVENT/OBSERVATION)")
+        str, typer.Option("--type", help="Message type (COMMAND/REPLY/HANDOFF/PROGRESS/FILE_TOUCHED/OBSERVATION)")
     ] = "COMMAND",
 ) -> None:
     """Send a message to another agent."""

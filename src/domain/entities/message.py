@@ -16,10 +16,12 @@ from enum import Enum, auto
 class MessageType(Enum):
     """Types of messages between agents.
 
-    Simplified to 3 types:
     - COMMAND: Task assignment or request
     - REPLY: Response to a command
     - HANDOFF: Session handoff notification
+    - PROGRESS: Agent reports progress/completion
+    - FILE_TOUCHED: Agent claims a file for editing
+    - OBSERVATION: Agent shares a discovery/finding
 
     Broadcast is determined by to_agent='*' rather than a separate type.
     """
@@ -27,6 +29,9 @@ class MessageType(Enum):
     COMMAND = auto()
     REPLY = auto()
     HANDOFF = auto()
+    PROGRESS = auto()
+    FILE_TOUCHED = auto()
+    OBSERVATION = auto()
 
 
 @dataclass(frozen=True)
@@ -40,7 +45,7 @@ class AgentMessage:
         id: Unique identifier (UUID)
         from_agent: Source session:window (e.g., "agent1:0")
         to_agent: Target session:window or "*" for broadcast
-        message_type: Type of message (COMMAND, REPLY, HANDOFF)
+        message_type: Type of message (COMMAND, REPLY, HANDOFF, PROGRESS, FILE_TOUCHED, OBSERVATION)
         payload: JSON-encoded message content
         created_at: Unix timestamp in milliseconds
         correlation_id: Optional ID for request/response matching

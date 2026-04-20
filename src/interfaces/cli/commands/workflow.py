@@ -40,7 +40,9 @@ from src.application.services.workflow.state import (
     get_verify_state_path,
 )
 from src.application.services.workflow.verify_runner import verify_runner
+from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.container import (
+    get_agent_messenger,
     get_memory_service,
     get_workspace_manager,
 )
@@ -104,6 +106,31 @@ def _slugify_task(text: str) -> str:
     normalized = "".join(ch.lower() if ch.isalnum() else "-" for ch in text.strip())
     collapsed = "-".join(part for part in normalized.split("-") if part)
     return collapsed[:50] or "task"
+
+
+def _send_workflow_message(phase: str, status: str, **kwargs: object) -> None:
+    """Send a PROGRESS message to orchestrator:0 (best-effort, never blocks).
+
+    Args:
+        phase: Workflow phase (e.g., "execute", "verify").
+        status: Status string (e.g., "agents_spawned", "completed").
+        **kwargs: Additional fields included in the JSON payload.
+    """
+    import json
+
+    try:
+        payload = json.dumps({"phase": phase, "status": status, **kwargs})
+        messenger = get_agent_messenger()
+        msg = AgentMessage.create(
+            from_agent="workflow:0",
+            to_agent="orchestrator:0",
+            message_type=MessageType.PROGRESS,
+            payload=payload,
+        )
+        messenger.send(msg)
+        logger.debug("Sent workflow message: %s %s", phase, status)
+    except Exception as e:
+        logger.debug("Failed to send workflow message [%s:%s]: %s", phase, status, e)
 
 
 def _record_ship_event(event_name: str, metadata: dict[str, object]) -> None:
@@ -398,6 +425,9 @@ def execute(
     task_id: str | None = typer.Argument(None, help="Specific task ID to execute"),
     parallel: bool = typer.Option(False, "--parallel", help="Run tasks in parallel"),
     model: str = typer.Option("opencode/glm-5-free", "--model", "-m", help="Agent model to use"),
+    messaging: bool = typer.Option(
+        False, "--messaging", help="Enable inter-agent messaging for coordination"
+    ),
 ) -> None:
     """Execute workflow plan tasks.
 
@@ -439,6 +469,14 @@ def execute(
     # Save execution state
     result.exec_state.save(exec_path)
 
+    # Send messaging notification if enabled
+    if messaging:
+        _send_workflow_message(
+            "execute",
+            "agents_spawned",
+            count=len(result.spawned_sessions),
+        )
+
     # CLI output
     typer.echo(f"✓ Execution started: {result.exec_state.session_id}")
     typer.echo(f"  Tasks: {len(result.exec_state.tasks)}")
@@ -453,6 +491,9 @@ def execute(
 @app.command("verify")
 def verify(
     run_tests: bool = typer.Option(True, "--tests/--no-tests", help="Run tests"),
+    messaging: bool = typer.Option(
+        False, "--messaging", help="Enable inter-agent messaging for coordination"
+    ),
 ) -> None:
     plan = _check_plan_exists()
     exec_state = _check_execute_exists()
@@ -492,6 +533,11 @@ def verify(
         test_results=test_results,
     )
     verify_state.save(verify_path)
+    # Send messaging notification if enabled
+    if messaging:
+        passed = test_results.get("passed", True) if test_results else True
+        _send_workflow_message("verify", "completed", passed=passed)
+
     typer.echo(f"✓ Verification complete: {verify_state.session_id}")
     typer.echo(f"  Unlock ship: {verify_state.unlock_ship}")
     typer.echo("  Next: Run 'memory workflow ship'")
