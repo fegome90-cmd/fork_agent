@@ -1242,7 +1242,7 @@ class TestMemoryUpdatePassthrough:
 
 
 class TestRegisterTools:
-    def test_registers_all_17_tools(self) -> None:
+    def test_registers_all_21_tools(self) -> None:
         from mcp.server.fastmcp import FastMCP
 
         from src.interfaces.mcp.tools import register_tools
@@ -1251,4 +1251,4 @@ class TestRegisterTools:
         register_tools(mcp)
 
         registered_count = len(mcp._tool_manager._tools)
-        assert registered_count == 17, f"Expected 17 tools, got {registered_count}"
+        assert registered_count == 21, f"Expected 21 tools, got {registered_count}"

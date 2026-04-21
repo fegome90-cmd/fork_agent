@@ -47,16 +47,10 @@ def _reset_service_singletons():
     """Reset module-level service globals before each test to avoid leakage."""
     import src.interfaces.mcp.tools as tools_mod
 
-    original = (
-        tools_mod._memory_service,
-        tools_mod._session_service,
-        tools_mod._health_service,
-    )
-    tools_mod._memory_service = None
-    tools_mod._session_service = None
-    tools_mod._health_service = None
+    original = tools_mod._singletons.copy()
+    tools_mod._singletons.clear()
     yield
-    tools_mod._memory_service, tools_mod._session_service, tools_mod._health_service = original
+    tools_mod._singletons = original
 
 
 def _mock_memory_service(**method_returns: Any) -> MagicMock:
