@@ -14,7 +14,7 @@ import pytest
 # Grab the real functions BEFORE any patching
 _REAL_SLEEP = _time_module.sleep
 _REAL_TIME = _time_module.time
-_THRESHOLD = 0.05
+_THRESHOLD = 0
 
 
 class _FakeClock:
