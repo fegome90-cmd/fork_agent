@@ -191,3 +191,7 @@ class AgentMessenger:
     def get_history(self, agent_id: str, limit: int = 100) -> list[AgentMessage]:
         """Get message history for an agent (sent and received)."""
         return self._store.get_history(agent_id, limit)
+
+    def delete_messages(self, message_ids: list[str]) -> int:
+        """Delete messages by their IDs."""
+        return self._store.delete_by_ids(message_ids)

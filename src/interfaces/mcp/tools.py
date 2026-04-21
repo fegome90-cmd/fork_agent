@@ -980,10 +980,10 @@ def fork_message_send(
 
         try:
             mtype = MessageType[(type or "COMMAND").upper()]
-        except KeyError:
+        except KeyError as e:
             raise McpError(
                 ErrorData(code=INVALID_PARAMS, message=f"Invalid message type: {type}")
-            )
+            ) from e
 
         msg = AgentMessage.create(
             from_agent=effective_from, to_agent=target, message_type=mtype, payload=payload
@@ -1000,7 +1000,7 @@ def fork_message_send(
 
 def fork_message_receive(
     agent_id: str,
-    json_output: bool | None = None,
+    json_output: bool | None = None,  # noqa: ARG001 — kept for CLI parity
     limit: int | None = None,
     mark_read: bool | None = None,
 ) -> str:
@@ -1025,10 +1025,7 @@ def fork_message_receive(
 
         if mark_read and messages:
             ids = [m.id for m in messages]
-            placeholders = ",".join("?" for _ in ids)
-            with messenger.store._connection as conn:
-                conn.execute(f"DELETE FROM messages WHERE id IN ({placeholders})", ids)
-                conn.commit()
+            messenger.delete_messages(ids)
 
         return json.dumps(serialized)
     except Exception as e:

@@ -60,7 +60,7 @@ class MessageStore:
             conn.commit()
 
     def save(self, msg: AgentMessage) -> str:
-        """Save a message to the store and maintain hygiene."""""
+        """Save a message to the store and maintain hygiene."""
         # 1. Self-healing: Purge expired before adding new ones
         self.cleanup_expired()
 
@@ -173,7 +173,7 @@ class MessageStore:
         return self.cleanup_expired()
 
     def cleanup_expired(self) -> int:
-        """Remove messages that have expired."""""
+        """Remove messages that have expired."""
         import time
 
         now_ms = int(time.time() * 1000)
@@ -181,6 +181,19 @@ class MessageStore:
             cursor = conn.execute(
                 "DELETE FROM messages WHERE expires_at < ?",
                 (now_ms,),
+            )
+            conn.commit()
+            return cursor.rowcount
+
+    def delete_by_ids(self, message_ids: list[str]) -> int:
+        """Delete messages by their IDs."""
+        if not message_ids:
+            return 0
+        placeholders = ",".join("?" for _ in message_ids)
+        with self._connection as conn:
+            cursor = conn.execute(
+                f"DELETE FROM messages WHERE id IN ({placeholders})",
+                message_ids,
             )
             conn.commit()
             return cursor.rowcount
