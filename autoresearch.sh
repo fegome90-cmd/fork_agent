@@ -15,7 +15,7 @@ uv run pytest tests/unit/ --co -q > /dev/null 2>&1 || {
 # Run the full suite, capture timing
 START=$(python3 -c "import time; print(time.time())")
 
-OUTPUT=$(uv run pytest tests/unit/ -q --tb=no -n 8 --dist=worksteal --deselect tests/unit/interfaces/mcp_server_tests/test_tools.py::TestRegisterTools::test_registers_all_17_tools --deselect tests/unit/interfaces/mcp_server_tests/test_output_caps_integration.py 2>&1)
+OUTPUT=$(uv run pytest tests/unit/ -q --tb=no -n 8 --dist=worksteal 2>&1)
 EXIT_CODE=$?
 
 END=$(python3 -c "import time; print(time.time())")
@@ -41,8 +41,8 @@ if [ "$EXIT_CODE" -ne 0 ]; then
   exit 1
 fi
 
-# Sanity check: must have 1500+ tests passing (baseline is ~1615)
-if [ "$PASSED" -lt 1500 ]; then
-  echo "FAIL: too few tests passed ($PASSED < 1500)"
+# Sanity check: must have 1600+ tests passing (baseline is ~1615)
+if [ "$PASSED" -lt 1600 ]; then
+  echo "FAIL: too few tests passed ($PASSED < 1600)"
   exit 1
 fi
