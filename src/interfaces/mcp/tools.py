@@ -1,4 +1,4 @@
-"""MCP stdio server for tmux_fork memory operations."""
+"""MCP server for tmux_fork memory operations and inter-agent messaging."""
 
 from __future__ import annotations
 
@@ -37,89 +37,84 @@ def _detect_project() -> str:
     Uses the directory name of CWD, matching Engram's behavior.
     This allows a single MCP server to serve multiple projects
     by scoping each tool call to the caller's project.
+
+    WARNING: Returns the server process CWD. Works correctly for stdio
+    transport (inherits caller CWD) but returns server CWD for SSE/HTTP
+    clients. Pass explicit `project` parameter for non-stdio transports.
     """
     import os
 
     return os.path.basename(os.getcwd())
 
 
+def _resolve_project(project: str | None) -> str:
+    """Resolve project name: explicit param overrides auto-detection."""
+    return project or _detect_project()
+
 # ---------------------------------------------------------------------------
 # Service access — thin wrapper over container.py
 # ---------------------------------------------------------------------------
 
-# Thread-safety: Module globals (_memory_service, etc.) are safe under MCP stdio
-# transport's single-threaded execution model. SSE/HTTP transport would require
+# Thread-safety: Module globals are safe under MCP stdio transport's
+# single-threaded execution model. SSE/HTTP transport would require
 # locking (e.g., threading.Lock) or per-request instances.
-_memory_service: Any | None = None
-_session_service: Any | None = None
-_health_service: Any | None = None
-_enhanced_search_service: Any | None = None
-_agent_messenger: Any | None = None
+_singletons: dict[str, Any] = {}
 _custom_db_path: Any | None = None  # Path | None, stored as Any to avoid top-level import
 
 
-def _get_memory_service() -> Any:
-    global _memory_service
-    if _memory_service is None:
-        from src.infrastructure.persistence.container import get_memory_service
+def _get_singleton(key: str, factory: Any) -> Any:
+    """Generic lazy singleton factory. Thread-safe for stdio."""
+    if key not in _singletons:
+        _singletons[key] = factory(_custom_db_path)
+    return _singletons[key]
 
-        _memory_service = get_memory_service(_custom_db_path)
-    return _memory_service
+
+def _get_memory_service() -> Any:
+    from src.infrastructure.persistence.container import get_memory_service
+
+    return _get_singleton("memory", get_memory_service)
 
 
 def _get_session_service() -> Any:
-    global _session_service
-    if _session_service is None:
-        from src.infrastructure.persistence.container import get_session_service
+    from src.infrastructure.persistence.container import get_session_service
 
-        _session_service = get_session_service(_custom_db_path)
-    return _session_service
+    return _get_singleton("session", get_session_service)
 
 
 def _get_health_service() -> Any:
-    global _health_service
-    if _health_service is None:
-        from src.infrastructure.persistence.container import get_health_service
+    from src.infrastructure.persistence.container import get_health_service
 
-        _health_service = get_health_service(_custom_db_path)
-    return _health_service
+    return _get_singleton("health", get_health_service)
 
 
 def _get_agent_messenger() -> Any:
-    global _agent_messenger
-    if _agent_messenger is None:
-        from src.infrastructure.persistence.container import get_agent_messenger
+    from src.infrastructure.persistence.container import get_agent_messenger
 
-        _agent_messenger = get_agent_messenger(_custom_db_path)
-    return _agent_messenger
+    return _get_singleton("messenger", get_agent_messenger)
 
 
 def _get_enhanced_search_service() -> Any:
-    global _enhanced_search_service
-    if _enhanced_search_service is None:
+    if "enhanced" not in _singletons:
         from src.infrastructure.persistence.container import get_repository
         from src.infrastructure.retrieval.v2.enhanced_search import EnhancedRetrievalSearchService
 
         repository = get_repository(_custom_db_path)
-        _enhanced_search_service = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
-    return _enhanced_search_service
+        _singletons["enhanced"] = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
+    return _singletons["enhanced"]
 
 
 def init_service(db_path: str | None = None) -> None:
-    """Initialize all service singletons with an optional custom db_path."""
-    global _memory_service, _session_service, _health_service, _custom_db_path
+    """Initialize core service singletons (memory, session, health) with an
+    optional custom db_path. Agent messenger and enhanced search are lazily
+    initialized on first use.
+    """
+    global _custom_db_path
     from pathlib import Path
 
-    from src.infrastructure.persistence.container import (
-        get_health_service,
-        get_memory_service,
-        get_session_service,
-    )
-
     _custom_db_path = Path(db_path) if db_path else None
-    _memory_service = get_memory_service(_custom_db_path)
-    _session_service = get_session_service(_custom_db_path)
-    _health_service = get_health_service(_custom_db_path)
+    _get_memory_service()
+    _get_session_service()
+    _get_health_service()
 
 
 # ---------------------------------------------------------------------------
@@ -141,11 +136,13 @@ def _cap_json_response(
         estimate_tokens,
     )
 
-    serialized = data if isinstance(data, list) else [data]
-    raw_json = json.dumps(serialized)
+    raw_json = json.dumps(data)
     effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
     if estimate_tokens(raw_json) > effective_max:
+        serialized = data if isinstance(data, list) else [data]
         serialized = cap_response(serialized, effective_max)
+        if isinstance(data, dict) and serialized:
+            return json.dumps(serialized[0])
         return json.dumps(serialized)
     return raw_json
 
@@ -229,7 +226,7 @@ def memory_save(
     """
     if not content or not content.strip():
         raise McpError(ErrorData(code=INVALID_PARAMS, message="content must not be empty"))
-    effective_project = project or _detect_project()
+    effective_project = _resolve_project(project)
     try:
         service = _get_memory_service()
         observation = service.save(
@@ -263,22 +260,11 @@ def memory_search(query: str, limit: int | None = None, max_tokens: int | None =
         JSON array of matching observations.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_memory_service()
-        effective_project = project or _detect_project()
+        effective_project = _resolve_project(project)
         results = service.search(query=query, limit=limit, project=effective_project)
         serialized = _serialize_observations(results)
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized = cap_response(serialized, effective_max)
-            return json.dumps(serialized)
-        return raw_json
+        return _cap_json_response(serialized, max_tokens)
     except Exception as e:
         logger.error("memory_search failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -304,22 +290,11 @@ def memory_retrieve(
         JSON array of matching observations ranked by multi-signal score.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_enhanced_search_service()
-        effective_project = project or _detect_project()
+        effective_project = _resolve_project(project)
         results = service.search(query=query, limit=limit, project=effective_project, type=type)
         serialized = _serialize_observations(results)
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized = cap_response(serialized, effective_max)
-            return json.dumps(serialized)
-        return raw_json
+        return _cap_json_response(serialized, max_tokens)
     except Exception as e:
         logger.error("memory_retrieve failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -336,21 +311,10 @@ def memory_get(id: str, max_tokens: int | None = None) -> str:
         JSON with full observation details.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_memory_service()
         observation = service.get_by_id(id)
         serialized = [_serialize_observation(observation)]
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized = cap_response(serialized, effective_max)
-            return json.dumps(serialized[0] if serialized else {})
-        return json.dumps(serialized[0] if serialized else {})
+        return _cap_json_response(serialized[0] if serialized else {}, max_tokens)
     except Exception as e:
         logger.error("memory_get failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -376,22 +340,11 @@ def memory_list(
         JSON array of observations.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_memory_service()
-        effective_project = project or _detect_project()
+        effective_project = _resolve_project(project)
         results = service.get_recent(limit=limit, offset=offset, type=type, project=effective_project)
         serialized = _serialize_observations(results)
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized = cap_response(serialized, effective_max)
-            return json.dumps(serialized)
-        return raw_json
+        return _cap_json_response(serialized, max_tokens)
     except Exception as e:
         logger.error("memory_list failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -430,26 +383,15 @@ def memory_context(limit: int = 5, max_tokens: int | None = None, project: str |
         JSON array of context observations.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_memory_service()
-        effective_project = project or _detect_project()
+        effective_project = _resolve_project(project)
         results = service.get_recent(limit=limit, offset=0, type="session-summary", project=effective_project)
 
         if not results:
             results = service.get_recent(limit=limit, offset=0, type=None, project=effective_project)
 
         serialized = _serialize_observations(results)
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized = cap_response(serialized, effective_max)
-            return json.dumps(serialized)
-        return raw_json
+        return _cap_json_response(serialized, max_tokens)
     except Exception as e:
         logger.error("memory_context failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -481,12 +423,6 @@ def memory_update(
         JSON with the updated observation details.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_memory_service()
         observation = service.update(
             observation_id=id,
@@ -498,12 +434,7 @@ def memory_update(
             title=title,
         )
         serialized = _serialize_observation(observation)
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized_list = cap_response([serialized], effective_max)
-            return json.dumps(serialized_list[0] if serialized_list else {})
-        return raw_json
+        return _cap_json_response(serialized, max_tokens)
     except Exception as e:
         logger.error("memory_update failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -536,22 +467,11 @@ def memory_timeline(start: int, end: int, max_tokens: int | None = None, project
         JSON array of observations in the time range.
     """
     try:
-        from src.application.services.output_caps import (
-            DEFAULT_MAX_TOKENS,
-            cap_response,
-            estimate_tokens,
-        )
-
         service = _get_memory_service()
-        effective_project = project or _detect_project()
+        effective_project = _resolve_project(project)
         results = service.get_by_time_range(start, end, project=effective_project)
         serialized = _serialize_observations(results)
-        raw_json = json.dumps(serialized)
-        effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
-        if estimate_tokens(raw_json) > effective_max:
-            serialized = cap_response(serialized, effective_max)
-            return json.dumps(serialized)
-        return raw_json
+        return _cap_json_response(serialized, max_tokens)
     except Exception as e:
         logger.error("memory_timeline failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -628,7 +548,7 @@ def memory_session_summary(
     if not content or not content.strip():
         raise _map_error(ValueError("Content must not be empty"))
 
-    effective_project = project or _detect_project()
+    effective_project = _resolve_project(project)
     try:
         meta: dict[str, Any] = {}
         if session_id:
@@ -881,7 +801,7 @@ def memory_capture_passive(
     if not content or not content.strip():
         raise _map_error(ValueError("Content must not be empty"))
 
-    effective_project = project or _detect_project()
+    effective_project = _resolve_project(project)
     try:
         learnings = _extract_learnings(content)
 
@@ -1024,7 +944,6 @@ def fork_message_send(
 
 def fork_message_receive(
     agent_id: str,
-    json_output: bool | None = None,  # noqa: ARG001 — kept for CLI parity
     limit: int | None = None,
     mark_read: bool | None = None,
 ) -> str:
@@ -1032,9 +951,9 @@ def fork_message_receive(
 
     Args:
         agent_id: Agent ID to receive messages for, in session:window format (required).
-        json_output: Whether to return structured JSON (always true for MCP, kept for CLI parity).
         limit: Maximum number of messages to retrieve (default: 10).
-        mark_read: Whether to delete messages after retrieval (default: false).
+        mark_read: Whether to permanently delete messages after retrieval (default: false).
+            WARNING: Deletion is irreversible.
 
     Returns:
         JSON array of messages.
