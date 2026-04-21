@@ -50,7 +50,6 @@ tests/
 - **Workflow:** outline, execute, verify, ship, status (en `src/interfaces/cli/commands/workflow.py`)
 - **Schedule:** add, list, show, cancel (en `src/interfaces/cli/commands/schedule.py`)
 - **Workspace:** create, list, enter, detect (en `src/interfaces/cli/workspace_commands.py`)
-- **MCP Server:** `memory-mcp` → `src.interfaces.mcp.tools:register_tools` (21 tools: 17 memory + 4 messaging, stdio/SSE/HTTP)
 
 ---
 

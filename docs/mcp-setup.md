@@ -162,7 +162,7 @@ Or via environment variable:
 
 ---
 
-## Available Tools (21)
+## Available Tools (16)
 
 | Tool | Description |
 |------|-------------|
