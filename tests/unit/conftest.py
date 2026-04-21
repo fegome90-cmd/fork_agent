@@ -1,17 +1,26 @@
-"""Speed up tests that use time.sleep for long durations.
+"""Optional fake clock for faster test execution.
 
-Patches time.sleep and time.time with a fake clock for the entire session.
-Uses module-level patching (not per-test fixtures) to avoid 1607× setup overhead.
+Only activates when TMUX_FORK_FAST_TESTS=1 is set in the environment.
+This allows running tests with real time by default, and fast mode on demand.
+
+Usage:
+    # Normal (real clock) — default:
+    uv run pytest tests/unit/
+
+    # Fast mode (fake clock):
+    TMUX_FORK_FAST_TESTS=1 uv run pytest tests/unit/
 """
 
+import os
 import time as _time_module
 
-# Grab the real functions BEFORE any patching
 _REAL_SLEEP = _time_module.sleep
 _REAL_TIME = _time_module.time
 
 
 class _FakeClock:
+    """Advances virtual time instead of sleeping. Thread-safe for xdist workers."""
+
     __slots__ = ("_offset",)
 
     def __init__(self) -> None:
@@ -23,17 +32,17 @@ class _FakeClock:
     def sleep(self, seconds: float) -> None:
         if seconds > 0:
             self._offset += seconds
-        # else: sleep(0) is a yield point, skip it
 
 
 def pytest_configure(config):
-    """Patch time.sleep and time.time once for the entire session."""
-    clock = _FakeClock()
-    _time_module.sleep = clock.sleep
-    _time_module.time = clock.time
+    """Activate fake clock only when TMUX_FORK_FAST_TESTS=1."""
+    if os.environ.get("TMUX_FORK_FAST_TESTS") == "1":
+        clock = _FakeClock()
+        _time_module.sleep = clock.sleep
+        _time_module.time = clock.time
 
 
 def pytest_unconfigure(config):
-    """Restore original time functions after session."""
+    """Restore real time functions after session."""
     _time_module.sleep = _REAL_SLEEP
     _time_module.time = _REAL_TIME
