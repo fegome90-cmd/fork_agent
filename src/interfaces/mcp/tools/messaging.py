@@ -71,6 +71,7 @@ def fork_message_send(
             from_agent=effective_from, to_agent=target, message_type=mtype, payload=payload
         )
         success = messenger.send(msg)
+        logger.info("fork_message_send: from=%s to=%s", effective_from, target)
 
         return json.dumps({"status": "sent" if success else "stored", "target": target})
     except McpError:
@@ -90,8 +91,8 @@ def fork_message_receive(
     Args:
         agent_id: Agent ID to receive messages for, in session:window format (required).
         limit: Maximum number of messages to retrieve (default: 10).
-        mark_read: Whether to permanently delete messages after retrieval (default: false).
-            WARNING: Deletion is irreversible.
+        mark_read: Whether to mark messages as read after retrieval (default: false).
+            Read messages are automatically purged after 5 minutes.
 
     Returns:
         JSON array of messages.
@@ -102,11 +103,12 @@ def fork_message_receive(
     try:
         messenger = _get_agent_messenger()
         messages = messenger.get_messages(agent_id, limit=limit or 10)
+        logger.info("fork_message_receive: agent=%s count=%d", agent_id, len(messages))
         serialized = _serialize_messages(messages)
 
         if mark_read and messages:
             ids = [m.id for m in messages]
-            messenger.delete_messages(ids)
+            messenger.mark_messages_read(ids)
 
         return json.dumps(serialized)
     except Exception as e:
@@ -134,6 +136,7 @@ def fork_message_broadcast(
         messenger = _get_agent_messenger()
         effective_from = from_agent or "cli:0"
         count = messenger.broadcast(from_agent=effective_from, payload=payload)
+        logger.info("fork_message_broadcast: from=%s recipients=%d", effective_from, count)
 
         return json.dumps({"status": "broadcast", "recipients": count})
     except Exception as e:
@@ -160,6 +163,7 @@ def fork_message_history(
     try:
         messenger = _get_agent_messenger()
         history = messenger.get_history(agent_id, limit=limit or 20)
+        logger.info("fork_message_history: agent=%s count=%d", agent_id, len(history))
         serialized = _serialize_messages(history)
 
         return json.dumps(serialized)

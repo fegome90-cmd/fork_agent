@@ -192,6 +192,10 @@ class AgentMessenger:
         """Get message history for an agent (sent and received)."""
         return self._store.get_history(agent_id, limit)
 
+    def mark_messages_read(self, message_ids: list[str]) -> int:
+        """Mark messages as read (soft delete). Read messages are auto-purged after 5 min."""
+        return self._store.mark_as_read(message_ids)
+
     def delete_messages(self, message_ids: list[str]) -> int:
-        """Delete messages by their IDs."""
+        """Hard-delete messages by their IDs."""
         return self._store.delete_by_ids(message_ids)
