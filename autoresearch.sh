@@ -15,7 +15,7 @@ uv run pytest tests/unit/ --co -q > /dev/null 2>&1 || {
 # Run the full suite, capture timing
 START=$(python3 -c "import time; print(time.time())")
 
-OUTPUT=$(uv run pytest tests/unit/ -q --tb=no -n 6 --dist=worksteal --deselect tests/unit/interfaces/mcp_server_tests/test_tools.py::TestRegisterTools::test_registers_all_17_tools --deselect tests/unit/interfaces/mcp_server_tests/test_output_caps_integration.py 2>&1)
+OUTPUT=$(uv run pytest tests/unit/ -q --tb=no -n 8 --dist=worksteal --deselect tests/unit/interfaces/mcp_server_tests/test_tools.py::TestRegisterTools::test_registers_all_17_tools --deselect tests/unit/interfaces/mcp_server_tests/test_output_caps_integration.py 2>&1)
 EXIT_CODE=$?
 
 END=$(python3 -c "import time; print(time.time())")
