@@ -15,7 +15,7 @@ uv run pytest tests/unit/ --co -q > /dev/null 2>&1 || {
 # Run the full suite, capture timing
 START=$(python3 -c "import time; print(time.time())")
 
-OUTPUT=$(uv run pytest tests/unit/ -q --tb=no -n 8 --dist=worksteal 2>&1)
+OUTPUT=$(TMUX_FORK_FAST_TESTS=1 uv run pytest tests/unit/ -q --tb=no -n 8 --dist=worksteal 2>&1)
 EXIT_CODE=$?
 
 END=$(python3 -c "import time; print(time.time())")
