@@ -84,9 +84,22 @@ async def get_metrics(_: str = Depends(verify_api_key)) -> MetricsResponse:
     with _counters_lock:  # BUG FIX: Thread-safe read
         request_count = _request_count
         error_count = _error_count
+    try:
+        import psutil
+
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        memory_used = f"{memory.used // (1024 * 1024)}MB"
+        memory_total = f"{memory.total // (1024 * 1024)}MB"
+    except ImportError:
+        cpu_percent = 0.0
+        memory_used = "0MB"
+        memory_total = "0MB"
+
     return MetricsResponse(
-        cpu=0.0,  # STUB: Real implementation needs psutil
-        memory="0MB",  # STUB: Real implementation needs psutil
+        cpu=cpu_percent,
+        memory=memory_used,
+        memory_total=memory_total,
         uptime=uptime,
         requests_total=request_count,
         errors_total=error_count,

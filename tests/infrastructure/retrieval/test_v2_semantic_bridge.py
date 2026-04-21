@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 from src.infrastructure.persistence.repositories.observation_repository import ObservationRepository
-from src.infrastructure.retrieval.v2 import enhanced_search, extract_concepts, plan_query
+from src.infrastructure.retrieval.v2 import EnhancedRetrievalSearchService, extract_concepts, plan_query
 
 
 class TestConceptExtraction:
@@ -100,7 +100,8 @@ class TestEnhancedSearch:
         ]
 
         for query, expected_prefix in test_cases:
-            results = enhanced_search(repository, query, limit=5)
+            svc = EnhancedRetrievalSearchService(repository)
+            results = svc.search(query, limit=5)
             ids = [result.id[:8] for result in results]
             assert expected_prefix in ids, (
                 f"Query '{query}' should find {expected_prefix}, got {ids}"
