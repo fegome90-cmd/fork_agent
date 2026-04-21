@@ -92,7 +92,7 @@ class TestSerializeObservation:
 
 
 class TestMemorySave:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_id_and_status(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save
 
@@ -116,7 +116,7 @@ class TestMemorySave:
             type=None,
         )
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_passes_all_params(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save
 
@@ -149,7 +149,7 @@ class TestMemorySave:
 
 
 class TestMemorySearch:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_results(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_search
 
@@ -165,7 +165,7 @@ class TestMemorySearch:
         assert data[1]["id"] == "s2"
         mock_get.return_value.search.assert_called_once_with(query="python", limit=None, project="tmux_fork")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_passes_limit(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_search
 
@@ -174,7 +174,7 @@ class TestMemorySearch:
         memory_search(query="test", limit=5)
         mock_get.return_value.search.assert_called_once_with(query="test", limit=5, project="tmux_fork")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_empty_results(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_search
 
@@ -192,7 +192,7 @@ class TestMemorySearch:
 
 
 class TestMemoryGet:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_observation(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_get
 
@@ -206,7 +206,7 @@ class TestMemoryGet:
         assert data["content"] == "full content here"
         mock_get.return_value.get_by_id.assert_called_once_with("get-uuid")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_not_found_raises_mcp_error(self, mock_get: MagicMock) -> None:
         from mcp.shared.exceptions import McpError
 
@@ -227,7 +227,7 @@ class TestMemoryGet:
 
 
 class TestMemoryList:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_recent(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_list
 
@@ -242,7 +242,7 @@ class TestMemoryList:
         assert data[0]["id"] == "l1"
         assert data[1]["id"] == "l2"
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_passes_limit_and_offset(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_list
 
@@ -251,7 +251,7 @@ class TestMemoryList:
         memory_list(limit=5, offset=10)
         mock_get.return_value.get_recent.assert_called_once_with(limit=5, offset=10, type=None, project="tmux_fork")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_passes_type_filter(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_list
 
@@ -262,7 +262,7 @@ class TestMemoryList:
             limit=10, offset=0, type="decision", project="tmux_fork"
         )
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_empty_list(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_list
 
@@ -280,7 +280,7 @@ class TestMemoryList:
 
 
 class TestMemoryDelete:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_calls_service_and_returns_status(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_delete
 
@@ -293,7 +293,7 @@ class TestMemoryDelete:
         assert data["status"] == "deleted"
         mock_get.return_value.delete.assert_called_once_with("del-uuid")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_not_found_raises_mcp_error(self, mock_get: MagicMock) -> None:
         from mcp.shared.exceptions import McpError
 
@@ -314,7 +314,7 @@ class TestMemoryDelete:
 
 
 class TestMemoryContext:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_recent_with_session_summary_filter(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_context
 
@@ -330,7 +330,7 @@ class TestMemoryContext:
             limit=5, offset=0, type="session-summary", project="tmux_fork"
         )
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_fallback_to_unfiltered(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_context
 
@@ -502,7 +502,7 @@ class TestMapErrorGeneric:
 
 
 class TestMemoryUpdate:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_updated_observation(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_update
 
@@ -524,7 +524,7 @@ class TestMemoryUpdate:
             metadata=None,
         )
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_passes_metadata_json(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_update
 
@@ -549,7 +549,7 @@ class TestMemoryUpdate:
 
 
 class TestMemoryStats:
-    @patch("src.interfaces.mcp.tools._get_health_service")
+    @patch("src.interfaces.mcp.tools.memory._get_health_service")
     def test_returns_stats_dict(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_stats
 
@@ -567,7 +567,7 @@ class TestMemoryStats:
         assert data["db_size_human"] == "1.0 KB"
         mock_get.return_value.get_stats.assert_called_once()
 
-    @patch("src.interfaces.mcp.tools._get_health_service")
+    @patch("src.interfaces.mcp.tools.memory._get_health_service")
     def test_error_raises_mcp_error(self, mock_get: MagicMock) -> None:
         from mcp.shared.exceptions import McpError
 
@@ -585,7 +585,7 @@ class TestMemoryStats:
 
 
 class TestMemoryTimeline:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_observations_in_range(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_timeline
 
@@ -599,7 +599,7 @@ class TestMemoryTimeline:
         assert data[0]["id"] == "tl1"
         mock_get.return_value.get_by_time_range.assert_called_once_with(1000, 2000, project="tmux_fork")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_empty_range(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_timeline
 
@@ -617,7 +617,7 @@ class TestMemoryTimeline:
 
 
 class TestMemorySessionStart:
-    @patch("src.interfaces.mcp.tools._get_session_service")
+    @patch("src.interfaces.mcp.tools.memory._get_session_service")
     def test_returns_session(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_session_start
 
@@ -636,7 +636,7 @@ class TestMemorySessionStart:
             instructions=None,
         )
 
-    @patch("src.interfaces.mcp.tools._get_session_service")
+    @patch("src.interfaces.mcp.tools.memory._get_session_service")
     def test_passes_optional_params(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_session_start
 
@@ -663,7 +663,7 @@ class TestMemorySessionStart:
 
 
 class TestMemorySessionEnd:
-    @patch("src.interfaces.mcp.tools._get_session_service")
+    @patch("src.interfaces.mcp.tools.memory._get_session_service")
     def test_ends_session(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_session_end
 
@@ -676,7 +676,7 @@ class TestMemorySessionEnd:
         assert data["id"] == "end-sess"
         mock_get.return_value.end_session.assert_called_once_with("end-sess", summary="done")
 
-    @patch("src.interfaces.mcp.tools._get_session_service")
+    @patch("src.interfaces.mcp.tools.memory._get_session_service")
     def test_not_found_raises_mcp_error(self, mock_get: MagicMock) -> None:
         from mcp.shared.exceptions import McpError
 
@@ -695,7 +695,7 @@ class TestMemorySessionEnd:
 
 
 class TestMemorySessionSummary:
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_saves_with_type_session_summary(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_session_summary
 
@@ -731,7 +731,7 @@ class TestMemorySessionSummary:
         with pytest.raises(McpError):
             memory_session_summary(content="   ")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_includes_session_id_in_metadata(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_session_summary
 
@@ -750,7 +750,7 @@ class TestMemorySessionSummary:
             type="session-summary",
         )
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_no_session_id_omits_metadata(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_session_summary
 
@@ -979,7 +979,7 @@ class TestMemoryCapturePassive:
         with pytest.raises(McpError):
             memory_capture_passive(content="")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_zero_when_no_learnings_header(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_capture_passive
 
@@ -991,7 +991,7 @@ class TestMemoryCapturePassive:
         assert data["duplicates"] == 0
         mock_get.return_value.save.assert_not_called()
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_saves_learnings(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_capture_passive
 
@@ -1008,7 +1008,7 @@ class TestMemoryCapturePassive:
         assert data["duplicates"] == 0
         mock_get.return_value.save.assert_called_once()
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_skips_duplicates(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_capture_passive
 
@@ -1024,7 +1024,7 @@ class TestMemoryCapturePassive:
         assert data["saved"] == 0
         assert data["duplicates"] == 1
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_includes_source_in_metadata(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_capture_passive
 
@@ -1063,7 +1063,7 @@ class TestMemoryMergeProjects:
         with pytest.raises(McpError):
             memory_merge_projects(from_projects="source", to_project="")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_returns_zero_when_no_sources_after_filter(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_merge_projects
 
@@ -1081,7 +1081,7 @@ class TestMemoryMergeProjects:
         assert data["sources_merged"] == []
         assert data["observations_updated"] == 0
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_merges_single_source(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_merge_projects
 
@@ -1100,7 +1100,7 @@ class TestMemoryMergeProjects:
         assert data["observations_updated"] == 5
         assert data["sessions_updated"] == 5
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_merges_multiple_sources(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_merge_projects
 
@@ -1120,7 +1120,7 @@ class TestMemoryMergeProjects:
         assert data["sources_merged"] == ["proj-a", "proj-b", "proj-c"]
         assert data["observations_updated"] == 9
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_skips_source_equal_to_canonical(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_merge_projects
 
@@ -1157,7 +1157,7 @@ class TestAuditFixes:
         with pytest.raises(McpError):
             memory_save(content="   ")
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_save_prompt_happy_path(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save_prompt
 
@@ -1184,7 +1184,7 @@ class TestAuditFixes:
 class TestMemorySavePassthrough:
     """Verify MCP layer passes data through to service (redaction is in service layer)."""
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_content_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save
 
@@ -1197,7 +1197,7 @@ class TestMemorySavePassthrough:
         call_args = mock_get.return_value.save.call_args
         assert call_args.kwargs["content"] == raw
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_metadata_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_save
 
@@ -1214,7 +1214,7 @@ class TestMemorySavePassthrough:
 class TestMemoryUpdatePassthrough:
     """Verify MCP layer passes update data through to service (redaction is in service layer)."""
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_content_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_update
 
@@ -1227,7 +1227,7 @@ class TestMemoryUpdatePassthrough:
         call_args = mock_get.return_value.update.call_args
         assert call_args.kwargs["content"] == raw
 
-    @patch("src.interfaces.mcp.tools._get_memory_service")
+    @patch("src.interfaces.mcp.tools.memory._get_memory_service")
     def test_metadata_passed_to_service_unchanged(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import memory_update
 

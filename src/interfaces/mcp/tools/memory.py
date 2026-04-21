@@ -1,121 +1,23 @@
-"""MCP server for tmux_fork memory operations and inter-agent messaging."""
+"""Memory tool handlers: 17 MCP tools for observation CRUD, search, sessions, topics."""
 
 from __future__ import annotations
 
 import json
-import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from mcp import McpError
-from mcp.types import INTERNAL_ERROR, INVALID_PARAMS, ErrorData
+from mcp.types import INVALID_PARAMS, ErrorData
 
-from src.application.exceptions import (
-    MemoryError,
-    ObservationNotFoundError,
-    SessionNotFoundError,
+from src.interfaces.mcp.tools._shared import (
+    _get_enhanced_search_service,
+    _get_health_service,
+    _get_memory_service,
+    _get_session_service,
+    _map_error,
+    _resolve_project,
+    logger,
 )
-
-if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
-
-# MCP has no dedicated NOT_FOUND code — use INVALID_PARAMS for client errors
-# and INTERNAL_ERROR for server errors.
-_NOT_FOUND_FALLBACK = INVALID_PARAMS
-
-logger = logging.getLogger("memory-mcp")
-
-
-# ---------------------------------------------------------------------------
-# Project auto-detection (Engram model: single DB, project from CWD)
-# ---------------------------------------------------------------------------
-
-
-def _detect_project() -> str:
-    """Auto-detect project name from the current working directory.
-
-    Uses the directory name of CWD, matching Engram's behavior.
-    This allows a single MCP server to serve multiple projects
-    by scoping each tool call to the caller's project.
-
-    WARNING: Returns the server process CWD. Works correctly for stdio
-    transport (inherits caller CWD) but returns server CWD for SSE/HTTP
-    clients. Pass explicit `project` parameter for non-stdio transports.
-    """
-    import os
-
-    return os.path.basename(os.getcwd())
-
-
-def _resolve_project(project: str | None) -> str:
-    """Resolve project name: explicit param overrides auto-detection."""
-    return project or _detect_project()
-
-# ---------------------------------------------------------------------------
-# Service access — thin wrapper over container.py
-# ---------------------------------------------------------------------------
-
-# Thread-safety: Module globals are safe under MCP stdio transport's
-# single-threaded execution model. SSE/HTTP transport would require
-# locking (e.g., threading.Lock) or per-request instances.
-_singletons: dict[str, Any] = {}
-_custom_db_path: Any | None = None  # Path | None, stored as Any to avoid top-level import
-
-
-def _get_singleton(key: str, factory: Any) -> Any:
-    """Generic lazy singleton factory. Thread-safe for stdio."""
-    if key not in _singletons:
-        _singletons[key] = factory(_custom_db_path)
-    return _singletons[key]
-
-
-def _get_memory_service() -> Any:
-    from src.infrastructure.persistence.container import get_memory_service
-
-    return _get_singleton("memory", get_memory_service)
-
-
-def _get_session_service() -> Any:
-    from src.infrastructure.persistence.container import get_session_service
-
-    return _get_singleton("session", get_session_service)
-
-
-def _get_health_service() -> Any:
-    from src.infrastructure.persistence.container import get_health_service
-
-    return _get_singleton("health", get_health_service)
-
-
-def _get_agent_messenger() -> Any:
-    from src.infrastructure.persistence.container import get_agent_messenger
-
-    return _get_singleton("messenger", get_agent_messenger)
-
-
-def _get_enhanced_search_service() -> Any:
-    if "enhanced" not in _singletons:
-        from src.infrastructure.persistence.container import get_repository
-        from src.infrastructure.retrieval.v2.enhanced_search import EnhancedRetrievalSearchService
-
-        repository = get_repository(_custom_db_path)
-        _singletons["enhanced"] = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
-    return _singletons["enhanced"]
-
-
-def init_service(db_path: str | None = None) -> None:
-    """Initialize core service singletons (memory, session, health) with an
-    optional custom db_path. Agent messenger and enhanced search are lazily
-    initialized on first use.
-    """
-    global _custom_db_path
-    from pathlib import Path
-
-    _custom_db_path = Path(db_path) if db_path else None
-    _get_memory_service()
-    _get_session_service()
-    _get_health_service()
-
 
 # ---------------------------------------------------------------------------
 # Serialization + Token Capping
@@ -145,7 +47,6 @@ def _cap_json_response(
             return json.dumps(serialized[0])
         return json.dumps(serialized)
     return raw_json
-
 
 
 def _serialize_observation(obs: Any) -> dict[str, Any]:
@@ -178,24 +79,6 @@ def _serialize_session(session: Any) -> dict[str, Any]:
 def _serialize_sessions(sessions: list[Any]) -> list[dict[str, Any]]:
     """Serialize a list of Session entities."""
     return [_serialize_session(s) for s in sessions]
-
-
-# ---------------------------------------------------------------------------
-# Error mapping
-# ---------------------------------------------------------------------------
-
-
-def _map_error(e: Exception) -> McpError:
-    """Map domain exceptions to MCP error codes."""
-    if isinstance(e, ObservationNotFoundError):
-        return McpError(ErrorData(code=_NOT_FOUND_FALLBACK, message=str(e)))
-    if isinstance(e, ValueError):
-        return McpError(ErrorData(code=INVALID_PARAMS, message=str(e)))
-    if isinstance(e, SessionNotFoundError):
-        return McpError(ErrorData(code=_NOT_FOUND_FALLBACK, message=str(e)))
-    if isinstance(e, MemoryError):
-        return McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
-    return McpError(ErrorData(code=INTERNAL_ERROR, message=f"Internal error: {e}"))
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +128,9 @@ def memory_save(
         raise _map_error(e) from e
 
 
-def memory_search(query: str, limit: int | None = None, max_tokens: int | None = None, project: str | None = None) -> str:
+def memory_search(
+    query: str, limit: int | None = None, max_tokens: int | None = None, project: str | None = None
+) -> str:
     """Search memory for observations matching a query.
 
     Uses FTS5 full-text search. Returns observations sorted by relevance.
@@ -342,7 +227,9 @@ def memory_list(
     try:
         service = _get_memory_service()
         effective_project = _resolve_project(project)
-        results = service.get_recent(limit=limit, offset=offset, type=type, project=effective_project)
+        results = service.get_recent(
+            limit=limit, offset=offset, type=type, project=effective_project
+        )
         serialized = _serialize_observations(results)
         return _cap_json_response(serialized, max_tokens)
     except Exception as e:
@@ -368,7 +255,9 @@ def memory_delete(id: str) -> str:
         raise _map_error(e) from e
 
 
-def memory_context(limit: int = 5, max_tokens: int | None = None, project: str | None = None) -> str:
+def memory_context(
+    limit: int = 5, max_tokens: int | None = None, project: str | None = None
+) -> str:
     """Get recent session summaries and context observations.
 
     Tries to return session-summary type first, falls back to all recent
@@ -385,10 +274,14 @@ def memory_context(limit: int = 5, max_tokens: int | None = None, project: str |
     try:
         service = _get_memory_service()
         effective_project = _resolve_project(project)
-        results = service.get_recent(limit=limit, offset=0, type="session-summary", project=effective_project)
+        results = service.get_recent(
+            limit=limit, offset=0, type="session-summary", project=effective_project
+        )
 
         if not results:
-            results = service.get_recent(limit=limit, offset=0, type=None, project=effective_project)
+            results = service.get_recent(
+                limit=limit, offset=0, type=None, project=effective_project
+            )
 
         serialized = _serialize_observations(results)
         return _cap_json_response(serialized, max_tokens)
@@ -455,7 +348,9 @@ def memory_stats() -> str:
         raise _map_error(e) from e
 
 
-def memory_timeline(start: int, end: int, max_tokens: int | None = None, project: str | None = None) -> str:
+def memory_timeline(
+    start: int, end: int, max_tokens: int | None = None, project: str | None = None
+) -> str:
     """Get observations within a time range.
 
     Args:
@@ -865,196 +760,3 @@ def memory_merge_projects(
     except Exception as e:
         logger.error("memory_merge_projects failed: %s", e, exc_info=True)
         raise _map_error(e) from e
-
-
-# ---------------------------------------------------------------------------
-# Tool registration
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Inter-agent messaging tools
-# ---------------------------------------------------------------------------
-
-
-def _serialize_message(msg: Any) -> dict[str, Any]:
-    """Serialize AgentMessage to MCP-safe dict."""
-    return {
-        "id": msg.id,
-        "from": msg.from_agent,
-        "to": msg.to_agent,
-        "type": msg.message_type.name,
-        "payload": msg.payload,
-        "created_at": msg.created_at_iso,
-    }
-
-
-def _serialize_messages(msgs: list[Any]) -> list[dict[str, Any]]:
-    """Serialize a list of AgentMessage entities."""
-    return [_serialize_message(m) for m in msgs]
-
-
-def fork_message_send(
-    target: str,
-    payload: str,
-    from_agent: str | None = None,
-    type: str | None = None,
-) -> str:
-    """Send a message to a target agent.
-
-    Args:
-        target: Target agent in session:window format (required).
-        payload: Message content (required).
-        from_agent: Source agent ID (default: 'cli:0').
-        type: Message type: COMMAND, REPLY, HANDOFF, PROGRESS, FILE_TOUCHED, or OBSERVATION (default: 'COMMAND').
-
-    Returns:
-        JSON with status and target.
-    """
-    if not target.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="target must not be empty"))
-    if not payload.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="payload must not be empty"))
-
-    try:
-        from src.domain.entities.message import AgentMessage, MessageType
-
-        messenger = _get_agent_messenger()
-        effective_from = from_agent or "cli:0"
-
-        try:
-            mtype = MessageType[(type or "COMMAND").upper()]
-        except KeyError as e:
-            raise McpError(
-                ErrorData(code=INVALID_PARAMS, message=f"Invalid message type: {type}")
-            ) from e
-
-        msg = AgentMessage.create(
-            from_agent=effective_from, to_agent=target, message_type=mtype, payload=payload
-        )
-        success = messenger.send(msg)
-
-        return json.dumps({"status": "sent" if success else "stored", "target": target})
-    except McpError:
-        raise
-    except Exception as e:
-        logger.error("fork_message_send failed: %s", e, exc_info=True)
-        raise _map_error(e) from e
-
-
-def fork_message_receive(
-    agent_id: str,
-    limit: int | None = None,
-    mark_read: bool | None = None,
-) -> str:
-    """Receive messages for an agent.
-
-    Args:
-        agent_id: Agent ID to receive messages for, in session:window format (required).
-        limit: Maximum number of messages to retrieve (default: 10).
-        mark_read: Whether to permanently delete messages after retrieval (default: false).
-            WARNING: Deletion is irreversible.
-
-    Returns:
-        JSON array of messages.
-    """
-    if not agent_id.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="agent_id must not be empty"))
-
-    try:
-        messenger = _get_agent_messenger()
-        messages = messenger.get_messages(agent_id, limit=limit or 10)
-        serialized = _serialize_messages(messages)
-
-        if mark_read and messages:
-            ids = [m.id for m in messages]
-            messenger.delete_messages(ids)
-
-        return json.dumps(serialized)
-    except Exception as e:
-        logger.error("fork_message_receive failed: %s", e, exc_info=True)
-        raise _map_error(e) from e
-
-
-def fork_message_broadcast(
-    payload: str,
-    from_agent: str | None = None,
-) -> str:
-    """Broadcast a message to all active agent sessions.
-
-    Args:
-        payload: Message content to broadcast (required).
-        from_agent: Source agent ID (default: 'cli:0').
-
-    Returns:
-        JSON with status and count of recipients.
-    """
-    if not payload.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="payload must not be empty"))
-
-    try:
-        messenger = _get_agent_messenger()
-        effective_from = from_agent or "cli:0"
-        count = messenger.broadcast(from_agent=effective_from, payload=payload)
-
-        return json.dumps({"status": "broadcast", "recipients": count})
-    except Exception as e:
-        logger.error("fork_message_broadcast failed: %s", e, exc_info=True)
-        raise _map_error(e) from e
-
-
-def fork_message_history(
-    agent_id: str,
-    limit: int | None = None,
-) -> str:
-    """Get message history for an agent.
-
-    Args:
-        agent_id: Agent ID to show history for (required).
-        limit: Maximum number of messages to return (default: 20).
-
-    Returns:
-        JSON array of historical messages (sent and received).
-    """
-    if not agent_id.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="agent_id must not be empty"))
-
-    try:
-        messenger = _get_agent_messenger()
-        history = messenger.get_history(agent_id, limit=limit or 20)
-        serialized = _serialize_messages(history)
-
-        return json.dumps(serialized)
-    except Exception as e:
-        logger.error("fork_message_history failed: %s", e, exc_info=True)
-        raise _map_error(e) from e
-
-
-# ---------------------------------------------------------------------------
-# Tool registration
-# ---------------------------------------------------------------------------
-
-
-def register_tools(mcp_server: FastMCP) -> None:
-    """Register all tool handlers with the FastMCP server instance."""
-    mcp_server.tool()(memory_save)
-    mcp_server.tool()(memory_search)
-    mcp_server.tool()(memory_retrieve)
-    mcp_server.tool()(memory_get)
-    mcp_server.tool()(memory_list)
-    mcp_server.tool()(memory_delete)
-    mcp_server.tool()(memory_context)
-    mcp_server.tool()(memory_update)
-    mcp_server.tool()(memory_stats)
-    mcp_server.tool()(memory_timeline)
-    mcp_server.tool()(memory_session_start)
-    mcp_server.tool()(memory_session_end)
-    mcp_server.tool()(memory_session_summary)
-    mcp_server.tool()(memory_suggest_topic_key)
-    mcp_server.tool()(memory_save_prompt)
-    mcp_server.tool()(memory_capture_passive)
-    mcp_server.tool()(memory_merge_projects)
-    mcp_server.tool()(fork_message_send)
-    mcp_server.tool()(fork_message_receive)
-    mcp_server.tool()(fork_message_broadcast)
-    mcp_server.tool()(fork_message_history)

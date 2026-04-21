@@ -37,7 +37,7 @@ def _make_message(
 
 
 class TestForkMessageSend:
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_returns_sent_status_and_target(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_send
 
@@ -47,7 +47,7 @@ class TestForkMessageSend:
         assert result["status"] == "sent"
         assert result["target"] == "agent-2:0"
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_stored_when_send_returns_false(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_send
 
@@ -72,7 +72,7 @@ class TestForkMessageSend:
 
         assert exc_info.value.error.code == INVALID_PARAMS
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_default_from_agent_is_cli0(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_send
 
@@ -82,7 +82,7 @@ class TestForkMessageSend:
         sent_msg = mock_get.return_value.send.call_args[0][0]
         assert sent_msg.from_agent == "cli:0"
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_default_type_is_command(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_send
 
@@ -92,7 +92,7 @@ class TestForkMessageSend:
         sent_msg = mock_get.return_value.send.call_args[0][0]
         assert sent_msg.message_type == MessageType.COMMAND
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_custom_from_agent_and_type(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_send
 
@@ -124,7 +124,7 @@ class TestForkMessageSend:
 
 
 class TestForkMessageReceive:
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_returns_json_array_of_messages(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -145,7 +145,7 @@ class TestForkMessageReceive:
 
         assert exc_info.value.error.code == INVALID_PARAMS
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_limit_passed_to_messenger(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -154,7 +154,7 @@ class TestForkMessageReceive:
 
         mock_get.return_value.get_messages.assert_called_once_with("agent-1:0", limit=5)
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_default_limit_is_10(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -163,7 +163,7 @@ class TestForkMessageReceive:
 
         mock_get.return_value.get_messages.assert_called_once_with("agent-1:0", limit=10)
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_mark_read_calls_delete(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -174,7 +174,7 @@ class TestForkMessageReceive:
 
         mock_get.return_value.delete_messages.assert_called_once_with(["m1", "m2"])
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_mark_read_false_does_not_delete(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -185,7 +185,7 @@ class TestForkMessageReceive:
 
         mock_get.return_value.delete_messages.assert_not_called()
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_mark_read_default_does_not_delete(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -196,7 +196,7 @@ class TestForkMessageReceive:
 
         mock_get.return_value.delete_messages.assert_not_called()
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_empty_result_returns_empty_array(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -205,7 +205,7 @@ class TestForkMessageReceive:
 
         assert json.loads(result) == []
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_mark_read_no_messages_does_not_delete(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
@@ -221,7 +221,7 @@ class TestForkMessageReceive:
 
 
 class TestForkMessageBroadcast:
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_returns_broadcast_status_and_count(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_broadcast
 
@@ -239,7 +239,7 @@ class TestForkMessageBroadcast:
 
         assert exc_info.value.error.code == INVALID_PARAMS
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_default_from_agent_is_cli0(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_broadcast
 
@@ -248,7 +248,7 @@ class TestForkMessageBroadcast:
 
         mock_get.return_value.broadcast.assert_called_once_with(from_agent="cli:0", payload="data")
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_custom_from_agent_passed(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_broadcast
 
@@ -266,7 +266,7 @@ class TestForkMessageBroadcast:
 
 
 class TestForkMessageHistory:
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_returns_json_array(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_history
 
@@ -279,7 +279,7 @@ class TestForkMessageHistory:
         assert result[0]["id"] == "h1"
         assert result[1]["id"] == "h2"
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_agent_id_passed_correctly(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_history
 
@@ -296,7 +296,7 @@ class TestForkMessageHistory:
 
         assert exc_info.value.error.code == INVALID_PARAMS
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_limit_passed_to_messenger(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_history
 
@@ -305,7 +305,7 @@ class TestForkMessageHistory:
 
         mock_get.return_value.get_history.assert_called_once_with("agent-1:0", limit=5)
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_default_limit_is_20(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_history
 
@@ -314,7 +314,7 @@ class TestForkMessageHistory:
 
         mock_get.return_value.get_history.assert_called_once_with("agent-1:0", limit=20)
 
-    @patch("src.interfaces.mcp.tools._get_agent_messenger")
+    @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_empty_history_returns_empty_array(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_history
 
