@@ -123,8 +123,32 @@ def init_service(db_path: str | None = None) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Serialization
+# Serialization + Token Capping
 # ---------------------------------------------------------------------------
+
+
+def _cap_json_response(
+    data: list[dict[str, Any]] | dict[str, Any], max_tokens: int | None = None
+) -> str:
+    """Serialize data to JSON with optional token capping.
+
+    If the serialized JSON exceeds max_tokens (default: 8000),
+    the response is truncated to fit within the token budget.
+    """
+    from src.application.services.output_caps import (
+        DEFAULT_MAX_TOKENS,
+        cap_response,
+        estimate_tokens,
+    )
+
+    serialized = data if isinstance(data, list) else [data]
+    raw_json = json.dumps(serialized)
+    effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
+    if estimate_tokens(raw_json) > effective_max:
+        serialized = cap_response(serialized, effective_max)
+        return json.dumps(serialized)
+    return raw_json
+
 
 
 def _serialize_observation(obs: Any) -> dict[str, Any]:
