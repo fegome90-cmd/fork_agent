@@ -104,12 +104,15 @@ class TestMemorySave:
 
         assert data["id"] == "saved-uuid"
         assert data["status"] == "saved"
+        # Auto-detect fills project from CWD when not provided
+        called_project = mock_get.return_value.save.call_args.kwargs.get("project")
+        assert called_project is not None  # auto-detected from CWD
         mock_get.return_value.save.assert_called_once_with(
             content="test content",
             title=None,
             metadata=None,
             topic_key=None,
-            project=None,
+            project=called_project,
             type=None,
         )
 
@@ -160,7 +163,7 @@ class TestMemorySearch:
         assert len(data) == 2
         assert data[0]["id"] == "s1"
         assert data[1]["id"] == "s2"
-        mock_get.return_value.search.assert_called_once_with(query="python", limit=None)
+        mock_get.return_value.search.assert_called_once_with(query="python", limit=None, project="tmux_fork")
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
     def test_passes_limit(self, mock_get: MagicMock) -> None:
@@ -169,7 +172,7 @@ class TestMemorySearch:
         mock_get.return_value.search.return_value = []
 
         memory_search(query="test", limit=5)
-        mock_get.return_value.search.assert_called_once_with(query="test", limit=5)
+        mock_get.return_value.search.assert_called_once_with(query="test", limit=5, project="tmux_fork")
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
     def test_empty_results(self, mock_get: MagicMock) -> None:
@@ -246,7 +249,7 @@ class TestMemoryList:
         mock_get.return_value.get_recent.return_value = []
 
         memory_list(limit=5, offset=10)
-        mock_get.return_value.get_recent.assert_called_once_with(limit=5, offset=10, type=None)
+        mock_get.return_value.get_recent.assert_called_once_with(limit=5, offset=10, type=None, project="tmux_fork")
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
     def test_passes_type_filter(self, mock_get: MagicMock) -> None:
@@ -256,7 +259,7 @@ class TestMemoryList:
 
         memory_list(type="decision")
         mock_get.return_value.get_recent.assert_called_once_with(
-            limit=10, offset=0, type="decision"
+            limit=10, offset=0, type="decision", project="tmux_fork"
         )
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
@@ -324,7 +327,7 @@ class TestMemoryContext:
         assert len(data) == 1
         assert data[0]["id"] == "ctx1"
         mock_get.return_value.get_recent.assert_called_once_with(
-            limit=5, offset=0, type="session-summary"
+            limit=5, offset=0, type="session-summary", project="tmux_fork"
         )
 
     @patch("src.interfaces.mcp.tools._get_memory_service")

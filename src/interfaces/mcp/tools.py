@@ -27,6 +27,23 @@ logger = logging.getLogger("memory-mcp")
 
 
 # ---------------------------------------------------------------------------
+# Project auto-detection (Engram model: single DB, project from CWD)
+# ---------------------------------------------------------------------------
+
+
+def _detect_project() -> str:
+    """Auto-detect project name from the current working directory.
+
+    Uses the directory name of CWD, matching Engram's behavior.
+    This allows a single MCP server to serve multiple projects
+    by scoping each tool call to the caller's project.
+    """
+    import os
+
+    return os.path.basename(os.getcwd())
+
+
+# ---------------------------------------------------------------------------
 # Service access — thin wrapper over container.py
 # ---------------------------------------------------------------------------
 
@@ -178,13 +195,14 @@ def memory_save(
     """
     if not content or not content.strip():
         raise McpError(ErrorData(code=INVALID_PARAMS, message="content must not be empty"))
+    effective_project = project or _detect_project()
     try:
         service = _get_memory_service()
         observation = service.save(
             content=content,
             metadata=metadata,
             topic_key=topic_key,
-            project=project,
+            project=effective_project,
             type=type,
             title=title,
         )
@@ -196,7 +214,7 @@ def memory_save(
         raise _map_error(e) from e
 
 
-def memory_search(query: str, limit: int | None = None, max_tokens: int | None = None) -> str:
+def memory_search(query: str, limit: int | None = None, max_tokens: int | None = None, project: str | None = None) -> str:
     """Search memory for observations matching a query.
 
     Uses FTS5 full-text search. Returns observations sorted by relevance.
@@ -205,6 +223,7 @@ def memory_search(query: str, limit: int | None = None, max_tokens: int | None =
         query: Search terms to find matching observations (required).
         limit: Maximum number of results to return (default: 10).
         max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
+        project: Optional project name for scoping. Auto-detected from CWD if not provided.
 
     Returns:
         JSON array of matching observations.
@@ -217,7 +236,8 @@ def memory_search(query: str, limit: int | None = None, max_tokens: int | None =
         )
 
         service = _get_memory_service()
-        results = service.search(query=query, limit=limit)
+        effective_project = project or _detect_project()
+        results = service.search(query=query, limit=limit, project=effective_project)
         serialized = _serialize_observations(results)
         raw_json = json.dumps(serialized)
         effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
@@ -257,7 +277,8 @@ def memory_retrieve(
         )
 
         service = _get_enhanced_search_service()
-        results = service.search(query=query, limit=limit, project=project, type=type)
+        effective_project = project or _detect_project()
+        results = service.search(query=query, limit=limit, project=effective_project, type=type)
         serialized = _serialize_observations(results)
         raw_json = json.dumps(serialized)
         effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
@@ -305,6 +326,7 @@ def memory_list(
     limit: int = 10,
     offset: int = 0,
     type: str | None = None,
+    project: str | None = None,
     max_tokens: int | None = None,
 ) -> str:
     """List recent observations with optional filtering and pagination.
@@ -313,6 +335,7 @@ def memory_list(
         limit: Maximum number of observations to return (default: 10).
         offset: Number of observations to skip (default: 0).
         type: Optional type filter (e.g., 'decision', 'session-summary').
+        project: Optional project name for scoping. Auto-detected from CWD if not provided.
         max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
 
     Returns:
@@ -326,7 +349,8 @@ def memory_list(
         )
 
         service = _get_memory_service()
-        results = service.get_recent(limit=limit, offset=offset, type=type)
+        effective_project = project or _detect_project()
+        results = service.get_recent(limit=limit, offset=offset, type=type, project=effective_project)
         serialized = _serialize_observations(results)
         raw_json = json.dumps(serialized)
         effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS
@@ -357,7 +381,7 @@ def memory_delete(id: str) -> str:
         raise _map_error(e) from e
 
 
-def memory_context(limit: int = 5, max_tokens: int | None = None) -> str:
+def memory_context(limit: int = 5, max_tokens: int | None = None, project: str | None = None) -> str:
     """Get recent session summaries and context observations.
 
     Tries to return session-summary type first, falls back to all recent
@@ -366,6 +390,7 @@ def memory_context(limit: int = 5, max_tokens: int | None = None) -> str:
     Args:
         limit: Maximum observations to return (default: 5).
         max_tokens: Optional max tokens in response (default: 8000, ~32KB). Truncates large content.
+        project: Optional project name for scoping. Auto-detected from CWD if not provided.
 
     Returns:
         JSON array of context observations.
@@ -378,10 +403,11 @@ def memory_context(limit: int = 5, max_tokens: int | None = None) -> str:
         )
 
         service = _get_memory_service()
-        results = service.get_recent(limit=limit, offset=0, type="session-summary")
+        effective_project = project or _detect_project()
+        results = service.get_recent(limit=limit, offset=0, type="session-summary", project=effective_project)
 
         if not results:
-            results = service.get_recent(limit=limit, offset=0, type=None)
+            results = service.get_recent(limit=limit, offset=0, type=None, project=effective_project)
 
         serialized = _serialize_observations(results)
         raw_json = json.dumps(serialized)
@@ -567,6 +593,7 @@ def memory_session_summary(
     if not content or not content.strip():
         raise _map_error(ValueError("Content must not be empty"))
 
+    effective_project = project or _detect_project()
     try:
         meta: dict[str, Any] = {}
         if session_id:
@@ -576,7 +603,7 @@ def memory_session_summary(
         observation = service.save(
             content=content,
             metadata=meta if meta else None,
-            project=project,
+            project=effective_project,
             type="session-summary",
         )
         return json.dumps({"id": observation.id, "status": "saved", "type": "session-summary"})
@@ -819,6 +846,7 @@ def memory_capture_passive(
     if not content or not content.strip():
         raise _map_error(ValueError("Content must not be empty"))
 
+    effective_project = project or _detect_project()
     try:
         learnings = _extract_learnings(content)
 
@@ -843,7 +871,7 @@ def memory_capture_passive(
             service.save(
                 content=learning,
                 metadata=meta if meta else None,
-                project=project,
+                project=effective_project,
                 type="learning-batch",
             )
             saved += 1
