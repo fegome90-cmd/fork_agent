@@ -1,0 +1,2 @@
+{"type":"config","name":"Optimize tmux_fork unit test speed","metricName":"total_seconds","metricUnit":"s","bestDirection":"lower"}
+{"type":"config","name":"Optimize tmux_fork unit test speed with pytest-xdist","metricName":"total_seconds","metricUnit":"s","bestDirection":"lower"}
