@@ -14,26 +14,12 @@ from dependency_injector import containers, providers
 from src.application.services.cleanup_service import CleanupService
 from src.application.services.memory_service import MemoryService
 from src.application.services.messaging.agent_messenger import AgentMessenger
-from src.application.services.orchestration.hook_service import HookService
 from src.application.services.scheduler_service import SchedulerService
 from src.application.services.session_service import SessionService
 from src.application.services.sync.sync_service import SyncService
 from src.application.services.telemetry.telemetry_service import TelemetryService
-from src.application.services.workflow.executor import WorkflowExecutor
 from src.application.services.workspace.entities import LayoutType, WorkspaceConfig
 from src.application.services.workspace.workspace_manager import WorkspaceManager
-from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
-from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
-from src.infrastructure.persistence.health_check import HealthCheckService
-from src.infrastructure.persistence.message_store import MessageStore
-from src.infrastructure.persistence.migrations import MigrationRunner
-from src.infrastructure.persistence.repositories.observation_repository import ObservationRepository
-from src.infrastructure.persistence.repositories.sync_repository import SyncRepositoryImpl
-from src.infrastructure.persistence.repositories.telemetry_repository import TelemetryRepositoryImpl
-from src.infrastructure.persistence.repositories.scheduled_task_repository import ScheduledTaskRepository
-from src.infrastructure.persistence.repositories.session_repository import SessionRepositoryImpl
-from src.infrastructure.persistence.repositories.promise_repository import PromiseContractRepository
-from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
 from src.infrastructure.persistence.container import (
     DEFAULT_DB_PATH,
     DEFAULT_MIGRATIONS_DIR,
@@ -41,6 +27,20 @@ from src.infrastructure.persistence.container import (
     _run_migrations_on_init,
     get_default_data_dir,
 )
+from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
+from src.infrastructure.persistence.health_check import HealthCheckService
+from src.infrastructure.persistence.message_store import MessageStore
+from src.infrastructure.persistence.migrations import MigrationRunner
+from src.infrastructure.persistence.repositories.observation_repository import ObservationRepository
+from src.infrastructure.persistence.repositories.promise_repository import PromiseContractRepository
+from src.infrastructure.persistence.repositories.scheduled_task_repository import (
+    ScheduledTaskRepository,
+)
+from src.infrastructure.persistence.repositories.session_repository import SessionRepositoryImpl
+from src.infrastructure.persistence.repositories.sync_repository import SyncRepositoryImpl
+from src.infrastructure.persistence.repositories.telemetry_repository import TelemetryRepositoryImpl
+from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
+from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
 class Container(containers.DeclarativeContainer):
