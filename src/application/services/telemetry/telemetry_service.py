@@ -631,7 +631,7 @@ class TelemetryService:
         return self._repository.aggregate_metric(
             metric_name=metric_name,
             labels=labels,
-            bucket_duration=3600,  # 1-hour buckets
+            _bucket_duration=3600,  # 1-hour buckets
             start_time=start_time,
             end_time=now,
         )
