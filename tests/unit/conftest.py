@@ -1,20 +1,14 @@
 """Speed up tests that use time.sleep for long durations.
 
-Patches time.sleep and time.time with a fake clock:
-- time.sleep(n) where n > 50ms: advances the clock, no real sleep
-- time.sleep(n) where n <= 50ms: real sleep (needed for threading barriers)
-- time.time(): returns real time + accumulated fake offset
+Patches time.sleep and time.time with a fake clock for the entire session.
+Uses module-level patching (not per-test fixtures) to avoid 1607× setup overhead.
 """
 
 import time as _time_module
-from unittest.mock import patch
-
-import pytest
 
 # Grab the real functions BEFORE any patching
 _REAL_SLEEP = _time_module.sleep
 _REAL_TIME = _time_module.time
-_THRESHOLD = 0
 
 
 class _FakeClock:
@@ -27,18 +21,19 @@ class _FakeClock:
         return _REAL_TIME() + self._offset
 
     def sleep(self, seconds: float) -> None:
-        if seconds > _THRESHOLD:
+        if seconds > 0:
             self._offset += seconds
-        else:
-            _REAL_SLEEP(seconds)
+        # else: sleep(0) is a yield point, skip it
 
 
-@pytest.fixture(autouse=True)
-def _fast_clock():
-    """Replace time.sleep and time.time with a fake clock."""
+def pytest_configure(config):
+    """Patch time.sleep and time.time once for the entire session."""
     clock = _FakeClock()
-    with (
-        patch("time.sleep", side_effect=clock.sleep),
-        patch("time.time", side_effect=clock.time),
-    ):
-        yield
+    _time_module.sleep = clock.sleep
+    _time_module.time = clock.time
+
+
+def pytest_unconfigure(config):
+    """Restore original time functions after session."""
+    _time_module.sleep = _REAL_SLEEP
+    _time_module.time = _REAL_TIME
