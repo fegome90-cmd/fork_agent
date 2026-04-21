@@ -172,7 +172,7 @@ class TestForkMessageReceive:
 
         fork_message_receive(agent_id="agent-1:0", mark_read=True)
 
-        mock_get.return_value.delete_messages.assert_called_once_with(["m1", "m2"])
+        mock_get.return_value.mark_messages_read.assert_called_once_with(["m1", "m2"])
 
     @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_mark_read_false_does_not_delete(self, mock_get: MagicMock) -> None:
