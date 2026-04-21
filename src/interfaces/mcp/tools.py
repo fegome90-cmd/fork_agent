@@ -490,7 +490,7 @@ def memory_stats() -> str:
         raise _map_error(e) from e
 
 
-def memory_timeline(start: int, end: int, max_tokens: int | None = None) -> str:
+def memory_timeline(start: int, end: int, max_tokens: int | None = None, project: str | None = None) -> str:
     """Get observations within a time range.
 
     Args:
@@ -509,7 +509,8 @@ def memory_timeline(start: int, end: int, max_tokens: int | None = None) -> str:
         )
 
         service = _get_memory_service()
-        results = service.get_by_time_range(start, end)
+        effective_project = project or _detect_project()
+        results = service.get_by_time_range(start, end, project=effective_project)
         serialized = _serialize_observations(results)
         raw_json = json.dumps(serialized)
         effective_max = max_tokens if max_tokens is not None else DEFAULT_MAX_TOKENS

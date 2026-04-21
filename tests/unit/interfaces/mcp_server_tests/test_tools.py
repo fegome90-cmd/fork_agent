@@ -597,7 +597,7 @@ class TestMemoryTimeline:
 
         assert len(data) == 1
         assert data[0]["id"] == "tl1"
-        mock_get.return_value.get_by_time_range.assert_called_once_with(1000, 2000)
+        mock_get.return_value.get_by_time_range.assert_called_once_with(1000, 2000, project="tmux_fork")
 
     @patch("src.interfaces.mcp.tools._get_memory_service")
     def test_empty_range(self, mock_get: MagicMock) -> None:

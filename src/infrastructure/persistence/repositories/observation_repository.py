@@ -437,25 +437,33 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to search observations: {e}", e) from e
 
-    def get_by_timestamp_range(self, start: int, end: int) -> list[Observation]:
+    def get_by_timestamp_range(self, start: int, end: int, project: str | None = None) -> list[Observation]:
         """Retrieve observations within a timestamp range.
 
         Args:
             start: Start timestamp (inclusive).
             end: End timestamp (inclusive).
+            project: Optional project filter to narrow results.
 
         Returns:
             List of observations within the range, ordered by timestamp descending.
         """
         try:
+            sql = f"""SELECT {_SELECT_COLUMNS}
+                   FROM observations
+                   WHERE timestamp >= ? AND timestamp <= ?"""
+            params: list[int | str] = [start, end]
+
+            if project is not None:
+                normalized = self._normalize_project(project)
+                if normalized:
+                    sql += " AND project = ?"
+                    params.append(normalized)
+
+            sql += " ORDER BY timestamp DESC"
+
             with self._connection as conn:
-                cursor = conn.execute(
-                    f"""SELECT {_SELECT_COLUMNS}
-                       FROM observations
-                       WHERE timestamp >= ? AND timestamp <= ?
-                       ORDER BY timestamp DESC""",
-                    (start, end),
-                )
+                cursor = conn.execute(sql, params)
                 rows = cursor.fetchall()
 
             return [self._row_to_observation(row) for row in rows]
