@@ -54,6 +54,7 @@ _memory_service: Any | None = None
 _session_service: Any | None = None
 _health_service: Any | None = None
 _enhanced_search_service: Any | None = None
+_agent_messenger: Any | None = None
 _custom_db_path: Any | None = None  # Path | None, stored as Any to avoid top-level import
 
 
@@ -82,6 +83,15 @@ def _get_health_service() -> Any:
 
         _health_service = get_health_service(_custom_db_path)
     return _health_service
+
+
+def _get_agent_messenger() -> Any:
+    global _agent_messenger
+    if _agent_messenger is None:
+        from src.infrastructure.persistence.container import get_agent_messenger
+
+        _agent_messenger = get_agent_messenger(_custom_db_path)
+    return _agent_messenger
 
 
 def _get_enhanced_search_service() -> Any:
@@ -918,6 +928,173 @@ def memory_merge_projects(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Inter-agent messaging tools
+# ---------------------------------------------------------------------------
+
+
+def _serialize_message(msg: Any) -> dict[str, Any]:
+    """Serialize AgentMessage to MCP-safe dict."""
+    return {
+        "id": msg.id,
+        "from": msg.from_agent,
+        "to": msg.to_agent,
+        "type": msg.message_type.name,
+        "payload": msg.payload,
+        "created_at": msg.created_at_iso,
+    }
+
+
+def _serialize_messages(msgs: list[Any]) -> list[dict[str, Any]]:
+    """Serialize a list of AgentMessage entities."""
+    return [_serialize_message(m) for m in msgs]
+
+
+def fork_message_send(
+    target: str,
+    payload: str,
+    from_agent: str | None = None,
+    type: str | None = None,
+) -> str:
+    """Send a message to a target agent.
+
+    Args:
+        target: Target agent in session:window format (required).
+        payload: Message content (required).
+        from_agent: Source agent ID (default: 'cli:0').
+        type: Message type: COMMAND, REPLY, HANDOFF, PROGRESS, FILE_TOUCHED, or OBSERVATION (default: 'COMMAND').
+
+    Returns:
+        JSON with status and target.
+    """
+    if not target.strip():
+        raise McpError(ErrorData(code=INVALID_PARAMS, message="target must not be empty"))
+    if not payload.strip():
+        raise McpError(ErrorData(code=INVALID_PARAMS, message="payload must not be empty"))
+
+    try:
+        from src.domain.entities.message import AgentMessage, MessageType
+
+        messenger = _get_agent_messenger()
+        effective_from = from_agent or "cli:0"
+
+        try:
+            mtype = MessageType[(type or "COMMAND").upper()]
+        except KeyError:
+            raise McpError(
+                ErrorData(code=INVALID_PARAMS, message=f"Invalid message type: {type}")
+            )
+
+        msg = AgentMessage.create(
+            from_agent=effective_from, to_agent=target, message_type=mtype, payload=payload
+        )
+        success = messenger.send(msg)
+
+        return json.dumps({"status": "sent" if success else "stored", "target": target})
+    except McpError:
+        raise
+    except Exception as e:
+        logger.error("fork_message_send failed: %s", e, exc_info=True)
+        raise _map_error(e) from e
+
+
+def fork_message_receive(
+    agent_id: str,
+    json_output: bool | None = None,
+    limit: int | None = None,
+    mark_read: bool | None = None,
+) -> str:
+    """Receive messages for an agent.
+
+    Args:
+        agent_id: Agent ID to receive messages for, in session:window format (required).
+        json_output: Whether to return structured JSON (always true for MCP, kept for CLI parity).
+        limit: Maximum number of messages to retrieve (default: 10).
+        mark_read: Whether to delete messages after retrieval (default: false).
+
+    Returns:
+        JSON array of messages.
+    """
+    if not agent_id.strip():
+        raise McpError(ErrorData(code=INVALID_PARAMS, message="agent_id must not be empty"))
+
+    try:
+        messenger = _get_agent_messenger()
+        messages = messenger.get_messages(agent_id, limit=limit or 10)
+        serialized = _serialize_messages(messages)
+
+        if mark_read and messages:
+            ids = [m.id for m in messages]
+            placeholders = ",".join("?" for _ in ids)
+            with messenger.store._connection as conn:
+                conn.execute(f"DELETE FROM messages WHERE id IN ({placeholders})", ids)
+                conn.commit()
+
+        return json.dumps(serialized)
+    except Exception as e:
+        logger.error("fork_message_receive failed: %s", e, exc_info=True)
+        raise _map_error(e) from e
+
+
+def fork_message_broadcast(
+    payload: str,
+    from_agent: str | None = None,
+) -> str:
+    """Broadcast a message to all active agent sessions.
+
+    Args:
+        payload: Message content to broadcast (required).
+        from_agent: Source agent ID (default: 'cli:0').
+
+    Returns:
+        JSON with status and count of recipients.
+    """
+    if not payload.strip():
+        raise McpError(ErrorData(code=INVALID_PARAMS, message="payload must not be empty"))
+
+    try:
+        messenger = _get_agent_messenger()
+        effective_from = from_agent or "cli:0"
+        count = messenger.broadcast(from_agent=effective_from, payload=payload)
+
+        return json.dumps({"status": "broadcast", "recipients": count})
+    except Exception as e:
+        logger.error("fork_message_broadcast failed: %s", e, exc_info=True)
+        raise _map_error(e) from e
+
+
+def fork_message_history(
+    agent_id: str,
+    limit: int | None = None,
+) -> str:
+    """Get message history for an agent.
+
+    Args:
+        agent_id: Agent ID to show history for (required).
+        limit: Maximum number of messages to return (default: 20).
+
+    Returns:
+        JSON array of historical messages (sent and received).
+    """
+    if not agent_id.strip():
+        raise McpError(ErrorData(code=INVALID_PARAMS, message="agent_id must not be empty"))
+
+    try:
+        messenger = _get_agent_messenger()
+        history = messenger.get_history(agent_id, limit=limit or 20)
+        serialized = _serialize_messages(history)
+
+        return json.dumps(serialized)
+    except Exception as e:
+        logger.error("fork_message_history failed: %s", e, exc_info=True)
+        raise _map_error(e) from e
+
+
+# ---------------------------------------------------------------------------
+# Tool registration
+# ---------------------------------------------------------------------------
+
+
 def register_tools(mcp_server: FastMCP) -> None:
     """Register all tool handlers with the FastMCP server instance."""
     mcp_server.tool()(memory_save)
@@ -937,3 +1114,7 @@ def register_tools(mcp_server: FastMCP) -> None:
     mcp_server.tool()(memory_save_prompt)
     mcp_server.tool()(memory_capture_passive)
     mcp_server.tool()(memory_merge_projects)
+    mcp_server.tool()(fork_message_send)
+    mcp_server.tool()(fork_message_receive)
+    mcp_server.tool()(fork_message_broadcast)
+    mcp_server.tool()(fork_message_history)
