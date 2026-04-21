@@ -39,6 +39,36 @@ def create_mcp_server() -> FastMCP:
     return mcp_server
 
 
+def _wrap_with_auth(app: object) -> object:
+    """Wrap a Starlette app with Bearer auth middleware for SSE/HTTP transports.
+
+    Only adds middleware when ``FORK_MCP_TOKEN`` is set.  When the env var
+    is absent the verifier accepts every request (local-dev friendly).
+
+    Returns the *app* unchanged when no token is configured, to avoid
+    adding unnecessary latency.
+    """
+    import os
+
+    if not os.environ.get("FORK_MCP_TOKEN"):
+        return app
+
+    from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.middleware.authentication import AuthenticationMiddleware
+
+    from src.interfaces.mcp.auth import ApiKeyTokenVerifier
+
+    verifier = ApiKeyTokenVerifier()
+    backend = BearerAuthBackend(verifier)
+    auth_mw = Middleware(AuthenticationMiddleware, backend=backend)
+
+    if isinstance(app, Starlette):
+        app.add_middleware(auth_mw)
+    return app
+
+
 def run_server(
     transport: str = "stdio",
     mount_path: str | None = None,
@@ -56,6 +86,7 @@ def run_server(
     _configure_logging()
     mcp_server = create_mcp_server()
     if transport == "stdio":
+        # stdio is always local/trusted — no auth.
         mcp_server.run(transport="stdio")
     elif transport in ("sse", "streamable-http"):
         import uvicorn
@@ -65,6 +96,7 @@ def run_server(
             if transport == "sse"
             else mcp_server.streamable_http_app(mount_path=mount_path)  # type: ignore[call-arg]
         )
+        app = _wrap_with_auth(app)
         uvicorn.run(app, host=host, port=port)
     else:
         print(f"Error: unsupported transport '{transport}'", file=sys.stderr)
