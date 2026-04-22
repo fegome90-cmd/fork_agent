@@ -1,0 +1,60 @@
+{
+  "items": [
+    {
+      "type": "BUG",
+      "message": "FIX: Validate session_id before constructing path",
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 78,
+      "column": 6
+    },
+    {
+      "type": "BUG",
+      "message": "FIX: Validate session_id before constructing path",
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 107,
+      "column": 6
+    },
+    {
+      "type": "BUG",
+      "message": "FIX: Validate session_id before constructing path",
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 136,
+      "column": 6
+    },
+    {
+      "type": "BUG",
+      "message": "FIX: Track persistence status",
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 171,
+      "column": 32
+    },
+    {
+      "type": "BUG",
+      "message": "FIX: Track deletion status",
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 178,
+      "column": 33
+    },
+    {
+      "type": "BUG",
+      "message": "FIX: Thread-safe counters",
+      "file": "src/interfaces/api/routes/system.py",
+      "line": 22,
+      "column": 37
+    },
+    {
+      "type": "BUG",
+      "message": "FIX: Thread-safe read",
+      "file": "src/interfaces/api/routes/system.py",
+      "line": 84,
+      "column": 28
+    },
+    {
+      "type": "BUG",
+      "message": "-8/BUG-9)",
+      "file": "src/interfaces/cli/commands/save.py",
+      "line": 108,
+      "column": 48
+    }
+  ]
+}

@@ -1,0 +1,376 @@
+{
+  "success": true,
+  "clones": [
+    {
+      "fileA": "src/interfaces/tui/screens/search_screen.py",
+      "startA": 58,
+      "fileB": "src/interfaces/tui/screens/stats_screen.py",
+      "startB": 47,
+      "lines": 15,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/tui/screens/save_screen.py",
+      "startA": 58,
+      "fileB": "src/interfaces/tui/screens/search_screen.py",
+      "startB": 58,
+      "lines": 15,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/tui/screens/list_screen.py",
+      "startA": 46,
+      "fileB": "src/interfaces/tui/screens/stats_screen.py",
+      "startB": 47,
+      "lines": 15,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/tui/screens/list_screen.py",
+      "startA": 111,
+      "fileB": "src/interfaces/tui/screens/search_screen.py",
+      "startB": 127,
+      "lines": 10,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/tui/screens/detail_screen.py",
+      "startA": 51,
+      "fileB": "src/interfaces/tui/screens/stats_screen.py",
+      "startB": 47,
+      "lines": 15,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/telemetry.py",
+      "startA": 46,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 20,
+      "lines": 11,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/search.py",
+      "startA": 33,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 18,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/schedule.py",
+      "startA": 89,
+      "fileB": "src/interfaces/cli/commands/schedule.py",
+      "startB": 67,
+      "lines": 13,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/save.py",
+      "startA": 46,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 18,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/retrieve.py",
+      "startA": 13,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 15,
+      "lines": 15,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/query.py",
+      "startA": 17,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 15,
+      "lines": 14,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/list.py",
+      "startA": 21,
+      "fileB": "src/interfaces/cli/commands/search.py",
+      "startB": 23,
+      "lines": 11,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/health.py",
+      "startA": 13,
+      "fileB": "src/interfaces/cli/commands/stats.py",
+      "startB": 14,
+      "lines": 15,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/diff.py",
+      "startA": 14,
+      "fileB": "src/interfaces/cli/commands/search.py",
+      "startB": 13,
+      "lines": 21,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/delete.py",
+      "startA": 11,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 12,
+      "lines": 18,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/context.py",
+      "startA": 10,
+      "fileB": "src/interfaces/cli/commands/update.py",
+      "startB": 13,
+      "lines": 17,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/compact.py",
+      "startA": 6,
+      "fileB": "src/interfaces/cli/commands/context.py",
+      "startB": 5,
+      "lines": 21,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/api/routes/memory.py",
+      "startA": 117,
+      "fileB": "src/interfaces/api/routes/memory.py",
+      "startB": 76,
+      "lines": 16,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/api/routes/memory.py",
+      "startA": 211,
+      "fileB": "src/interfaces/cli/commands/query.py",
+      "startB": 177,
+      "lines": 6,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/api/routes/memory.py",
+      "startA": 264,
+      "fileB": "src/interfaces/api/routes/memory.py",
+      "startB": 217,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/api/routes/memory.py",
+      "startA": 292,
+      "fileB": "src/interfaces/api/routes/memory.py",
+      "startB": 39,
+      "lines": 16,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/api/routes/memory.py",
+      "startA": 330,
+      "fileB": "src/interfaces/api/routes/memory.py",
+      "startB": 33,
+      "lines": 25,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/api/models/__init__.py",
+      "startA": 162,
+      "fileB": "src/interfaces/api/models/__init__.py",
+      "startB": 149,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startA": 247,
+      "fileB": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startB": 207,
+      "lines": 14,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startA": 259,
+      "fileB": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startB": 222,
+      "lines": 10,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startA": 448,
+      "fileB": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startB": 223,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startA": 462,
+      "fileB": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startB": 440,
+      "lines": 17,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/persistence/repositories/observation_repository.py",
+      "startA": 678,
+      "fileB": "src/infrastructure/persistence/repositories/promise_repository.py",
+      "startB": 228,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/workspace/workspace_detector.py",
+      "startA": 74,
+      "fileB": "src/application/services/workspace/workspace_manager.py",
+      "startB": 472,
+      "lines": 23,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/workflow/verify_runner.py",
+      "startA": 125,
+      "fileB": "src/application/services/workflow/verify_runner.py",
+      "startB": 112,
+      "lines": 11,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/workflow/state.py",
+      "startA": 307,
+      "fileB": "src/application/services/workflow/state.py",
+      "startB": 100,
+      "lines": 19,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/workflow/state.py",
+      "startA": 345,
+      "fileB": "src/application/services/workflow/state.py",
+      "startB": 179,
+      "lines": 17,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/workflow/state.py",
+      "startA": 367,
+      "fileB": "src/application/services/workflow/state.py",
+      "startB": 241,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/workflow/state.py",
+      "startA": 445,
+      "fileB": "src/application/services/workflow/state.py",
+      "startB": 367,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/workspace_commands.py",
+      "startA": 154,
+      "fileB": "src/interfaces/cli/workspace_commands.py",
+      "startB": 110,
+      "lines": 12,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/workspace_commands.py",
+      "startA": 219,
+      "fileB": "src/interfaces/cli/workspace_commands.py",
+      "startB": 109,
+      "lines": 14,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/workspace_commands.py",
+      "startA": 284,
+      "fileB": "src/interfaces/cli/workspace_commands.py",
+      "startB": 108,
+      "lines": 13,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/workspace_commands.py",
+      "startA": 316,
+      "fileB": "src/interfaces/cli/workspace_commands.py",
+      "startB": 110,
+      "lines": 14,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/workspace_commands.py",
+      "startA": 364,
+      "fileB": "src/interfaces/cli/workspace_commands.py",
+      "startB": 282,
+      "lines": 16,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/tmux_orchestrator/retry.py",
+      "startA": 98,
+      "fileB": "src/infrastructure/tmux_orchestrator/retry.py",
+      "startB": 56,
+      "lines": 14,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/infrastructure/tmux_orchestrator/retry.py",
+      "startA": 110,
+      "fileB": "src/infrastructure/tmux_orchestrator/retry.py",
+      "startB": 71,
+      "lines": 11,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/domain/ports/telemetry_repository.py",
+      "startA": 49,
+      "fileB": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startB": 197,
+      "lines": 26,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/domain/ports/telemetry_repository.py",
+      "startA": 77,
+      "fileB": "src/infrastructure/persistence/repositories/telemetry_repository.py",
+      "startB": 240,
+      "lines": 20,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/domain/entities/observation.py",
+      "startA": 57,
+      "fileB": "src/interfaces/api/models/__init__.py",
+      "startB": 176,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/memory_service.py",
+      "startA": 249,
+      "fileB": "src/interfaces/cli/commands/query.py",
+      "startB": 110,
+      "lines": 16,
+      "tokens": 0
+    },
+    {
+      "fileA": ".gemini/skills/superpowers-systematic-debugging/condition-based-waiting-example.ts",
+      "startA": 115,
+      "fileB": ".gemini/skills/superpowers-systematic-debugging/condition-based-waiting-example.ts",
+      "startB": 23,
+      "lines": 9,
+      "tokens": 0
+    }
+  ],
+  "duplicatedLines": 618,
+  "totalLines": 31094,
+  "percentage": 1.99
+}

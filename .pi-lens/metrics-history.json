@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "files": {
+    "../../.pi/agent/extensions/trifecta-context-loader.ts": {
+      "latest": {
+        "commit": "9f6280f3",
+        "timestamp": "2026-04-22T19:31:55.169Z",
+        "mi": 18.4,
+        "cognitive": 195,
+        "nesting": 8,
+        "lines": 424,
+        "maxCyclomatic": 76,
+        "entropy": 5.67
+      },
+      "history": [
+        {
+          "commit": "9f6280f3",
+          "timestamp": "2026-04-22T19:24:22.505Z",
+          "mi": 18.2,
+          "cognitive": 195,
+          "nesting": 8,
+          "lines": 424,
+          "maxCyclomatic": 79,
+          "entropy": 5.7
+        },
+        {
+          "commit": "9f6280f3",
+          "timestamp": "2026-04-22T19:31:55.169Z",
+          "mi": 18.4,
+          "cognitive": 195,
+          "nesting": 8,
+          "lines": 424,
+          "maxCyclomatic": 76,
+          "entropy": 5.67
+        }
+      ],
+      "trend": "stable"
+    }
+  },
+  "capturedAt": "2026-04-22T19:32:00.170Z"
+}
