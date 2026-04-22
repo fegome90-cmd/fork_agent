@@ -437,7 +437,9 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to search observations: {e}", e) from e
 
-    def get_by_timestamp_range(self, start: int, end: int, project: str | None = None) -> list[Observation]:
+    def get_by_timestamp_range(
+        self, start: int, end: int, project: str | None = None
+    ) -> list[Observation]:
         """Retrieve observations within a timestamp range.
 
         Args:
@@ -470,9 +472,7 @@ class ObservationRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to get observations by range: {e}", e) from e
 
-    def get_by_session_id(
-        self, session_id: str, project: str | None = None
-    ) -> list[Observation]:
+    def get_by_session_id(self, session_id: str, project: str | None = None) -> list[Observation]:
         """Retrieve observations for a given session ID.
 
         Args:
@@ -494,8 +494,7 @@ class ObservationRepository:
 
             where_clause = " WHERE " + " AND ".join(conditions)
             sql = (
-                f"SELECT {_SELECT_COLUMNS} FROM observations{where_clause}"
-                " ORDER BY timestamp DESC"
+                f"SELECT {_SELECT_COLUMNS} FROM observations{where_clause} ORDER BY timestamp DESC"
             )
 
             with self._connection as conn:
@@ -504,9 +503,7 @@ class ObservationRepository:
 
             return [self._row_to_observation(row) for row in rows]
         except sqlite3.Error as e:
-            raise RepositoryError(
-                f"Failed to get observations by session_id: {e}", e
-            ) from e
+            raise RepositoryError(f"Failed to get observations by session_id: {e}", e) from e
 
     def upsert_topic_key(self, observation: Observation) -> Observation:
         """Update an existing observation matched by topic_key and project.
