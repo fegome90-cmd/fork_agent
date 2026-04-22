@@ -163,12 +163,8 @@ def receive_messages(
     def _delete_messages(msgs: list[AgentMessage]) -> None:
         if not msgs:
             return
-        # TODO: add delete_messages(ids) to MessageStore once schema work lands
         ids = [msg.id for msg in msgs]
-        placeholders = ",".join("?" for _ in ids)
-        with messenger.store._connection as conn:
-            conn.execute(f"DELETE FROM messages WHERE id IN ({placeholders})", ids)
-            conn.commit()
+        messenger.store.delete_by_ids(ids)
 
     if not watch:
         messages = _fetch()
