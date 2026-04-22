@@ -5,9 +5,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from mcp import McpError
-from mcp.types import INVALID_PARAMS, ErrorData
-
 from src.interfaces.mcp.tools._shared import (
     _get_agent_messenger,
     _map_error,
@@ -50,9 +47,9 @@ def fork_message_send(
         JSON with status and target.
     """
     if not target.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="target must not be empty"))
+        raise _map_error(ValueError("target must not be empty"))
     if not payload.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="payload must not be empty"))
+        raise _map_error(ValueError("payload must not be empty"))
 
     try:
         from src.domain.entities.message import AgentMessage, MessageType
@@ -63,9 +60,7 @@ def fork_message_send(
         try:
             mtype = MessageType[(type or "COMMAND").upper()]
         except KeyError as e:
-            raise McpError(
-                ErrorData(code=INVALID_PARAMS, message=f"Invalid message type: {type}")
-            ) from e
+            raise _map_error(ValueError(f"Invalid message type: {type}")) from e
 
         msg = AgentMessage.create(
             from_agent=effective_from, to_agent=target, message_type=mtype, payload=payload
@@ -74,8 +69,10 @@ def fork_message_send(
         logger.info("fork_message_send: from=%s to=%s", effective_from, target)
 
         return json.dumps({"status": "sent" if success else "stored", "target": target})
-    except McpError:
-        raise
+    except BaseException as _e:
+        from mcp import McpError
+        if isinstance(_e, McpError):
+            raise
     except Exception as e:
         logger.error("fork_message_send failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -98,7 +95,7 @@ def fork_message_receive(
         JSON array of messages.
     """
     if not agent_id.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="agent_id must not be empty"))
+        raise _map_error(ValueError("agent_id must not be empty"))
 
     try:
         messenger = _get_agent_messenger()
@@ -111,8 +108,10 @@ def fork_message_receive(
             messenger.mark_messages_read(ids)
 
         return json.dumps(serialized)
-    except McpError:
-        raise
+    except BaseException as _e:
+        from mcp import McpError
+        if isinstance(_e, McpError):
+            raise
     except Exception as e:
         logger.error("fork_message_receive failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -132,7 +131,7 @@ def fork_message_broadcast(
         JSON with status and count of recipients.
     """
     if not payload.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="payload must not be empty"))
+        raise _map_error(ValueError("payload must not be empty"))
 
     try:
         messenger = _get_agent_messenger()
@@ -141,8 +140,10 @@ def fork_message_broadcast(
         logger.info("fork_message_broadcast: from=%s recipients=%d", effective_from, count)
 
         return json.dumps({"status": "broadcast", "recipients": count})
-    except McpError:
-        raise
+    except BaseException as _e:
+        from mcp import McpError
+        if isinstance(_e, McpError):
+            raise
     except Exception as e:
         logger.error("fork_message_broadcast failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -162,7 +163,7 @@ def fork_message_history(
         JSON array of historical messages (sent and received).
     """
     if not agent_id.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="agent_id must not be empty"))
+        raise _map_error(ValueError("agent_id must not be empty"))
 
     try:
         messenger = _get_agent_messenger()
@@ -171,8 +172,10 @@ def fork_message_history(
         serialized = _serialize_messages(history)
 
         return json.dumps(serialized)
-    except McpError:
-        raise
+    except BaseException as _e:
+        from mcp import McpError
+        if isinstance(_e, McpError):
+            raise
     except Exception as e:
         logger.error("fork_message_history failed: %s", e, exc_info=True)
         raise _map_error(e) from e
