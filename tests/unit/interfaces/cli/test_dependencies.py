@@ -60,13 +60,13 @@ class TestGetMemoryService:
     def test_get_memory_service_returns_memory_service_type(self) -> None:
         """Verify fast path returns actual MemoryService."""
         with patch("src.infrastructure.persistence.container._get_or_create_fast") as mock_fast:
+            from src.application.services.memory_service import MemoryService
             from src.infrastructure.persistence.repositories.observation_repository import (
                 ObservationRepository,
             )
             from src.infrastructure.persistence.repositories.telemetry_repository import (
                 TelemetryRepositoryImpl,
             )
-            from src.application.services.memory_service import MemoryService
 
             mock_fast.return_value = (MagicMock(spec=ObservationRepository), MagicMock(spec=TelemetryRepositoryImpl))
             result = dependencies.get_memory_service()

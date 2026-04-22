@@ -72,7 +72,7 @@ class TestGetMemoryService:
             mock_telemetry_repo = MagicMock()
             mock_fast.return_value = (mock_repo, mock_telemetry_repo)
 
-            result = get_memory_service(custom_path)
+            get_memory_service(custom_path)
 
             mock_fast.assert_called_once_with(custom_path)
 
@@ -164,10 +164,11 @@ class TestCreateContainer:
 
     def test_creates_container_with_default_path(self) -> None:
         """Should create container with default DB path."""
-        with patch(
-            "src.infrastructure.persistence._container_di._run_migrations_on_init"
-        ) as mock_migrate, patch(
-            "src.infrastructure.persistence._container_di._auto_backup"
+        with (
+            patch(
+                "src.infrastructure.persistence._container_di._run_migrations_on_init"
+            ) as mock_migrate,
+            patch("src.infrastructure.persistence._container_di._auto_backup"),
         ):
             container = create_container()
 
@@ -178,10 +179,11 @@ class TestCreateContainer:
         """Should create container with custom DB path."""
         custom_path = Path("/custom/db/path.db")
 
-        with patch(
-            "src.infrastructure.persistence._container_di._run_migrations_on_init"
-        ) as mock_migrate, patch(
-            "src.infrastructure.persistence._container_di._auto_backup"
+        with (
+            patch(
+                "src.infrastructure.persistence._container_di._run_migrations_on_init"
+            ) as mock_migrate,
+            patch("src.infrastructure.persistence._container_di._auto_backup"),
         ):
             container = create_container(custom_path)
 

@@ -3,7 +3,11 @@ from __future__ import annotations
 import sqlite3
 
 from src.infrastructure.persistence.repositories.observation_repository import ObservationRepository
-from src.infrastructure.retrieval.v2 import EnhancedRetrievalSearchService, extract_concepts, plan_query
+from src.infrastructure.retrieval.v2 import (
+    EnhancedRetrievalSearchService,
+    extract_concepts,
+    plan_query,
+)
 
 
 class TestConceptExtraction:
