@@ -276,16 +276,50 @@ def get_scheduler_service(db_path: Path | None = None):
     return get_container(db_path).scheduler_service()
 
 
+def _detect_workspace_fast() -> Path | None:
+    """Fast workspace detection — bypasses DI container to avoid dependency_injector import.
+
+    The full WorkspaceManager via get_workspace_manager() triggers the DI container
+    (~160ms overhead from dependency_injector). This fast path does the same git
+    worktree detection using only GitCommandExecutor (~18ms total).
+    """
+    try:
+        from pathlib import Path as _Path
+
+        from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor as _Git
+
+        git = _Git()
+        cwd = _Path.cwd()
+        try:
+            repo_root = git.get_repo_root(cwd)
+        except Exception:
+            return None
+
+        # In main repo (not worktree) → no workspace DB
+        if cwd.resolve() == repo_root.resolve():
+            return None
+
+        # In a worktree → check for .memory/ dir
+        worktrees = git.worktree_list()
+        cwd_resolved = cwd.resolve()
+        for wt in worktrees:
+            wt_path = _Path(wt["path"]).resolve()
+            if wt_path == cwd_resolved or cwd.is_relative_to(wt_path):
+                worktree_db_dir = wt_path / ".memory"
+                worktree_db_dir.mkdir(parents=True, exist_ok=True)
+                return worktree_db_dir / "observations.db"
+    except (OSError, ValueError, Exception):
+        pass
+    return None
+
+
 def detect_memory_db_path() -> Path:
     """Detect the appropriate memory DB path based on current workspace."""
     try:
-        workspace_manager = get_workspace_manager()
-        workspace = workspace_manager.detect_workspace()
-        if workspace is not None:
-            worktree_db_dir = workspace.path / ".memory"
-            worktree_db_dir.mkdir(parents=True, exist_ok=True)
-            return worktree_db_dir / "observations.db"
-    except (OSError, ValueError):
+        result = _detect_workspace_fast()
+        if result is not None:
+            return result
+    except (OSError, ValueError, Exception):
         pass
     return DEFAULT_DB_PATH
 

@@ -101,37 +101,30 @@ class TestDetectMemoryDbPath:
 
     def test_returns_default_path_when_not_in_worktree(self) -> None:
         """Should return default path when not in a worktree."""
-        with patch("src.infrastructure.persistence.container.get_workspace_manager") as mock_get_wm:
-            mock_wm = MagicMock()
-            mock_wm.detect_workspace.return_value = None
-            mock_get_wm.return_value = mock_wm
-
+        with patch(
+            "src.infrastructure.persistence.container._detect_workspace_fast", return_value=None
+        ):
             result = detect_memory_db_path()
 
             assert result == get_default_db_path()
 
     def test_returns_worktree_path_when_in_worktree(self) -> None:
         """Should return worktree-specific path when in a worktree."""
-        with (
-            patch("src.infrastructure.persistence.container.get_workspace_manager") as mock_get_wm,
-            patch("src.infrastructure.persistence.container.Path.mkdir"),
+        with patch(
+            "src.infrastructure.persistence.container._detect_workspace_fast",
+            return_value=Path("/some/worktree/.memory/observations.db"),
         ):
-            mock_workspace = MagicMock()
-            mock_workspace.path = Path("/some/worktree")
-
-            mock_wm = MagicMock()
-            mock_wm.detect_workspace.return_value = mock_workspace
-            mock_get_wm.return_value = mock_wm
-
             result = detect_memory_db_path()
 
             assert result == Path("/some/worktree/.memory/observations.db")
 
     def test_returns_default_on_detection_failure(self) -> None:
         """Should return default path when detection fails."""
-        with patch("src.infrastructure.persistence.container.get_workspace_manager") as mock_get_wm:
-            mock_get_wm.side_effect = OSError("Detection failed")
-
+        with patch(
+            "src.infrastructure.persistence.container._detect_workspace_fast",
+            side_effect=OSError("Detection failed"),
+        ):
+            # _detect_workspace_fast raises, detect_memory_db_path catches and returns default
             result = detect_memory_db_path()
 
             assert result == get_default_db_path()
