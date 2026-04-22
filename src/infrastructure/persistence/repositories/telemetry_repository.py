@@ -275,7 +275,7 @@ class TelemetryRepositoryImpl(TelemetryRepository):
         self,
         metric_name: str,
         labels: dict[str, str],
-        _bucket_duration: int,
+        bucket_duration: int,  # noqa: ARG002 — required by Protocol, not used in current query
         start_time: int,
         end_time: int,
     ) -> list[MetricBucket]:

@@ -43,8 +43,9 @@ def _cap_json_response(
     if estimate_tokens(raw_json) > effective_max:
         serialized = data if isinstance(data, list) else [data]
         serialized = cap_response(serialized, effective_max)
-        if isinstance(data, dict) and serialized:
-            return json.dumps(serialized[0])
+        if isinstance(data, dict):
+            # Preserve object shape — return first item or empty dict, never a list
+            return json.dumps(serialized[0] if serialized else {})
         return json.dumps(serialized)
     return raw_json
 
