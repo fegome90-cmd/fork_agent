@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+    from starlette.applications import Starlette
 
 from src.interfaces.mcp import tools  # noqa: F401
 
@@ -39,7 +40,7 @@ def create_mcp_server() -> FastMCP:
     return mcp_server
 
 
-def _wrap_with_auth(app: object) -> object:
+def _wrap_with_auth(app: Starlette) -> Starlette:
     """Wrap a Starlette app with Bearer auth middleware for SSE/HTTP transports.
 
     Only adds middleware when ``FORK_MCP_TOKEN`` is set.  When the env var
@@ -55,17 +56,15 @@ def _wrap_with_auth(app: object) -> object:
 
     from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
     from starlette.applications import Starlette
-    from starlette.middleware import Middleware
     from starlette.middleware.authentication import AuthenticationMiddleware
 
     from src.interfaces.mcp.auth import ApiKeyTokenVerifier
 
     verifier = ApiKeyTokenVerifier()
     backend = BearerAuthBackend(verifier)
-    auth_mw = Middleware(AuthenticationMiddleware, backend=backend)
 
     if isinstance(app, Starlette):
-        app.add_middleware(auth_mw)
+        app.add_middleware(AuthenticationMiddleware, backend=backend)
     return app
 
 

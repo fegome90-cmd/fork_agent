@@ -116,12 +116,12 @@ class MessageStore:
             return msg.id
 
     def get_for_agent(self, agent_id: str, limit: int = 50) -> list[AgentMessage]:
-        """Get messages addressed to a specific agent."""
+        """Get unread messages addressed to a specific agent."""
         with self._connection as conn:
             cursor = conn.execute(
                 """
                 SELECT * FROM messages
-                WHERE to_agent = ? OR to_agent = '*'
+                WHERE (to_agent = ? OR to_agent = '*') AND is_read = 0
                 ORDER BY created_at DESC, id DESC
                 LIMIT ?
                 """,
@@ -199,12 +199,13 @@ class MessageStore:
             )
             expired_count = cursor.rowcount
             # Purge read messages older than 5 minutes
-            conn.execute(
+            cursor = conn.execute(
                 "DELETE FROM messages WHERE is_read = 1 AND created_at < ?",
                 (read_purge_cutoff_ms,),
             )
+            read_count = cursor.rowcount
             conn.commit()
-            return expired_count
+            return expired_count + read_count
 
     def mark_as_read(self, ids: list[str]) -> int:
         """Mark messages as read (soft delete). Read messages are auto-purged after 5 min."""

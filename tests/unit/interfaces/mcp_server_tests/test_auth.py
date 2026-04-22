@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from src.interfaces.mcp.auth import ApiKeyTokenVerifier
@@ -18,8 +16,10 @@ class TestApiKeyTokenVerifier:
         monkeypatch.delenv("FORK_MCP_TOKEN", raising=False)
 
     @pytest.mark.asyncio
-    async def test_matching_token_returns_access_token(self) -> None:
-        os.environ["FORK_MCP_TOKEN"] = "secret-key-123"
+    async def test_matching_token_returns_access_token(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FORK_MCP_TOKEN", "secret-key-123")
         verifier = ApiKeyTokenVerifier()
         result = await verifier.verify_token("secret-key-123")
         assert result is not None
@@ -27,15 +27,15 @@ class TestApiKeyTokenVerifier:
         assert result.token == "secret-key-123"
 
     @pytest.mark.asyncio
-    async def test_wrong_token_returns_none(self) -> None:
-        os.environ["FORK_MCP_TOKEN"] = "secret-key-123"
+    async def test_wrong_token_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FORK_MCP_TOKEN", "secret-key-123")
         verifier = ApiKeyTokenVerifier()
         result = await verifier.verify_token("wrong-token")
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_empty_env_var_accepts_anything(self) -> None:
-        os.environ["FORK_MCP_TOKEN"] = ""
+    async def test_empty_env_var_accepts_anything(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FORK_MCP_TOKEN", "")
         verifier = ApiKeyTokenVerifier()
         result = await verifier.verify_token("anything-goes")
         assert result is not None
@@ -49,8 +49,10 @@ class TestApiKeyTokenVerifier:
         assert result.client_id == "local"
 
     @pytest.mark.asyncio
-    async def test_empty_string_token_rejected_when_configured(self) -> None:
-        os.environ["FORK_MCP_TOKEN"] = "secret-key-123"
+    async def test_empty_string_token_rejected_when_configured(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FORK_MCP_TOKEN", "secret-key-123")
         verifier = ApiKeyTokenVerifier()
         result = await verifier.verify_token("")
         assert result is None

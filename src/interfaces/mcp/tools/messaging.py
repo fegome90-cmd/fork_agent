@@ -111,6 +111,8 @@ def fork_message_receive(
             messenger.mark_messages_read(ids)
 
         return json.dumps(serialized)
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_receive failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -139,6 +141,8 @@ def fork_message_broadcast(
         logger.info("fork_message_broadcast: from=%s recipients=%d", effective_from, count)
 
         return json.dumps({"status": "broadcast", "recipients": count})
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_broadcast failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -167,6 +171,8 @@ def fork_message_history(
         serialized = _serialize_messages(history)
 
         return json.dumps(serialized)
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_history failed: %s", e, exc_info=True)
         raise _map_error(e) from e

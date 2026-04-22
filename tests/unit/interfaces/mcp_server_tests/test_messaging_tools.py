@@ -164,7 +164,7 @@ class TestForkMessageReceive:
         mock_get.return_value.get_messages.assert_called_once_with("agent-1:0", limit=10)
 
     @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
-    def test_mark_read_calls_delete(self, mock_get: MagicMock) -> None:
+    def test_mark_read_calls_mark_messages_read(self, mock_get: MagicMock) -> None:
         from src.interfaces.mcp.tools import fork_message_receive
 
         msgs = [_make_message(id="m1"), _make_message(id="m2")]
@@ -183,7 +183,7 @@ class TestForkMessageReceive:
 
         fork_message_receive(agent_id="agent-1:0", mark_read=False)
 
-        mock_get.return_value.delete_messages.assert_not_called()
+        mock_get.return_value.mark_messages_read.assert_not_called()
 
     @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_mark_read_default_does_not_delete(self, mock_get: MagicMock) -> None:
@@ -194,7 +194,7 @@ class TestForkMessageReceive:
 
         fork_message_receive(agent_id="agent-1:0")
 
-        mock_get.return_value.delete_messages.assert_not_called()
+        mock_get.return_value.mark_messages_read.assert_not_called()
 
     @patch("src.interfaces.mcp.tools.messaging._get_agent_messenger")
     def test_empty_result_returns_empty_array(self, mock_get: MagicMock) -> None:
@@ -212,7 +212,7 @@ class TestForkMessageReceive:
         mock_get.return_value.get_messages.return_value = []
         fork_message_receive(agent_id="agent-1:0", mark_read=True)
 
-        mock_get.return_value.delete_messages.assert_not_called()
+        mock_get.return_value.mark_messages_read.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
