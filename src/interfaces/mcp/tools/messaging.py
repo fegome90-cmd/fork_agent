@@ -73,6 +73,7 @@ def fork_message_send(
         from mcp import McpError
         if isinstance(_e, McpError):
             raise
+        raise _e
     except Exception as e:
         logger.error("fork_message_send failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -112,6 +113,7 @@ def fork_message_receive(
         from mcp import McpError
         if isinstance(_e, McpError):
             raise
+        raise _e
     except Exception as e:
         logger.error("fork_message_receive failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -144,6 +146,7 @@ def fork_message_broadcast(
         from mcp import McpError
         if isinstance(_e, McpError):
             raise
+        raise _e
     except Exception as e:
         logger.error("fork_message_broadcast failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -176,6 +179,7 @@ def fork_message_history(
         from mcp import McpError
         if isinstance(_e, McpError):
             raise
+        raise _e
     except Exception as e:
         logger.error("fork_message_history failed: %s", e, exc_info=True)
         raise _map_error(e) from e
