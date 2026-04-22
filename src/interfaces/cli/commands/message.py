@@ -23,7 +23,10 @@ def send_message(
     payload: Annotated[str, typer.Argument(help="Message content")],
     from_agent: Annotated[str, typer.Option(help="Source agent ID")] = "cli:0",
     type: Annotated[
-        str, typer.Option("--type", help="Message type (COMMAND/REPLY/HANDOFF/PROGRESS/FILE_TOUCHED/OBSERVATION)")
+        str,
+        typer.Option(
+            "--type", help="Message type (COMMAND/REPLY/HANDOFF/PROGRESS/FILE_TOUCHED/OBSERVATION)"
+        ),
     ] = "COMMAND",
 ) -> None:
     """Send a message to another agent."""
@@ -108,10 +111,16 @@ def show_history(
 
 @app.command("receive")
 def receive_messages(
-    agent_id: Annotated[str, typer.Argument(help="Agent ID to receive messages for (session:window)")],
+    agent_id: Annotated[
+        str, typer.Argument(help="Agent ID to receive messages for (session:window)")
+    ],
     limit: Annotated[int, typer.Option(help="Max messages to retrieve")] = 10,
-    watch: Annotated[bool, typer.Option("--watch", help="Continuous polling (5s interval)")] = False,
-    mark_read: Annotated[bool, typer.Option("--mark-read", help="Delete messages after retrieval")] = False,
+    watch: Annotated[
+        bool, typer.Option("--watch", help="Continuous polling (5s interval)")
+    ] = False,
+    mark_read: Annotated[
+        bool, typer.Option("--mark-read", help="Delete messages after retrieval")
+    ] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
 ) -> None:
     messenger = get_agent_messenger()

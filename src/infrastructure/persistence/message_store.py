@@ -59,8 +59,22 @@ class MessageStore:
             )
             conn.commit()
 
+            # Migration: add is_read column to existing databases (SQLite ALTER TABLE
+            # only supports adding columns at the end, and silently ignores if exists).
+            try:
+                conn.execute("ALTER TABLE messages ADD COLUMN is_read INTEGER NOT NULL DEFAULT 0")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+
+            # Index for soft-delete cleanup (must come after column migration)
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_messages_is_read ON messages(is_read, created_at)"
+            )
+            conn.commit()
+
     def save(self, msg: AgentMessage) -> str:
-        """Save a message to the store and maintain hygiene."""""
+        """Save a message to the store and maintain hygiene."""
         # 1. Self-healing: Purge expired before adding new ones
         self.cleanup_expired()
 
@@ -102,12 +116,12 @@ class MessageStore:
             return msg.id
 
     def get_for_agent(self, agent_id: str, limit: int = 50) -> list[AgentMessage]:
-        """Get messages addressed to a specific agent."""
+        """Get unread messages addressed to a specific agent."""
         with self._connection as conn:
             cursor = conn.execute(
                 """
                 SELECT * FROM messages
-                WHERE to_agent = ? OR to_agent = '*'
+                WHERE (to_agent = ? OR to_agent = '*') AND is_read = 0
                 ORDER BY created_at DESC, id DESC
                 LIMIT ?
                 """,
@@ -173,14 +187,48 @@ class MessageStore:
         return self.cleanup_expired()
 
     def cleanup_expired(self) -> int:
-        """Remove messages that have expired."""""
+        """Remove messages that have expired or are read and older than 5 minutes."""
         import time
 
         now_ms = int(time.time() * 1000)
+        read_purge_cutoff_ms = now_ms - (5 * 60 * 1000)
         with self._connection as conn:
             cursor = conn.execute(
                 "DELETE FROM messages WHERE expires_at < ?",
                 (now_ms,),
+            )
+            expired_count = cursor.rowcount
+            # Purge read messages older than 5 minutes
+            cursor = conn.execute(
+                "DELETE FROM messages WHERE is_read = 1 AND created_at < ?",
+                (read_purge_cutoff_ms,),
+            )
+            read_count = cursor.rowcount
+            conn.commit()
+            return expired_count + read_count
+
+    def mark_as_read(self, ids: list[str]) -> int:
+        """Mark messages as read (soft delete). Read messages are auto-purged after 5 min."""
+        if not ids:
+            return 0
+        placeholders = ",".join("?" for _ in ids)
+        with self._connection as conn:
+            cursor = conn.execute(
+                f"UPDATE messages SET is_read = 1 WHERE id IN ({placeholders})",
+                ids,
+            )
+            conn.commit()
+            return cursor.rowcount
+
+    def delete_by_ids(self, message_ids: list[str]) -> int:
+        """Hard-delete messages by their IDs."""
+        if not message_ids:
+            return 0
+        placeholders = ",".join("?" for _ in message_ids)
+        with self._connection as conn:
+            cursor = conn.execute(
+                f"DELETE FROM messages WHERE id IN ({placeholders})",
+                message_ids,
             )
             conn.commit()
             return cursor.rowcount

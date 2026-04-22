@@ -65,24 +65,26 @@ class ShellActionRunner:
         strict_mode: When True, blocks unknown commands.
     """
 
-    _DANGEROUS_PATTERNS: frozenset[str] = frozenset({
-        "curl ",
-        "wget ",
-        "nc ",
-        "ncat ",
-        "bash -i",
-        "sh -i",
-        "/dev/tcp/",
-        "/dev/udp/",
-        "base64 -d",
-        "xxd -r",
-        "chmod 777",
-        "chmod 666",
-        "> /etc/",
-        ">> /etc/",
-        "mkfifo ",
-        "nohup ",
-    })
+    _DANGEROUS_PATTERNS: frozenset[str] = frozenset(
+        {
+            "curl ",
+            "wget ",
+            "nc ",
+            "ncat ",
+            "bash -i",
+            "sh -i",
+            "/dev/tcp/",
+            "/dev/udp/",
+            "base64 -d",
+            "xxd -r",
+            "chmod 777",
+            "chmod 666",
+            "> /etc/",
+            ">> /etc/",
+            "mkfifo ",
+            "nohup ",
+        }
+    )
 
     __slots__ = ("_default_timeout", "_hooks_dir")
 
@@ -135,9 +137,7 @@ class ShellActionRunner:
 
         for pattern in self._DANGEROUS_PATTERNS:
             if pattern in stripped:
-                raise HookExecutionError(
-                    f"Blocked dangerous command pattern: {pattern.strip()}"
-                )
+                raise HookExecutionError(f"Blocked dangerous command pattern: {pattern.strip()}")
 
     def run(self, action: Action) -> None:
         """Execute the shell command action.

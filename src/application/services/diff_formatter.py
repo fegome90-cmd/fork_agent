@@ -27,7 +27,11 @@ class DiffFormatter:
         Uses ANSI colors: green for added, red for removed, yellow for modified.
         Includes a summary line at the end.
         """
-        total = result.summary.get("added", 0) + result.summary.get("modified", 0) + result.summary.get("removed", 0)
+        total = (
+            result.summary.get("added", 0)
+            + result.summary.get("modified", 0)
+            + result.summary.get("removed", 0)
+        )
 
         lines: list[str] = []
         lines.append(f"{_BOLD}Diff: {result.reference_label} -> {result.target_label}{_RESET}")
@@ -39,7 +43,7 @@ class DiffFormatter:
         lines.append("")
 
         for entry in result.entries:
-            preview = entry.content[:DiffFormatter._CONTENT_PREVIEW_LENGTH]
+            preview = entry.content[: DiffFormatter._CONTENT_PREVIEW_LENGTH]
             if entry.status == "added":
                 lines.append(f"  {_GREEN}[+] {_RESET}{entry.topic_key}")
                 lines.append(f"      {preview}")
@@ -47,7 +51,9 @@ class DiffFormatter:
                 lines.append(f"  {_RED}[-] {_RESET}{entry.topic_key}")
                 lines.append(f"      {preview}")
             elif entry.status == "modified":
-                prev_preview = (entry.previous_content or "")[:DiffFormatter._CONTENT_PREVIEW_LENGTH]
+                prev_preview = (entry.previous_content or "")[
+                    : DiffFormatter._CONTENT_PREVIEW_LENGTH
+                ]
                 lines.append(f"  {_YELLOW}[~] {_RESET}{entry.topic_key}")
                 lines.append(f"      {_RED}- {prev_preview}{_RESET}")
                 lines.append(f"      {_GREEN}+ {preview}{_RESET}")
@@ -87,10 +93,12 @@ class DiffFormatter:
             item: dict[str, Any] = {
                 "status": entry.status,
                 "topic_key": entry.topic_key,
-                "content_preview": entry.content[:DiffFormatter._CONTENT_PREVIEW_LENGTH],
+                "content_preview": entry.content[: DiffFormatter._CONTENT_PREVIEW_LENGTH],
             }
             if entry.previous_content is not None:
-                item["previous_content"] = entry.previous_content[:DiffFormatter._CONTENT_PREVIEW_LENGTH]
+                item["previous_content"] = entry.previous_content[
+                    : DiffFormatter._CONTENT_PREVIEW_LENGTH
+                ]
             if entry.observation_id is not None:
                 item["observation_id"] = entry.observation_id
             diffs.append(item)

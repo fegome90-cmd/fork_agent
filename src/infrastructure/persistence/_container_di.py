@@ -192,4 +192,3 @@ def override_database_for_testing(container: Container, test_db_path: Path) -> N
     """Override database path for testing."""
     container.config.db_path.override(test_db_path)
     container.database_config.reset()
-

@@ -166,4 +166,3 @@ class EnhancedRetrievalSearchService:
             and (session_id is None or observation.session_id == session_id)
         ]
         return filtered[:effective_limit]
-

@@ -154,6 +154,7 @@ def _get_create_container():
     global _create_container_ref
     if _create_container_ref is None:
         from src.infrastructure.persistence._container_di import create_container
+
         _create_container_ref = create_container
     return _create_container_ref
 

@@ -46,17 +46,13 @@ _LARGE_CONTENT = "word " * 20000  # ~100KB, well over 8000 token budget
 def _reset_service_singletons():
     """Reset module-level service globals before each test to avoid leakage."""
     import src.interfaces.mcp.tools as tools_mod
+    import src.interfaces.mcp.tools._shared as shared_mod
 
-    original = (
-        tools_mod._memory_service,
-        tools_mod._session_service,
-        tools_mod._health_service,
-    )
-    tools_mod._memory_service = None
-    tools_mod._session_service = None
-    tools_mod._health_service = None
+    original = tools_mod._singletons.copy()
+    tools_mod._singletons.clear()
     yield
-    tools_mod._memory_service, tools_mod._session_service, tools_mod._health_service = original
+    shared_mod._singletons = original
+    tools_mod._singletons = original
 
 
 def _mock_memory_service(**method_returns: Any) -> MagicMock:
@@ -72,7 +68,7 @@ def _mock_memory_service(**method_returns: Any) -> MagicMock:
 # ---------------------------------------------------------------------------
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_search_small_results_no_truncation(mock_get_service: MagicMock):
     """Small results should pass through without capping."""
     obs = _make_fake_obs(content="tiny")
@@ -86,7 +82,7 @@ def test_memory_search_small_results_no_truncation(mock_get_service: MagicMock):
     assert "_truncated" not in result[0]
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_search_max_tokens_1_truncates(mock_get_service: MagicMock):
     """max_tokens should truncate content to fit budget."""
     obs = _make_fake_obs(content=_LARGE_CONTENT)
@@ -101,7 +97,7 @@ def test_memory_search_max_tokens_1_truncates(mock_get_service: MagicMock):
     assert result[0].get("_truncated") is True
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_search_default_behavior(mock_get_service: MagicMock):
     """Default (no max_tokens) uses DEFAULT_MAX_TOKENS (8000)."""
     obs = _make_fake_obs(content="normal content")
@@ -119,7 +115,7 @@ def test_memory_search_default_behavior(mock_get_service: MagicMock):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_get_respects_max_tokens(mock_get_service: MagicMock):
     """Large single observation should be truncated when max_tokens is small."""
     obs = _make_fake_obs(content=_LARGE_CONTENT)
@@ -132,7 +128,7 @@ def test_memory_get_respects_max_tokens(mock_get_service: MagicMock):
     assert len(result["content"]) < len(_LARGE_CONTENT)
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_get_small_content_unchanged(mock_get_service: MagicMock):
     """Small content should pass through without truncation."""
     obs = _make_fake_obs(content="small")
@@ -150,7 +146,7 @@ def test_memory_get_small_content_unchanged(mock_get_service: MagicMock):
 # ---------------------------------------------------------------------------
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_list_respects_max_tokens(mock_get_service: MagicMock):
     """List with large observations should respect max_tokens budget."""
     observations = [_make_fake_obs(content=_LARGE_CONTENT) for _ in range(5)]
@@ -163,7 +159,7 @@ def test_memory_list_respects_max_tokens(mock_get_service: MagicMock):
     assert len(result) < 5
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_list_default_no_truncation_for_small(mock_get_service: MagicMock):
     """Small list should pass through without capping by default."""
     observations = [_make_fake_obs(content="item") for _ in range(3)]
@@ -181,7 +177,7 @@ def test_memory_list_default_no_truncation_for_small(mock_get_service: MagicMock
 # ---------------------------------------------------------------------------
 
 
-@patch("src.interfaces.mcp.tools._get_memory_service")
+@patch("src.interfaces.mcp.tools.memory._get_memory_service")
 def test_memory_context_respects_max_tokens(mock_get_service: MagicMock):
     """Context with large observations should respect max_tokens budget."""
     observations = [_make_fake_obs(content=_LARGE_CONTENT)]

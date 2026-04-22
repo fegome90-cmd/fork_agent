@@ -51,30 +51,30 @@ class TestGetMemoryService:
 
     def test_returns_memory_service_with_default_path(self) -> None:
         """Should return a MemoryService with default DB path."""
-        with patch("src.infrastructure.persistence.container.get_container") as mock_get:
-            mock_container = MagicMock()
-            mock_service = MagicMock()
-            mock_container.memory_service.return_value = mock_service
-            mock_get.return_value = mock_container
+        from src.application.services.memory_service import MemoryService
+
+        with patch("src.infrastructure.persistence.container._get_or_create_fast") as mock_fast:
+            mock_repo = MagicMock()
+            mock_telemetry_repo = MagicMock()
+            mock_fast.return_value = (mock_repo, mock_telemetry_repo)
 
             result = get_memory_service()
 
-            assert result is mock_service
+            assert isinstance(result, MemoryService)
+            mock_fast.assert_called_once_with(None)
 
     def test_returns_memory_service_with_custom_path(self) -> None:
         """Should return a MemoryService with custom DB path."""
         custom_path = Path("/custom/path/memory.db")
 
-        with patch("src.infrastructure.persistence.container.create_container") as mock_create:
-            mock_container = MagicMock()
-            mock_service = MagicMock()
-            mock_container.memory_service.return_value = mock_service
-            mock_create.return_value = mock_container
+        with patch("src.infrastructure.persistence.container._get_or_create_fast") as mock_fast:
+            mock_repo = MagicMock()
+            mock_telemetry_repo = MagicMock()
+            mock_fast.return_value = (mock_repo, mock_telemetry_repo)
 
-            result = get_memory_service(custom_path)
+            get_memory_service(custom_path)
 
-            mock_create.assert_called_once_with(custom_path)
-            assert result is mock_service
+            mock_fast.assert_called_once_with(custom_path)
 
 
 class TestGetWorkspaceManager:
@@ -164,12 +164,14 @@ class TestCreateContainer:
 
     def test_creates_container_with_default_path(self) -> None:
         """Should create container with default DB path."""
-        with patch(
-            "src.infrastructure.persistence.container._run_migrations_on_init"
-        ) as mock_migrate:
+        with (
+            patch(
+                "src.infrastructure.persistence._container_di._run_migrations_on_init"
+            ) as mock_migrate,
+            patch("src.infrastructure.persistence._container_di._auto_backup"),
+        ):
             container = create_container()
 
-            # Container is created (dependency-injector returns DynamicContainer)
             assert container is not None
             mock_migrate.assert_called_once()
 
@@ -177,14 +179,15 @@ class TestCreateContainer:
         """Should create container with custom DB path."""
         custom_path = Path("/custom/db/path.db")
 
-        with patch(
-            "src.infrastructure.persistence.container._run_migrations_on_init"
-        ) as mock_migrate:
+        with (
+            patch(
+                "src.infrastructure.persistence._container_di._run_migrations_on_init"
+            ) as mock_migrate,
+            patch("src.infrastructure.persistence._container_di._auto_backup"),
+        ):
             container = create_container(custom_path)
 
-            # Container is created
             assert container is not None
-            # Verify custom path was used
             from unittest.mock import ANY
 
             mock_migrate.assert_called_once_with(custom_path, ANY)
