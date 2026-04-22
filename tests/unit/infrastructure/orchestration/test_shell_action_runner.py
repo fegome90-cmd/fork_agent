@@ -197,8 +197,8 @@ class TestValidateCommand:
     def test_normal_command_passes_validation(self, tmp_path: Path) -> None:
         """Safe commands like echo and git should pass validation."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                ShellActionRunner,
-            )
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command="echo hello")
@@ -211,9 +211,9 @@ class TestValidateCommand:
     def test_curl_raises_hook_execution_error(self, tmp_path: Path) -> None:
         """curl commands should be blocked as dangerous."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                HookExecutionError,
-                ShellActionRunner,
-            )
+            HookExecutionError,
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command="curl http://example.com")
@@ -224,9 +224,9 @@ class TestValidateCommand:
     def test_bash_interactive_raises_hook_execution_error(self, tmp_path: Path) -> None:
         """Interactive bash should be blocked."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                HookExecutionError,
-                ShellActionRunner,
-            )
+            HookExecutionError,
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command="bash -i")
@@ -237,9 +237,9 @@ class TestValidateCommand:
     def test_wget_raises_hook_execution_error(self, tmp_path: Path) -> None:
         """wget commands should be blocked as dangerous."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                HookExecutionError,
-                ShellActionRunner,
-            )
+            HookExecutionError,
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command="wget http://example.com/file")
@@ -250,8 +250,8 @@ class TestValidateCommand:
     def test_compound_safe_command_passes(self, tmp_path: Path) -> None:
         """Safe commands with && should pass validation."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                ShellActionRunner,
-            )
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command='git add . && git commit -m "msg"')
@@ -264,9 +264,9 @@ class TestValidateCommand:
     def test_dev_tcp_raises_hook_execution_error(self, tmp_path: Path) -> None:
         """/dev/tcp/ pattern should be blocked."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                HookExecutionError,
-                ShellActionRunner,
-            )
+            HookExecutionError,
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command="bash -c 'cat /dev/tcp/host/port'")
@@ -277,9 +277,9 @@ class TestValidateCommand:
     def test_chmod_777_raises_hook_execution_error(self, tmp_path: Path) -> None:
         """chmod 777 should be blocked."""
         from src.infrastructure.orchestration.shell_action_runner import (
-                HookExecutionError,
-                ShellActionRunner,
-            )
+            HookExecutionError,
+            ShellActionRunner,
+        )
 
         runner = ShellActionRunner(hooks_dir=tmp_path)
         action = ShellCommandAction(command="chmod 777 /tmp/something")

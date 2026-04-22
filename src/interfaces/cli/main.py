@@ -54,9 +54,13 @@ app = typer.Typer(
 )
 
 app.command(name="save")(save.save)
-app.command(name="search", help="Full-text search using FTS5. Returns observations ranked by relevance.")(search.search)
+app.command(
+    name="search", help="Full-text search using FTS5. Returns observations ranked by relevance."
+)(search.search)
 app.command(name="retrieve")(retrieve.retrieve)
-app.command(name="list", help="List recent observations in reverse chronological order.")(list.list_observations)
+app.command(name="list", help="List recent observations in reverse chronological order.")(
+    list.list_observations
+)
 app.command(name="get", help="Get a single observation by ID (accepts 8+ char prefix).")(get.get)
 app.command(name="delete")(delete.delete)
 app.command(name="diff")(diff.diff)

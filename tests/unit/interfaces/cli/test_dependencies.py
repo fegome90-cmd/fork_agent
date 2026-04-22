@@ -68,7 +68,10 @@ class TestGetMemoryService:
                 TelemetryRepositoryImpl,
             )
 
-            mock_fast.return_value = (MagicMock(spec=ObservationRepository), MagicMock(spec=TelemetryRepositoryImpl))
+            mock_fast.return_value = (
+                MagicMock(spec=ObservationRepository),
+                MagicMock(spec=TelemetryRepositoryImpl),
+            )
             result = dependencies.get_memory_service()
             assert isinstance(result, MemoryService)
 

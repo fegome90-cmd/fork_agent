@@ -218,7 +218,9 @@ class MemoryService:
         if self._telemetry:
             self._telemetry.track_memory_delete(observation_id=observation_id)
 
-    def get_by_time_range(self, start: int, end: int, project: str | None = None) -> list[Observation]:
+    def get_by_time_range(
+        self, start: int, end: int, project: str | None = None
+    ) -> list[Observation]:
         return self._repository.get_by_timestamp_range(start, end, project=project)
 
     def query(

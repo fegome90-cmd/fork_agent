@@ -63,10 +63,12 @@ class DiffService:
         ref_obs = self._repo.get_by_timestamp_range(before[0], before[1])
         target_obs = self._repo.get_by_timestamp_range(after[0], after[1])
         return self._compare(
-            ref_obs, target_obs,
+            ref_obs,
+            target_obs,
             f"timestamp:{before[0]}-{before[1]}",
             f"timestamp:{after[0]}-{after[1]}",
-            project, obs_type,
+            project,
+            obs_type,
         )
 
     def diff_by_session(
@@ -99,10 +101,12 @@ class DiffService:
             raise ValueError(f"No observations found for target session '{session_b}'")
 
         return self._compare(
-            ref_obs, target_obs,
+            ref_obs,
+            target_obs,
             f"session:{session_a}",
             f"session:{session_b}",
-            project, obs_type,
+            project,
+            obs_type,
         )
 
     def diff_by_id(self, id_a: str, id_b: str) -> DiffResult:
@@ -142,7 +146,12 @@ class DiffService:
             reference_label=f"id:{id_a}",
             target_label=f"id:{id_b}",
             entries=(entry,),
-            summary={"modified": 1 if status == "modified" else 0, "unchanged": 1 if status == "unchanged" else 0, "added": 0, "removed": 0},
+            summary={
+                "modified": 1 if status == "modified" else 0,
+                "unchanged": 1 if status == "unchanged" else 0,
+                "added": 0,
+                "removed": 0,
+            },
         )
 
     def _compare(
@@ -173,7 +182,9 @@ class DiffService:
             for obs in obs_list:
                 k = _key(obs)
                 existing = mapping.get(k)
-                if existing is None or getattr(obs, "timestamp", 0) > getattr(existing, "timestamp", 0):
+                if existing is None or getattr(obs, "timestamp", 0) > getattr(
+                    existing, "timestamp", 0
+                ):
                     mapping[k] = obs
             return mapping
 
@@ -189,33 +200,39 @@ class DiffService:
             t = target_map.get(key)
 
             if r is not None and t is None:
-                entries.append(DiffEntry(
-                    status="removed",
-                    topic_key=key,
-                    content=getattr(r, "content", ""),
-                    observation_id=getattr(r, "id", None),
-                ))
+                entries.append(
+                    DiffEntry(
+                        status="removed",
+                        topic_key=key,
+                        content=getattr(r, "content", ""),
+                        observation_id=getattr(r, "id", None),
+                    )
+                )
                 counts["removed"] += 1
             elif r is None and t is not None:
-                entries.append(DiffEntry(
-                    status="added",
-                    topic_key=key,
-                    content=getattr(t, "content", ""),
-                    observation_id=getattr(t, "id", None),
-                ))
+                entries.append(
+                    DiffEntry(
+                        status="added",
+                        topic_key=key,
+                        content=getattr(t, "content", ""),
+                        observation_id=getattr(t, "id", None),
+                    )
+                )
                 counts["added"] += 1
             else:
                 r_content = getattr(r, "content", "")
                 t_content = getattr(t, "content", "")
                 if r_content != t_content:
-                    entries.append(DiffEntry(
-                        status="modified",
-                        topic_key=key,
-                        content=t_content,
-                        previous_content=r_content,
-                        observation_id=getattr(t, "id", None),
-                        previous_id=getattr(r, "id", None),
-                    ))
+                    entries.append(
+                        DiffEntry(
+                            status="modified",
+                            topic_key=key,
+                            content=t_content,
+                            previous_content=r_content,
+                            observation_id=getattr(t, "id", None),
+                            previous_id=getattr(r, "id", None),
+                        )
+                    )
                     counts["modified"] += 1
                 # unchanged entries are tracked but not included in entries list
 
