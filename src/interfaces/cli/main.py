@@ -160,6 +160,10 @@ def main(
     ),
 ) -> None:
     """Manage agent memory observations."""
+    # Skip heavy initialization for --help, --version, shell completion
+    if ctx.resilient_parsing:
+        return
+
     import uuid
 
     from src.application.services.orchestration.events import SessionStartEvent
