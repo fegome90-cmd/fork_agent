@@ -6,9 +6,6 @@ import json
 import re
 from typing import Any
 
-from mcp import McpError
-from mcp.types import INVALID_PARAMS, ErrorData
-
 from src.interfaces.mcp.tools._shared import (
     _get_enhanced_search_service,
     _get_health_service,
@@ -109,7 +106,7 @@ def memory_save(
         JSON with observation id and status.
     """
     if not content or not content.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="content must not be empty"))
+        raise _map_error(ValueError("content must not be empty"))
     effective_project = _resolve_project(project)
     try:
         service = _get_memory_service()
@@ -750,9 +747,9 @@ def memory_merge_projects(
 ) -> str:
     """Merge observations and sessions from source projects into a target project."""
     if not from_projects or not from_projects.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="from_projects must not be empty"))
+        raise _map_error(ValueError("from_projects must not be empty"))
     if not to_project or not to_project.strip():
-        raise McpError(ErrorData(code=INVALID_PARAMS, message="to_project must not be empty"))
+        raise _map_error(ValueError("to_project must not be empty"))
 
     try:
         service = _get_memory_service()
