@@ -33,29 +33,23 @@ class ZellijAdapter(MultiplexerAdapter):
         Uses zellij run with direction right. Derives pane ID from
         the current session context.
         """
-        cmd: list[str] = ["zellij", "run", "--direction", "right", "--", options.command]
-
-        if options.name:
-            cmd.insert(3, "--name")
-            cmd.insert(4, options.name)
+        cmd: list[str] = ["zellij", "run"]
 
         if options.workdir:
-            cmd.insert(2, "-c")
-            cmd.insert(3, options.workdir)
+            cmd.extend(["-c", options.workdir])
 
-        # Set env vars inline in the command if provided (shell-escaped)
-        env_prefix = ""
+        cmd.extend(["--direction", "right"])
+
+        if options.name:
+            cmd.extend(["--name", options.name])
+
+        # Build actual command with env vars prepended
+        actual_command = options.command
         if options.env:
-            exports = " ".join(f"{k}={shlex.quote(v)}" for k, v in options.env.items())
-            env_prefix = f"export {exports} && "
+            exports = " ".join(f"{shlex.quote(k)}={shlex.quote(v)}" for k, v in options.env.items())
+            actual_command = f"export {exports} && {actual_command}"
 
-        if env_prefix:
-            # Find the -- separator and insert prefix before the command
-            try:
-                dash_idx = cmd.index("--")
-                cmd[dash_idx + 1] = f"{env_prefix}{cmd[dash_idx + 1]}"
-            except ValueError:
-                pass
+        cmd.extend(["--", actual_command])
 
         try:
             result = subprocess.run(
@@ -76,7 +70,7 @@ class ZellijAdapter(MultiplexerAdapter):
             # Fallback: use the name as identifier
             pane_id = options.name or "zellij-unknown"
 
-        return PaneInfo(pane_id=pane_id, is_alive=True, title=options.name)
+        return PaneInfo(pane_id=pane_id, is_alive=True, title=options.name or "")
 
     def kill(self, pane_id: str) -> None:
         """Kill a zellij pane by its ID."""

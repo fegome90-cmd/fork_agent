@@ -12,6 +12,7 @@ import shlex
 import subprocess
 
 from src.domain.ports.multiplexer_adapter import MultiplexerAdapter, PaneInfo, SpawnOptions
+from src.infrastructure.tmux_orchestrator import _sanitize_tmux_text
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,18 @@ class TmuxAdapter(MultiplexerAdapter):
         if options.workdir:
             cmd.extend(["-c", options.workdir])
 
-        if options.name:
-            cmd.extend(["-n", options.name])
+        # Build the actual command with env vars prepended
+        actual_command = options.command
+        if options.command:
+            actual_command = _sanitize_tmux_text(options.command)
+        if options.env:
+            exports = " && ".join(
+                f"export {shlex.quote(k)}={shlex.quote(v)}" for k, v in options.env.items()
+            )
+            actual_command = f"{exports} && {actual_command}"
 
         # Command comes last after --
-        cmd.extend(["--", options.command])
+        cmd.extend(["--", actual_command])
 
         try:
             result = subprocess.run(
@@ -60,20 +68,11 @@ class TmuxAdapter(MultiplexerAdapter):
         if not pane_id:
             raise RuntimeError("tmux split-window returned empty pane ID")
 
-        # Set environment variables if provided (shell-escaped for safety)
-        if options.env:
-            for key, value in options.env.items():
-                try:
-                    export_cmd = f"export {key}={shlex.quote(value)}"
-                    subprocess.run(
-                        ["tmux", "send-keys", "-t", pane_id, export_cmd, "Enter"],
-                        capture_output=True,
-                        timeout=_TMUX_TIMEOUT,
-                    )
-                except subprocess.TimeoutExpired:
-                    logger.warning("Timeout setting env var %s in pane %s", key, pane_id)
+        # Set pane title if name provided (split-window has no -n flag)
+        if options.name:
+            self.set_title(pane_id, options.name)
 
-        info = PaneInfo(pane_id=pane_id, is_alive=True, title=options.name)
+        info = PaneInfo(pane_id=pane_id, is_alive=True, title=options.name or "")
         return info
 
     def kill(self, pane_id: str) -> None:

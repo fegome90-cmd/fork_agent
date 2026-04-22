@@ -94,7 +94,7 @@ end tell
         if not session_id:
             session_id = options.name or "iterm2-unknown"
 
-        return PaneInfo(pane_id=session_id, is_alive=True, title=options.name)
+        return PaneInfo(pane_id=session_id, is_alive=True, title=options.name or "")
 
     def kill(self, pane_id: str) -> None:
         """Kill an iTerm2 session by closing its tab."""

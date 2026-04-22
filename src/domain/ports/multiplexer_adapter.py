@@ -7,8 +7,11 @@ infrastructure provides the adapters.
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
+_ENV_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 @dataclass(frozen=True)
@@ -17,15 +20,24 @@ class SpawnOptions:
 
     Attributes:
         command: Shell command to execute in the new pane.
-        name: Human-readable name for the pane.
+        name: Optional human-readable name for the pane.
         env: Optional environment variables to set in the pane.
         workdir: Optional working directory for the pane.
     """
 
     command: str
-    name: str
+    name: str | None = None
     env: dict[str, str] | None = None
     workdir: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.env is not None:
+            for key in self.env:
+                if not _ENV_KEY_PATTERN.match(key):
+                    raise ValueError(
+                        f"Invalid environment variable name: {key!r}. "
+                        f"Must match pattern: {_ENV_KEY_PATTERN.pattern}"
+                    )
 
 
 @dataclass(frozen=True)
