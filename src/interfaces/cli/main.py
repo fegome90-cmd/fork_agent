@@ -59,7 +59,6 @@ def _register_commands() -> None:
     global _commands_registered
     if _commands_registered:
         return
-    _commands_registered = True
 
     from src.interfaces.cli.commands import (
         context,
@@ -124,6 +123,10 @@ def _register_commands() -> None:
     app.add_typer(import_app, name="import")
     app.add_typer(workflow_app, name="workflow")
     app.add_typer(message_app, name="message")
+
+    # Mark registered only after all imports and registrations succeed.
+    # If any import fails, the guard stays False and retry is possible.
+    _commands_registered = True
 
 
 def _get_default_db() -> str:
