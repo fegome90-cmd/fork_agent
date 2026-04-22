@@ -42,7 +42,8 @@ def _detect_project() -> str:
     """
     import os
 
-    return os.path.basename(os.getcwd())
+    name = os.path.basename(os.getcwd())
+    return name or "default"
 
 
 def _resolve_project(project: str | None) -> str:
@@ -110,7 +111,10 @@ def init_service(db_path: str | None = None) -> None:
     global _custom_db_path
     from pathlib import Path
 
-    _custom_db_path = Path(db_path) if db_path else None
+    new_path = Path(db_path) if db_path else None
+    if new_path != _custom_db_path:
+        _singletons.clear()
+    _custom_db_path = new_path
     _get_memory_service()
     _get_session_service()
     _get_health_service()
