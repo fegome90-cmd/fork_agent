@@ -25,6 +25,8 @@ class TestMainApp:
         assert "Manage agent memory observations" in help_text
 
     def test_commands_registered(self) -> None:
+        # Trigger lazy command registration before checking
+        main._register_commands()
         commands = list(main.app.registered_commands)
         command_names = [cmd.name for cmd in commands]
         assert "save" in command_names
