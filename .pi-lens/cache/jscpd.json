@@ -147,7 +147,7 @@
     },
     {
       "fileA": "src/interfaces/cli/commands/poll.py",
-      "startA": 160,
+      "startA": 161,
       "fileB": "src/interfaces/cli/commands/task.py",
       "startB": 353,
       "lines": 9,
@@ -459,6 +459,6 @@
     }
   ],
   "duplicatedLines": 721,
-  "totalLines": 34234,
-  "percentage": 2.11
+  "totalLines": 36056,
+  "percentage": 2
 }

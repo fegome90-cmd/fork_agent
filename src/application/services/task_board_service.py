@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import builtins  # noqa: F401 — needed because `def list()` shadows builtin
+import dataclasses
 import time
 import uuid
 from dataclasses import replace
 
+from src.application.exceptions import TaskTransitionError
 from src.domain.entities.orchestration_task import (
     OrchestrationTask,
     OrchestrationTaskStatus,
@@ -223,6 +225,23 @@ class TaskBoardService:
         self.resolve_blockers(task_id)
         return updated
 
+    def retry(self, task_id: str) -> OrchestrationTask:
+        """Reset an IN_PROGRESS task back to APPROVED for re-processing.
+
+        Used when a poll run fails or is cancelled — the task needs to go
+        back to the approved pool so it can be picked up again.
+        """
+        task = self._repo.get_by_id(task_id)
+        if task is None:
+            raise ValueError(f"Task '{task_id}' not found")
+        if not task.can_transition_to(OrchestrationTaskStatus.APPROVED):
+            raise TaskTransitionError(
+                f"Cannot retry task '{task_id}' in status {task.status.value}"
+            )
+        updated = dataclasses.replace(task, status=OrchestrationTaskStatus.APPROVED)
+        self._repo.save(updated)
+        return updated
+
     def delete(self, task_id: str, requested_by: str | None = None) -> OrchestrationTask:
         """Soft-delete a task (any status -> DELETED)."""
         task = self._require_task(task_id)
@@ -294,8 +313,8 @@ class TaskBoardService:
         task: OrchestrationTask,
         target: OrchestrationTaskStatus,
     ) -> None:
-        """Raise ValueError if the transition is not allowed."""
+        """Raise TaskTransitionError if the transition is not allowed."""
         if not task.can_transition_to(target):
-            raise ValueError(
+            raise TaskTransitionError(
                 f"Cannot transition task '{task.id}' from {task.status.value} to {target.value}"
             )

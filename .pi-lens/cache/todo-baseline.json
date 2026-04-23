@@ -1,6 +1,13 @@
 {
   "items": [
     {
+      "type": "TODO",
+      "message": "migrate all callers to cas_update_status",
+      "file": "src/infrastructure/persistence/repositories/poll_run_repository.py",
+      "line": 90,
+      "column": 6
+    },
+    {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
       "file": "src/interfaces/api/routes/agents.py",

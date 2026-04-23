@@ -80,17 +80,17 @@ class TestGetMemoryService:
 class TestGetWorkspaceManager:
     """Tests for get_workspace_manager factory function."""
 
-    def test_returns_workspace_manager_instance(self) -> None:
+    def test_returns_workspace_manager_instance(self, tmp_path: Path) -> None:
         """Should return a WorkspaceManager instance via container."""
         from src.application.services.workspace.workspace_manager import WorkspaceManager
 
-        db = Path("/tmp/test_wm.db")
+        db = tmp_path / "test_wm.db"
         result = get_workspace_manager(db)
         assert isinstance(result, WorkspaceManager)
 
-    def test_returns_container_singleton(self) -> None:
+    def test_returns_container_singleton(self, tmp_path: Path) -> None:
         """Should return the same instance for same db_path."""
-        db = Path("/tmp/test_wm_singleton.db")
+        db = tmp_path / "test_wm_singleton.db"
         result1 = get_workspace_manager(db)
         result2 = get_workspace_manager(db)
         assert result1 is result2

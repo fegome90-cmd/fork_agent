@@ -26,8 +26,16 @@ class SqlitePollRunRepository:
                     """INSERT OR REPLACE INTO poll_runs
                        (id, task_id, agent_name, status, started_at, ended_at, poll_run_dir, error_message)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (run.id, run.task_id, run.agent_name, run.status.value,
-                     run.started_at, run.ended_at, run.poll_run_dir, run.error_message),
+                    (
+                        run.id,
+                        run.task_id,
+                        run.agent_name,
+                        run.status.value,
+                        run.started_at,
+                        run.ended_at,
+                        run.poll_run_dir,
+                        run.error_message,
+                    ),
                 )
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to save poll run: {e}", e) from e
@@ -79,8 +87,11 @@ class SqlitePollRunRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to list active poll runs: {e}", e) from e
 
-    def update_status(self, run_id: str, status: PollRunStatus, error_message: str | None = None) -> None:
-        """Update a poll run's status.
+    # TODO: migrate all callers to cas_update_status
+    def update_status(
+        self, run_id: str, status: PollRunStatus, error_message: str | None = None
+    ) -> None:
+        """Update a poll run's status (no CAS guard — deprecated).
 
         Terminal statuses (COMPLETED, FAILED, CANCELLED) also set ended_at.
         Non-terminal statuses set started_at.
@@ -88,7 +99,11 @@ class SqlitePollRunRepository:
         now_ms = int(time.time() * 1000)
         try:
             with self._connection as conn:
-                if status in (PollRunStatus.COMPLETED, PollRunStatus.FAILED, PollRunStatus.CANCELLED):
+                if status in (
+                    PollRunStatus.COMPLETED,
+                    PollRunStatus.FAILED,
+                    PollRunStatus.CANCELLED,
+                ):
                     conn.execute(
                         """UPDATE poll_runs SET status = ?, ended_at = ?, error_message = ?
                             WHERE id = ?""",
@@ -101,6 +116,59 @@ class SqlitePollRunRepository:
                     )
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to update poll run status: {e}", e) from e
+
+    def cas_update_status(
+        self,
+        run_id: str,
+        expected_status: PollRunStatus,
+        new_status: PollRunStatus,
+        error_message: str | None = None,
+        started_at: int | None = None,
+    ) -> bool:
+        """CAS update — only succeeds if current status matches expected_status.
+
+        Returns True if the row was updated, False if the CAS guard failed.
+        """
+        now_ms = int(time.time() * 1000)
+        started_at_val = started_at if started_at is not None else now_ms
+        try:
+            with self._connection as conn:
+                if new_status in (
+                    PollRunStatus.COMPLETED,
+                    PollRunStatus.FAILED,
+                    PollRunStatus.CANCELLED,
+                ):
+                    cursor = conn.execute(
+                        """UPDATE poll_runs SET status = ?, ended_at = ?, error_message = ?, started_at = ?
+                            WHERE id = ? AND status = ?""",
+                        (
+                            new_status.value,
+                            now_ms,
+                            error_message,
+                            started_at_val,
+                            run_id,
+                            expected_status.value,
+                        ),
+                    )
+                else:
+                    cursor = conn.execute(
+                        "UPDATE poll_runs SET status = ?, started_at = ? WHERE id = ? AND status = ?",
+                        (new_status.value, started_at_val, run_id, expected_status.value),
+                    )
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to CAS update poll run status: {e}", e) from e
+
+    def count_by_status(self) -> dict[str, int]:
+        """Return counts grouped by status — single query."""
+        try:
+            with self._connection as conn:
+                rows = conn.execute(
+                    "SELECT status, COUNT(*) as cnt FROM poll_runs GROUP BY status"
+                ).fetchall()
+                return {row["status"]: row["cnt"] for row in rows}
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to count poll runs by status: {e}", e) from e
 
     def remove(self, run_id: str) -> None:
         """Hard-delete a poll run."""

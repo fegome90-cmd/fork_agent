@@ -34,6 +34,7 @@ _TRANSITIONS = {
     },
     OrchestrationTaskStatus.IN_PROGRESS: {
         OrchestrationTaskStatus.COMPLETED,
+        OrchestrationTaskStatus.APPROVED,  # allow retry on run failure/cancellation
         OrchestrationTaskStatus.DELETED,
     },
     OrchestrationTaskStatus.COMPLETED: {

@@ -51,6 +51,10 @@ class WorkflowError(Exception):
     pass
 
 
+class TaskTransitionError(ValueError):
+    """Raised when a task state transition is invalid or the task is concurrently modified."""
+
+
 class PhaseSkipError(WorkflowError):
     """Raised when attempting to skip a workflow phase without proper validation."""
 

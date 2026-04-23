@@ -175,5 +175,6 @@ class TestFullPollingCycle:
         svc.poll_once()
 
         summary = svc.get_status_summary()
-        assert summary["RUNNING"] == 1
-        assert summary["QUEUED"] == 0
+        assert summary.get("RUNNING", 0) == 1
+        # count_by_status only returns statuses with runs
+        assert "QUEUED" not in summary

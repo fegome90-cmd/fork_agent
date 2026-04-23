@@ -42,8 +42,8 @@ def start_polling(
 
     service = get_agent_polling_service()
     # Override defaults if specified
-    service._max_concurrent = max_concurrent  # noqa: SLF001
-    service._poll_interval = interval  # noqa: SLF001
+    service.max_concurrent = max_concurrent
+    service.poll_interval = interval
 
     console.print(
         f"[green]Polling started[/green] (interval={interval}s, max_concurrent={max_concurrent}). Ctrl+C to stop."
@@ -60,6 +60,7 @@ def start_polling(
         console.print("\n[yellow]Shutting down...[/yellow]")
 
     signal.signal(signal.SIGINT, handle_sigint)
+    signal.signal(signal.SIGTERM, handle_sigint)
 
     while running:
         try:

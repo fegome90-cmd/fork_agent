@@ -19,7 +19,9 @@ from threading import Lock
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from src.application.services.agent_polling_service import AgentPollingService
     from src.application.services.task_board_service import TaskBoardService
+    from src.application.services.template_service import TemplateService
 
 
 # Fast-path imports only — these are lightweight (~69ms total)
@@ -377,10 +379,12 @@ def __getattr__(name: str) -> object:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def get_agent_polling_service(db_path: Path | None = None) -> "AgentPollingService":
+def get_agent_polling_service(db_path: Path | None = None) -> AgentPollingService:
     """Get an AgentPollingService wired with SQLite repo and filesystem."""
     from src.application.services.agent_polling_service import AgentPollingService
-    from src.infrastructure.persistence.repositories.poll_run_repository import SqlitePollRunRepository
+    from src.infrastructure.persistence.repositories.poll_run_repository import (
+        SqlitePollRunRepository,
+    )
     from src.infrastructure.polling.poll_run_directory import PollRunDirectory
 
     task_svc = get_task_board_service(db_path)
@@ -388,3 +392,24 @@ def get_agent_polling_service(db_path: Path | None = None) -> "AgentPollingServi
     repo = SqlitePollRunRepository(connection=db)
     run_dir = PollRunDirectory()
     return AgentPollingService(task_service=task_svc, poll_run_repo=repo, run_dir=run_dir)
+
+
+def get_template_service(db_path: Path | None = None) -> TemplateService:
+    """Get a TemplateService wired with SQLite repos and filesystem."""
+    from src.application.services.template_service import TemplateService
+    from src.infrastructure.persistence.repositories.agent_template_repository import (
+        SqliteAgentTemplateRepository,
+        SqliteTeamRepository,
+    )
+    from src.infrastructure.agent_templates.template_directory import TemplateDirectory
+
+    path = db_path or get_default_db_path()
+    conn = get_database_connection(path)
+    template_repo = SqliteAgentTemplateRepository(connection=conn)
+    team_repo = SqliteTeamRepository(connection=conn)
+    template_dir = TemplateDirectory()
+    return TemplateService(
+        template_repo=template_repo,
+        team_repo=team_repo,
+        template_dir=template_dir,
+    )

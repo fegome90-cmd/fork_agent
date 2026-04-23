@@ -12,6 +12,16 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from typing import TypedDict
+
+
+class RunStatus(TypedDict, total=False):
+    """Structure of status.json files."""
+
+    status: str
+    task_id: str
+    started_at: int
+    error: str | None
 
 
 class PollRunDirectory:
@@ -24,7 +34,7 @@ class PollRunDirectory:
             self._base_dir = root / "fork" / "poll-runs"
         else:
             self._base_dir = base_dir
-        self._base_dir.mkdir(parents=True, exist_ok=True)
+        self._base_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     @property
     def base_dir(self) -> Path:
@@ -34,7 +44,7 @@ class PollRunDirectory:
     def create_run_dir(self, run_id: str) -> Path:
         """Create a directory for a specific run. Returns the path."""
         run_dir = self._base_dir / run_id
-        run_dir.mkdir(parents=True, exist_ok=True)
+        run_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         return run_dir
 
     def write_status(self, run_id: str, data: dict[str, object]) -> None:
@@ -53,7 +63,7 @@ class PollRunDirectory:
                 os.unlink(tmp)
             raise
 
-    def read_status(self, run_id: str) -> dict[str, object] | None:
+    def read_status(self, run_id: str) -> RunStatus | None:
         """Read status.json for a run. Returns None if not found."""
         status_path = self._base_dir / run_id / "status.json"
         if not status_path.exists():

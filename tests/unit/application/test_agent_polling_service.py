@@ -77,6 +77,12 @@ class MockRepo:
     def remove(self, run_id: str) -> None:
         self._runs.pop(run_id, None)
 
+    def count_by_status(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for run in self._runs.values():
+            counts[run.status.value] = counts.get(run.status.value, 0) + 1
+        return counts
+
 
 def _make_service(
     max_concurrent: int = DEFAULT_CONCURRENCY,
@@ -219,8 +225,8 @@ class TestGetStatusSummary:
     def test_empty_summary(self) -> None:
         svc, ts, repo, rd = _make_service()
         summary = svc.get_status_summary()
-        for status in PollRunStatus:
-            assert summary[status.value] == 0
+        # count_by_status returns empty dict when no runs exist
+        assert summary == {}
 
     def test_summary_with_runs(self) -> None:
         svc, ts, repo, rd = _make_service()
@@ -232,7 +238,7 @@ class TestGetStatusSummary:
         assert summary["RUNNING"] == 1
         assert summary["COMPLETED"] == 1
         assert summary["FAILED"] == 1
-        assert summary["QUEUED"] == 0
+        # QUEUED not present — count_by_status only returns existing statuses
 
 
 class TestGetActiveRuns:

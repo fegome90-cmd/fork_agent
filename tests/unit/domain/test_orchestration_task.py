@@ -48,6 +48,7 @@ VALID_TRANSITIONS: list[tuple[OrchestrationTaskStatus, OrchestrationTaskStatus]]
     (OrchestrationTaskStatus.APPROVED, OrchestrationTaskStatus.IN_PROGRESS),
     (OrchestrationTaskStatus.APPROVED, OrchestrationTaskStatus.DELETED),
     (OrchestrationTaskStatus.IN_PROGRESS, OrchestrationTaskStatus.COMPLETED),
+    (OrchestrationTaskStatus.IN_PROGRESS, OrchestrationTaskStatus.APPROVED),  # retry on run failure/cancel
     (OrchestrationTaskStatus.IN_PROGRESS, OrchestrationTaskStatus.DELETED),
     (OrchestrationTaskStatus.COMPLETED, OrchestrationTaskStatus.DELETED),
 ]

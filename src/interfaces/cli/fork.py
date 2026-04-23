@@ -27,12 +27,20 @@ ForkTerminalFn = Callable[[str], TerminalResult]
 # Doctor app
 doctor_app = typer.Typer(name="doctor", help="Diagnóstico y reparación del sistema")
 
+from src.interfaces.cli.commands.adapter import app as adapter_app  # noqa: E402
 from src.interfaces.cli.commands.message import app as message_app  # noqa: E402
+from src.interfaces.cli.commands.poll import app as poll_app  # noqa: E402
+from src.interfaces.cli.commands.task import app as task_app  # noqa: E402
+from src.interfaces.cli.commands.template import app as template_app  # noqa: E402
 
 # Root app that combines fork CLI and doctor commands
 root_app = typer.Typer(name="fork", help="Fork terminal operations and doctor diagnostics")
 root_app.add_typer(doctor_app)
 root_app.add_typer(message_app, name="message")
+root_app.add_typer(poll_app, name="poll")
+root_app.add_typer(task_app, name="task")
+root_app.add_typer(adapter_app, name="adapter")
+root_app.add_typer(template_app, name="template")
 
 
 def create_fork_cli(
@@ -246,3 +254,4 @@ def run_cli() -> int:
 
 if __name__ == "__main__":
     root_app()
+# Real use test comment Thu Apr 23 11:49:52 -04 2026

@@ -168,6 +168,50 @@ def show_history(
     console.print(table)
 
 
+@app.command("send-to-pane")
+def message_send_to_pane(
+    pane_id: Annotated[str, typer.Argument(help="Target tmux pane ID")],
+    message: Annotated[str, typer.Argument(help="Message text to send")],
+) -> None:
+    """Send a message to an agent running in a tmux pane.
+
+    Bridges the messaging system (SQLite-backed) with the pane world
+    (tmux send-keys). The message is both persisted via fork message send
+    AND delivered to the pane via tmux send-keys.
+    """
+    import subprocess
+
+    messenger = get_agent_messenger()
+
+    # Persist the message via the existing send pathway
+    msg = AgentMessage.create(
+        from_agent="cli:0",
+        to_agent=pane_id,
+        message_type=MessageType.COMMAND,
+        payload=message,
+    )
+    messenger.send(msg)
+
+    # Deliver to the pane via tmux
+    try:
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, "-l", message],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        subprocess.run(
+            ["tmux", "send-keys", "-t", pane_id, "Enter"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        console.print(f"[green]Message sent to pane {pane_id}[/green]")
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        console.print(f"[yellow]Message persisted but pane delivery failed: {exc}[/yellow]")
+        raise typer.Exit(code=2) from exc
+
+
 @app.command("receive")
 def receive_messages(
     agent_id: Annotated[
@@ -206,7 +250,7 @@ def receive_messages(
     messenger = get_agent_messenger()
 
     def _fetch() -> list[AgentMessage]:
-        return messenger.get_messages(agent_id, limit=limit)
+        return list(messenger.get_messages(agent_id, limit=limit))
 
     def _print_messages(msgs: list[AgentMessage]) -> None:
         if json_output:

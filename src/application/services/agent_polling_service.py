@@ -2,14 +2,24 @@
 
 from __future__ import annotations
 
+import logging
+import os
+import subprocess
 import time
 import uuid
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-from src.application.services.task_board_service import TaskBoardService
+from src.application.exceptions import TaskTransitionError
 from src.domain.entities.orchestration_task import OrchestrationTaskStatus
 from src.domain.entities.poll_run import PollRun, PollRunStatus
 from src.domain.ports.poll_run_repository import PollRunRepository
-from src.infrastructure.polling.poll_run_directory import PollRunDirectory
+
+logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from src.application.services.task_board_service import TaskBoardService
+    from src.infrastructure.polling.poll_run_directory import PollRunDirectory
 
 DEFAULT_CONCURRENCY: int = 4
 DEFAULT_POLL_INTERVAL: int = 10
@@ -23,7 +33,15 @@ class AgentPollingService:
     and tracks execution status via filesystem artifacts.
     """
 
-    __slots__ = ("_task_service", "_poll_run_repo", "_run_dir", "_max_concurrent", "_poll_interval")
+    QUEUED_TIMEOUT_S: int = 300
+
+    __slots__ = (
+        "_task_service",
+        "_poll_run_repo",
+        "_run_dir",
+        "_max_concurrent",
+        "_poll_interval",
+    )
 
     def __init__(
         self,
@@ -43,9 +61,21 @@ class AgentPollingService:
     def max_concurrent(self) -> int:
         return self._max_concurrent
 
+    @max_concurrent.setter
+    def max_concurrent(self, value: int) -> None:
+        if value < 1:
+            raise ValueError("max_concurrent must be >= 1")
+        self._max_concurrent = value
+
     @property
     def poll_interval(self) -> int:
         return self._poll_interval
+
+    @poll_interval.setter
+    def poll_interval(self, value: int) -> None:
+        if value < 0.1:
+            raise ValueError("poll_interval must be >= 0.1 seconds")
+        self._poll_interval = value
 
     def poll_once(self) -> list[PollRun]:
         """Execute a single poll cycle.
@@ -86,8 +116,19 @@ class AgentPollingService:
 
             if status_data is None:
                 if run.status == PollRunStatus.QUEUED:
-                    # Spawn never completed — run stuck as QUEUED
-                    self._fail_run(run.id, "Spawn incomplete: run never reached RUNNING state")
+                    # Check if QUEUED for too long (stuck in spawn)
+                    started_ms = run.started_at or 0
+                    elapsed_s = (int(time.time() * 1000) - started_ms) / 1000
+                    if elapsed_s > self.QUEUED_TIMEOUT_S:
+                        self._fail_run(
+                            run.id,
+                            f"QUEUED timeout after {elapsed_s:.0f}s",
+                        )
+                    else:
+                        self._fail_run(
+                            run.id,
+                            "Spawn incomplete: run never reached RUNNING state",
+                        )
                 else:
                     # RUNNING with no status file — agent crashed
                     self._fail_run(run.id, "Agent crashed: no status file written")
@@ -101,7 +142,20 @@ class AgentPollingService:
             elif run_status == "FAILED":
                 error = str(status_data.get("error", "Unknown error"))
                 self._fail_run(run.id, error)
-            # else: still running
+            else:
+                # Still running — check QUEUED timeout for safety
+                if run.status == PollRunStatus.QUEUED:
+                    started_ms = run.started_at or 0
+                    elapsed_s = (int(time.time() * 1000) - started_ms) / 1000
+                    if elapsed_s > self.QUEUED_TIMEOUT_S:
+                        self._fail_run(
+                            run.id,
+                            f"QUEUED timeout after {elapsed_s:.0f}s",
+                        )
+                        updated.append(
+                            self._poll_run_repo.get_by_id(run.id)  # type: ignore[arg-type]
+                        )
+                        continue
 
             current = self._poll_run_repo.get_by_id(run.id)
             if current is not None:
@@ -124,6 +178,22 @@ class AgentPollingService:
                 "timestamp": int(time.time() * 1000),
             },
         )
+        # Kill the tmux session if running
+        session_name = f"poll-{run_id[:8]}"
+        try:
+            subprocess.run(
+                ["tmux", "kill-session", "-t", session_name],
+                capture_output=True,
+                timeout=5,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        # Reset task to APPROVED so it can be re-picked
+        if run.task_id:
+            try:
+                self._task_service.retry(run.task_id)
+            except (ValueError, TaskTransitionError):
+                pass
         result = self._poll_run_repo.get_by_id(run_id)
         if result is None:
             raise ValueError(f"Poll run '{run_id}' disappeared after update")
@@ -135,15 +205,12 @@ class AgentPollingService:
 
     def get_run_status(self, run_id: str) -> dict[str, object] | None:
         """Read status.json from filesystem for a specific run."""
-        return self._run_dir.read_status(run_id)
+        result = self._run_dir.read_status(run_id)
+        return dict(result) if result is not None else None
 
     def get_status_summary(self) -> dict[str, int]:
-        """Return counts by status."""
-        summary: dict[str, int] = {}
-        for status in PollRunStatus:
-            runs = self._poll_run_repo.list_by_status(status)
-            summary[status.value] = len(runs)
-        return summary
+        """Return counts by status — single GROUP BY query."""
+        return self._poll_run_repo.count_by_status()
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -170,8 +237,8 @@ class AgentPollingService:
         # Start the task on the Task Board
         try:
             self._task_service.start(task_id, owner=POLL_AGENT_OWNER)
-        except ValueError:
-            # Task might have been started by another poll cycle
+        except TaskTransitionError:
+            # Task was concurrently claimed by another poll cycle
             self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, "Task already started")
             result = self._poll_run_repo.get_by_id(run_id)
             if result is None:
@@ -203,6 +270,11 @@ class AgentPollingService:
             },
         )
 
+        # Actually spawn the agent
+        current = self._poll_run_repo.get_by_id(run_id)
+        if current is not None:
+            self._spawn_agent(run=current, task_subject=task_subject, run_dir=str(run_dir))
+
         # Append start event
         self._run_dir.append_event(
             run_id,
@@ -218,11 +290,70 @@ class AgentPollingService:
             raise ValueError(f"Poll run '{run_id}' disappeared after spawn")
         return result
 
+    def _spawn_agent(self, run: PollRun, task_subject: str, run_dir: str) -> None:
+        """Spawn a pi agent subprocess for this poll run.
+
+        Uses tmux split-window if in a tmux session, otherwise falls back
+        to a background subprocess.
+        """
+        run_path = Path(run_dir)
+        if not run_path.exists():
+            logger.warning("Run directory %s does not exist, skipping agent spawn", run_dir)
+            return
+
+        prompt_file = run_path / "agent_prompt.txt"
+        prompt_file.parent.mkdir(parents=True, exist_ok=True)
+        prompt_file.write_text(
+            f"You are an autonomous agent executing task: {task_subject}\n"
+            f"Run ID: {run.id}\n"
+            f"Write your results to {run_dir}/status.json when done.\n"
+            f"Set status to COMPLETED or FAILED.\n"
+        )
+
+        # Try tmux split-window first (if in tmux)
+        if os.environ.get("TMUX"):
+            cmd = [
+                "tmux",
+                "split-window",
+                "-P",
+                "-F",
+                "#{pane_id}",
+                "--",
+                f"pi --mode json -p @{prompt_file} 2>&1 | tee {run_dir}/agent_output.jsonl; echo $?",
+            ]
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                pane_id = result.stdout.strip()
+                if pane_id:
+                    self._run_dir.append_event(
+                        run.id,
+                        {"type": "agent_spawned", "pane_id": pane_id, "method": "tmux"},
+                    )
+                    logger.info("Spawned agent in tmux pane %s for run %s", pane_id, run.id)
+                    return
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+                logger.warning("tmux spawn failed, falling back to subprocess")
+
+        # Fallback: background subprocess
+        log_path = Path(run_dir) / "agent.log"
+        with log_path.open("w") as log_file:
+            proc = subprocess.Popen(
+                ["pi", "--mode", "json", "-p", f"@{prompt_file}"],
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+        self._run_dir.append_event(
+            run.id,
+            {"type": "agent_spawned", "pid": proc.pid, "method": "subprocess"},
+        )
+        logger.info("Spawned agent subprocess PID %d for run %s", proc.pid, run.id)
+
     def _complete_run(self, run_id: str, task_id: str) -> None:
         """Mark a run as completed and complete the task."""
         try:
             self._task_service.complete(task_id)
-        except ValueError:
+        except (ValueError, TaskTransitionError):
             pass  # Task might already be completed — acceptable for polling
         self._poll_run_repo.update_status(run_id, PollRunStatus.COMPLETED)
         self._run_dir.append_event(
@@ -235,7 +366,8 @@ class AgentPollingService:
         )
 
     def _fail_run(self, run_id: str, error: str) -> None:
-        """Mark a run as failed."""
+        """Mark a run as failed and reset the task for re-processing."""
+        run = self._poll_run_repo.get_by_id(run_id)
         self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, error_message=error)
         self._run_dir.append_event(
             run_id,
@@ -245,3 +377,9 @@ class AgentPollingService:
                 "timestamp": int(time.time() * 1000),
             },
         )
+        # Reset task to APPROVED so it can be re-picked
+        if run is not None and run.task_id:
+            try:
+                self._task_service.retry(run.task_id)
+            except (ValueError, TaskTransitionError):
+                pass  # Task might be deleted or already reset

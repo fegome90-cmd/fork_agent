@@ -244,18 +244,290 @@ Usuario: "orquesta X"
 
 ---
 
-## 7. Open Questions
+## 7. Authority Flow Audit — Hallazgos Críticos
 
-- [ ] ¿anchor_dope scripts faltantes (new_sprint_pack.sh, doctor.sh) se implementan o se descarta?
-- [ ] ¿SDD persistence mode default: engram o hybrid?
-- [ ] ¿CLOOP+G+S es el default o solo cuando el usuario lo pide explícito?
-- [ ] ¿El governance layer es opt-in o always-on?
-- [ ] ¿`memory workflow outline` se reemplaza por CLOOP o conviven?
+> Fuente: `docs/research/governance/authority-flow-audit.md`
+> 11 findings: 2 CRITICAL, 3 HIGH, 4 MEDIUM, 2 LOW
+
+### P1 — Block antes de implementar (4 findings)
+
+| # | Problema | Tipo | Resolución propuesta |
+|---|----------|------|---------------------|
+| F1 | **Double writer en ANCHOR.md** — orchestrator y anchor_dope ambos escriben | double-writer | ANCHOR.md es SSOT solo si anchor_dope está activo. Si no, PLAN.md manda. Regla: "si ANCHOR.md existe, Phase 1 lee, nunca escribe" |
+| F2 | **CLOOP Clarify vs Phase 0** — dos pipelines de clarificación | competing-pipeline | Protocol Phase 0 hace dispatch: si plan-architect disponible → delegar a CLOOP. Sino → inline |
+| F3 | **CLOOP Layout/Operate vs Phase 1** — output format no mapea 1:1 | competing-pipeline | Definir transformación: CLOOP output → normalizar al schema de Phase 1 (subtasks + roles + acceptance criteria) |
+| F4 | **workflow outline vs SDD propose** — dos decomposition pipelines | competing-pipeline | Decidir: deprecar outline para proyectos SDD, mantener como fast-path para no-SDD |
+
+### P2 — Prerequisitos (2 findings)
+
+| # | Problema | Tipo |
+|---|----------|------|
+| F5 | False SSOT: ANCHOR.md declarado rey pero no existe (scripts faltantes) | false-ssot |
+| F9 | anchor_dope scripts faltantes (new_sprint_pack.sh, doctor.sh) — toda la capa es vapor | false-ssot |
+
+### P3 — Diseño (4 findings)
+
+| # | Problema | Resolución |
+|---|----------|------------|
+| F6 | Double gate Phase 1.5 + 1.6 | Merge en secuencia ordenada: anchor_dope gates (context) → pre-flight (infrastructure) |
+| F7 | sdd-gate vs human approval | sdd-gate ANTES del humano. FAIL = auto-reject. PASS = forward a humano |
+| F8 | Persistence mode fragmentation | Pin governance pipeline a `hybrid` |
+| F10 | sdd-verify vs Phase 5.5 | sdd-verify REEMPLAZA spec compliance, no duplica |
+
+### Principio de diseño derivado del audit
+
+> **Cada capa LEE del anterior y ESCRIBE sus propios artefactos. Ninguna capa escribe artefactos de otra capa.**
 
 ---
 
-## 8. Historial de cambios
+## 7b. Principio de No-Regresión — Gates de Protección
+
+> **Regla fundamental:** La integración es ADDITIVE. Nada de lo construido se pierde, se reemplaza o se degrada. Cada nueva capa pasa por gates que verifican que el sistema existente sigue funcionando idéntico.
+
+### El contrato
+
+```
+Sin governance → el protocolo de 10 fases funciona EXACTAMENTE como hoy
+Con governance → las fases existentes se ENRIQUECEN, nunca se reemplazan
+Fallback        → si una capa falla, el sistema continúa sin esa capa
+```
+
+### Gates de No-Regresión (por fase)
+
+| Gate | Protege qué | Verifica | Blocking |
+|------|------------|----------|----------|
+| **G0: Fast-path intacto** | Proyectos sin .fork/init.yaml | `memory workflow outline/execute/verify/ship` funciona sin CLOOP/SDD/anchor_dope | Sí |
+| **G1: Protocolo 10 fases intacto** | Fases 0-6 sin dependencias nuevas | Sin CLOOP: Phase 0 usa inline clarify. Sin SDD: Phase 1 usa ad-hoc decomposition. Sin anchor_dope: Phase 1 genera PLAN.md | Sí |
+| **G2: Retrocompatibilidad de skills** | Skills existentes cargan igual | skill-resolver, phase-common, agent-*.md, enforce-envelope funcionan sin governance | Sí |
+| **G3: Scripts existentes intactos** | 18 scripts siguen funcionando | `bash -n` + `--help` en todos los scripts. json-vis, read-turn, watch-agent sin cambios | Sí |
+| **G4: CLI commands intactos** | memory + fork CLI sin breaking changes | `memory save/search/list/get/delete` + `fork doctor/message` idénticos | Sí |
+| **G5: MCP tools intactos** | 21 MCP tools sin cambios | MCP server arranca, tools responden, formato idéntico | Sí |
+| **G6: Persistence compatible** | Memory DB schema sin cambios | Lectura de observaciones pre-governance funciona. No se pierden datos existentes | Sí |
+| **G7: Session continuity** | Sesiones activas continúan | Session recovery después de upgrade funciona. Context budget respetado | Sí |
+
+### Reglas de implementación
+
+**R1: Feature flags para toda nueva funcionalidad**
+```bash
+# Sin governance (fast-path) — idéntico a hoy
+memory workflow outline "task"
+
+# Con governance — enriquecido, pero outline sigue siendo el entry point
+GOVERNANCE=1 memory workflow outline "task"
+# → dispara CLOOP Clarify + SDD propose automáticamente
+```
+
+**R2: Degrade gracefully, nunca hard-fail**
+```
+CLOOP no disponible  → Phase 0 usa inline clarify (como hoy)
+SDD no disponible    → Phase 1 usa ad-hoc decomposition (como hoy)
+anchor_dope no activo → Phase 1 genera PLAN.md (como hoy)
+Trifecta no arranca  → skill-resolver fallback (como hoy)
+MCP server caído     → direct service calls (como hoy, hybrid mode)
+```
+
+**R3: Cada layer es independiente**
+- CLOOP puede usarse sin SDD
+- SDD puede usarse sin CLOOP
+- anchor_dope puede usarse sin CLOOP ni SDD
+- tmux_fork funciona sin ninguna de las tres
+
+**R4: Tests de no-regresión obligatorios**
+Antes de mergear cualquier cambio de governance:
+1. Ejecutar tests existentes (uv run pytest) — todos deben pasar sin cambios
+2. Ejecutar scripts con --help — todos deben responder
+3. Ejecutar memory workflow outline/execute/verify/ship — sin governance
+4. Ejecutar fork doctor status — sin cambios
+5. Verificar MCP tools response format — sin cambios
+6. Verificar que observaciones pre-governance son legibles
+
+**R5: Artifact format backward-compatible**
+- PLAN.md sigue siendo el formato default (sin governance)
+- ANCHOR.md es adicional (con anchor_dope), no reemplaza PLAN.md
+- SDD artifacts usan topic_keys que no colisionan con observaciones existentes
+- Config nueva (schema.yaml, constitution.md) es opcional, no requerida
+
+### Checklist de Gate por Entregable
+
+Antes de cada entregable del §5.3:
+
+- [ ] Tests existentes pasan sin cambios
+- [ ] Scripts existentes funcionan sin cambios
+- [ ] CLI commands funcionan sin governance habilitado
+- [ ] MCP tools responden igual
+- [ ] Memory DB legible sin nuevos campos requeridos
+- [ ] No se eliminó ni renombró ningún archivo existente
+- [ ] No se cambió la firma de ningún CLI command existente
+- [ ] No se agregó dependencia obligatoria nueva
+
+---
+
+## 8. spec-kit Borrow List
+
+> Fuente: `docs/research/governance/complement-analysis.md`
+
+### Tomar de spec-kit
+
+| # | Qué | Dónde integrar |
+|---|-----|---------------|
+| 1 | Clarification phase con coverage-based questioning | Protocol Phase 0.5 |
+| 2 | Constitution para tech decisions (no reemplaza Constitución AI) | `.fork/constitution.md` — usamos nuestro propio directorio |
+| 3 | Coverage gap detection (requerimientos sin tasks) | Mejorar `sdd-gate-skill` |
+| 4 | User Story priority markers [P1]/[P2]/[P3] | Agregar a SDD spec format |
+| 5 | Quality checklist generation | Protocol Phase 1.5 |
+
+### NO tomar de spec-kit
+
+| Qué | Por qué |
+|-----|--------|
+| Extension system | skill-hub ya lo cubre |
+| Workflow engine | tmux_fork protocol ES nuestro engine |
+| Multi-agent registry | pi-only es nuestro scope |
+| spec.md format | SDD delta specs son mejores para brownfield |
+| implement command | sdd-apply con strict TDD es más riguroso |
+
+---
+
+## 8b. OpenSpec — Análisis Complementario
+
+> Fuente: `docs/research/governance/openspec-analysis.md` + `openspec-complement.md`
+> Repo: https://github.com/Fission-AI/OpenSpec
+
+### Qué es OpenSpec
+
+CLI TypeScript (pnpm + vitest) para spec-driven change management. Modelo: **repo-scoped canonical specs + change folders con delta specs**.
+
+**Arquitectura:** `openspec/specs/` (source of truth) + `openspec/changes/<name>/` (deltas) + `openspec/changes/archive/` (history).
+
+### Ciclo de vida
+
+```
+openspec init → /opsx:explore → /opsx:propose → validate → /opsx:apply → /opsx:verify → /opsx:archive
+```
+
+### Puntos fuertes vs spec-kit
+
+1. **Lifecycle completo** — archive + bulk-archive como first-class citizens
+2. **Brownfield-friendly** — specs/ = current truth, changes/ = deltas
+3. **Parallel changes** — múltiples cambios activos con conflict resolution
+4. **Schema YAML** — artifact DAG declarativo como workflow contract
+5. **Menos ceremonia** — propose → apply → archive como fast path
+
+### Puntos donde nuestro stack SUPERA a OpenSpec
+
+1. Governance rigor (CLOOP + anchor_dope + SDD gates)
+2. Pre-implementation blocking gates (sdd-gate)
+3. Post-implementation compliance matrix (sdd-verify)
+4. Strict TDD con evidence tables
+5. Hybrid persistence (filesystem + memory MCP)
+6. Orquestación paralela con agentes (tmux_fork)
+
+### 3 ideas para ROBAR
+
+| # | Idea | Dónde aplicar |
+|---|------|---------------|
+| 1 | **specs/ vs changes/ topology** — separación visual de truth vs deltas | Repositorio de artefactos SDD — layout más legible |
+| 2 | **Schema YAML como artifact DAG** — workflow contract declarativo | `.fork/schema.yaml` — config para artifact dependencies sin hardcodear en skills |
+| 3 | **bulk-archive con conflict resolution** — cerrar múltiples cambios en paralelo | Phase 6 — multi-change archive/sync |
+
+### Ideas a EVITAR
+
+| Idea | Por qué |
+|------|--------|
+| Verification advisory-only | Necesitamos blocking gates |
+| Filesystem-only state | Ya tenemos hybrid persistence |
+| Fluididad sin boundaries | Governance > speed |
+| Parser-fragile markdown | Un typo no debería romper semántica |
+
+### Diferencia filosófica fundamental
+
+- **OpenSpec** optimiza por **friction reduction** — specs prácticos para brownfield
+- **spec-kit** optimiza por **spec discipline** — constitución como governance
+- **Nuestro stack** optimiza por **spec discipline + orchestration discipline** — governance + ejecución
+
+OpenSpec es el **análogo externo más cercano a SDD** (delta specs, change folders, archive), pero más ligero y menos gobernado.
+
+---
+
+## 9. Decisiones Resueltas
+
+| # | Pregunta | Decisión | Rationale |
+|---|----------|----------|-----------|
+| Q1 | anchor_dope scripts | **Implementar** | Necesario para contrato SSOT de anchor.md |
+| Q2 | SDD persistence | **hybrid, pero sin engram** | Usar MCP de memory propio de tmux_fork |
+| Q3 | CLOOP+G+S default | **Sí, default** | Pasa a ser el modo estándar |
+| Q4 | Governance layer | **Always-on con fast-path** | Siempre activo, pero proyectos no-SDD usan fast-path sin spec/design separation |
+| Q5 | workflow outline vs CLOOP | **Conviven, outline es state tracker** | Ver análisis abajo |
+| Q6 | fork task/poll | **Otro agente trabaja en ello** | Esperar a que termine |
+| Q7 | Template stamping | **Orquestador lo hace** | anchor_dope es subordinado del proceso de orquestación |
+| Q8 | Spec compliance | **Dinámica con reporte estático** | Test execution real + reporte de trazabilidad |
+| Q9 | Capa de salida (review loop) | **Phase 5.7: Quality Loop** | Ver diseño abajo |
+
+### Q5: memory workflow outline — Análisis
+
+`memory workflow outline` es un **state tracker minimalista**: crea un plan file con la task description como único item, genera session_id, guarda state en JSON, despacha eventos. NO descompone, NO genera specs, NO hace design.
+
+**Veredicto:** outline y CLOOP/SDD son **capas diferentes, no compiten**.
+
+- `memory workflow outline` = state machine + session tracking + evento dispatch
+- CLOOP = metodología de planificación (Clarify→Layout→Operate→Observe→Reflect)
+- SDD = decomposition pipeline (propose→spec→design→tasks)
+
+**Integración:** outline se convierte en el **entry point** del governance pipeline. Cuando CLOOP+SDD están activos:
+1. `outline` recibe la task description
+2. Dispara `WorkflowOutlineStartEvent`
+3. CLOOP Clarify reemplaza la generación ad-hoc del plan
+4. SDD populates el plan con spec/design/tasks
+5. `WorkflowOutlineCompleteEvent` marca el fin
+
+Cuando CLOOP+SDD NO están activos (fast-path):
+1. `outline` funciona como hoy — stub mínimo
+
+### Q9: Phase 5.7 — Quality Loop (nueva fase)
+
+```
+Phase 5.5: Validate (sdd-verify + compliance matrix)
+    ↓
+Phase 5.7: Quality Loop (nuevo)
+    ├─ Iteración 1: review + audit + bug-hunt
+    ├─ Si warnings > 0: loop (fix → verify → review)
+    ├─ Si warnings = 0: exit
+    ├─ Si complejidad alta: pedir autorización humana
+    └─ Output: Quality Report (métricas + hallazgos + recomendaciones)
+    ↓
+Phase 6: Cleanup
+    ├─ sdd-archive
+    ├─ memory update (quality report)
+    └─ Sugerir commit + PR
+```
+
+**Reglas del loop:**
+1. Termina cuando warnings == 0
+2. Complejidad alta (>N archivos, >M líneas) → pedir autorización humana
+3. Cada iteración genera reporte incremental
+4. Reporte final: métricas de calidad + hallazgos por severidad + recomendaciones
+5. Último paso: actualizar memoria + sugerir commit y PR
+
+**Herramientas integradas:**
+- `memory workflow bug-hunt` → adversarial testing
+- `conflict-detect` → conflicts entre fixes paralelos
+- `trifecta-verifier-check` → caller completeness
+- `sdd-verify` → spec compliance re-check
+
+---
+
+## 10. Historial de cambios
 
 | Fecha | Cambio |
 |-------|--------|
 | 2026-04-23 | Creación del documento con findings de 3 auditores + exploración anchor_dope + SDD |
+| 2026-04-23 | Deep-dive: SDD skill internals (10 skills, contracts, artifact graph, TDD modules) |
+| 2026-04-23 | Deep-dive: anchor_dope templates (2 vars, 4 docs, line limits, conflict rules) |
+| 2026-04-23 | CLI gap analysis: fork task/poll NO implementado, outline es flat, falta archive |
+| 2026-04-23 | spec-kit deep-dive: 8-command lifecycle, constitution system, 30+ agent integrations |
+| 2026-04-23 | Complement analysis: 85% overlap ya cubierto, borrow 5 ideas |
+| 2026-04-23 | Authority flow audit: 11 findings (2 CRITICAL, 3 HIGH) — double-writer + competing pipelines |
+| 2026-04-23 | 9/9 open questions resueltas. Phase 5.7 Quality Loop diseñado |
+| 2026-04-23 | Q5: outline = state tracker, CLOOP/SDD = planning layers, conviven sin competir |
+| 2026-04-23 | OpenSpec deep-dive: specs/ vs changes/ topology, schema YAML DAG, bulk-archive. Más cercano a SDD que spec-kit |
+| 2026-04-23 | No-Regression Gates (§7b): 8 gates de protección + 5 reglas de implementación + checklist por entregable |
