@@ -65,6 +65,7 @@ class EventType(StrEnum):
     # CLI events
     CLI_COMMAND = "cli.command"
     CLI_ERROR = "cli.error"
+    CLI_HYBRID_DISPATCH = "cli.hybrid_dispatch"
 
     # Trace events
     TRACE_SPAN_START = "trace.span.start"
@@ -236,6 +237,7 @@ class SessionSummary:
     workflow_aborted: int = 0
     cli_commands: int = 0
     cli_errors: int = 0
+    hybrid_dispatches: int = 0
 
     # Environment
 

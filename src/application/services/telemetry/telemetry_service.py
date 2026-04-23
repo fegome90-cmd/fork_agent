@@ -245,6 +245,8 @@ class TelemetryService:
             updates["cli_commands"] = summary.cli_commands + 1
         elif event.event_type == EventType.CLI_ERROR:
             updates["cli_errors"] = summary.cli_errors + 1
+        elif event.event_type == EventType.CLI_HYBRID_DISPATCH:
+            updates["hybrid_dispatches"] = summary.hybrid_dispatches + 1
 
         if updates:
             from dataclasses import replace
@@ -571,6 +573,28 @@ class TelemetryService:
             },
         )
 
+    def track_hybrid_dispatch(
+        self,
+        command: str,
+        mode: str,
+        latency_ms: float,
+        server_pid: int | None = None,
+        reason: str | None = None,
+    ) -> str:
+        """Track a hybrid dispatch event."""
+        return self.track(
+            EventType.CLI_HYBRID_DISPATCH,
+            EventCategory.CLI,
+            {
+                "command": command,
+                "mode": mode,
+                "latency_ms": latency_ms,
+                "server_pid": server_pid,
+                "reason": reason,
+            },
+            metrics={"latency_ms": latency_ms},
+        )
+
     # Query methods
 
     def flush(self) -> None:
@@ -722,6 +746,17 @@ class TelemetryService:
                     "# HELP fork_agent_cli_commands_total Total CLI commands",
                     "# TYPE fork_agent_cli_commands_total counter",
                     f"fork_agent_cli_commands_total {counts['cli']}",
+                ]
+            )
+
+        # Hybrid dispatch metrics
+        if "cli" in counts:
+            lines.extend(
+                [
+                    "",
+                    "# HELP fork_agent_hybrid_dispatches_total Total hybrid dispatches",
+                    "# TYPE fork_agent_hybrid_dispatches_total counter",
+                    f"fork_agent_hybrid_dispatches_total {counts.get('cli', 0)}",
                 ]
             )
 

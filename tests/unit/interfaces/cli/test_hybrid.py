@@ -726,3 +726,94 @@ class TestGetMcpClientCache:
         c2 = d._get_mcp_client()
         assert c1 is not None
         assert c1 is c2  # same instance
+
+
+class TestTelemetryTracking:
+    """Test that hybrid dispatch events are tracked via TelemetryService."""
+
+    def test_track_called_on_mcp_dispatch(
+        self,
+        mock_service: MagicMock,
+        mock_mcp_client: MagicMock,
+        receipt_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Telemetry tracks successful MCP dispatch."""
+        mock_mcp_client.call_tool_sync.return_value = {"id": "1"}
+        mock_service.get_by_id.return_value = _make_observation(id="1")
+        mock_telemetry = MagicMock()
+        monkeypatch.setattr(
+            "src.infrastructure.persistence.container.get_telemetry_service",
+            lambda _: mock_telemetry,
+        )
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        d._db_path = "/fake/path.db"
+        d.dispatch_save(content="test")
+        mock_telemetry.track_hybrid_dispatch.assert_called_once()
+        call_kwargs = mock_telemetry.track_hybrid_dispatch.call_args[1]
+        assert call_kwargs["command"] == "save"
+        assert call_kwargs["mode"] == "mcp_client"
+        assert call_kwargs["latency_ms"] > 0
+        mock_telemetry.flush.assert_called_once()
+
+    def test_track_called_on_fallback(
+        self,
+        mock_service: MagicMock,
+        mock_mcp_client: MagicMock,
+        receipt_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Telemetry tracks fallback dispatch."""
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        mock_telemetry = MagicMock()
+        monkeypatch.setattr(
+            "src.infrastructure.persistence.container.get_telemetry_service",
+            lambda _: mock_telemetry,
+        )
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        d._db_path = "/fake/path.db"
+        d.dispatch_save(content="test")
+        mock_telemetry.track_hybrid_dispatch.assert_called_once()
+        call_kwargs = mock_telemetry.track_hybrid_dispatch.call_args[1]
+        assert call_kwargs["mode"] == "direct_fallback"
+
+    def test_track_failure_does_not_crash(
+        self,
+        mock_service: MagicMock,
+        mock_mcp_client: MagicMock,
+        receipt_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """If telemetry fails, dispatch still completes."""
+        mock_mcp_client.call_tool_sync.return_value = {"id": "1"}
+        mock_service.get_by_id.return_value = _make_observation(id="1")
+
+        def _raise(_: object) -> MagicMock:
+            raise RuntimeError("telemetry DB broken")
+
+        monkeypatch.setattr(
+            "src.infrastructure.persistence.container.get_telemetry_service",
+            _raise,
+        )
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        d._db_path = "/fake/path.db"
+        obs, receipt = d.dispatch_save(content="test")
+        assert receipt is not None  # dispatch succeeded despite telemetry failure
+
+    def test_track_called_on_direct_no_server(  # noqa: PLR6301
+        self,
+        mock_service: MagicMock,
+        receipt_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Telemetry tracks direct dispatch when no server exists."""
+        mock_telemetry = MagicMock()
+        monkeypatch.setattr(
+            "src.infrastructure.persistence.container.get_telemetry_service",
+            lambda _: mock_telemetry,
+        )
+        d = HybridDispatcher(mock_service, db_path="/fake/path.db")
+        d.dispatch_save(content="test")
+        mock_telemetry.track_hybrid_dispatch.assert_called_once()
+        call_kwargs = mock_telemetry.track_hybrid_dispatch.call_args[1]
+        assert call_kwargs["mode"] == "direct"

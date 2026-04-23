@@ -174,11 +174,12 @@ class HybridDispatcher:
         if "\x00" in content:
             raise ValueError("Content contains null bytes")
 
-    def __init__(self, memory_service: Any) -> None:
+    def __init__(self, memory_service: Any, db_path: str | None = None) -> None:
         self._service = memory_service
         self._mcp_client: MCPClientSDK | None = None
         self._server_info: dict | None = None
-        self._cli_db_path = os.environ.get("FORK_MEMORY_DB", str(_get_default_db_path()))
+        self._db_path = db_path
+        self._cli_db_path = db_path or os.environ.get("FORK_MEMORY_DB", str(_get_default_db_path()))
         self._check_db_match()
 
     def _check_db_match(self) -> None:
@@ -215,6 +216,34 @@ class HybridDispatcher:
         )
         return self._mcp_client
 
+    def _track_dispatch(self, receipt: DispatchReceipt) -> None:
+        """Track hybrid dispatch via telemetry."""
+        try:
+            from src.infrastructure.persistence.container import get_telemetry_service
+
+            db = self._db_path or os.environ.get("FORK_MEMORY_DB")
+            if not db:
+                data_dir = os.environ.get(
+                    "FORK_DATA_DIR", os.path.expanduser("~/.local/share/fork")
+                )
+                db = str(Path(data_dir) / "memory.db")
+            telemetry = get_telemetry_service(Path(db))
+            telemetry.track_hybrid_dispatch(
+                command=receipt.command,
+                mode=receipt.mode.value,
+                latency_ms=receipt.latency_ms,
+                server_pid=receipt.server_pid,
+                reason=receipt.reason,
+            )
+            telemetry.flush()
+        except Exception:
+            logger.debug("telemetry tracking failed", exc_info=True)
+
+    def _record(self, receipt: DispatchReceipt) -> None:
+        """Write receipt file and track telemetry."""
+        _write_receipt(receipt)
+        self._track_dispatch(receipt)
+
     def _on_mcp_error(self, error: Exception) -> None:
         """Re-raise if FORK_MCP_REQUIRE=1, otherwise silently fallback."""
         if os.environ.get("FORK_MCP_REQUIRE") == "1":
@@ -246,7 +275,7 @@ class HybridDispatcher:
         try:
             result = client.call_tool_sync(tool, kwargs)
             receipt = self._mcp_receipt(start, cmd)
-            _write_receipt(receipt)
+            self._record(receipt)
             return result
         except Exception:
             return None
@@ -264,13 +293,13 @@ class HybridDispatcher:
                 result = client.call_tool_sync("memory_save", kwargs)
                 obs = self._service.get_by_id(result["id"])
                 receipt = self._mcp_receipt(start, "save")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return obs, receipt
             except Exception as e:
                 self._on_mcp_error(e)
         obs = self._service.save(**kwargs)
         receipt = self._direct_receipt(start, "save", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return obs, receipt
 
     def dispatch_list(self, **kwargs: Any) -> tuple[list[Observation], DispatchReceipt]:
@@ -280,13 +309,13 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_list", kwargs)
                 receipt = self._mcp_receipt(start, "list")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return _to_observations(result), receipt
             except Exception as e:
                 self._on_mcp_error(e)
         results = self._service.get_recent(**kwargs)
         receipt = self._direct_receipt(start, "list", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return results, receipt
 
     # ------------------------------------------------------------------
@@ -300,13 +329,13 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_search", kwargs)
                 receipt = self._mcp_receipt(start, "search")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return _to_observations(result), receipt
             except Exception as e:
                 self._on_mcp_error(e)
         observations = self._service.search(**kwargs)
         receipt = self._direct_receipt(start, "search", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return observations, receipt
 
     def dispatch_get(self, **kwargs: Any) -> tuple[Observation, DispatchReceipt]:
@@ -317,13 +346,13 @@ class HybridDispatcher:
                 result = client.call_tool_sync("memory_get", kwargs)
                 obs = Observation(**result) if isinstance(result, dict) else result
                 receipt = self._mcp_receipt(start, "get")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return obs, receipt
             except Exception as e:
                 self._on_mcp_error(e)
         obs = self._service.get_by_id(kwargs["id"])
         receipt = self._direct_receipt(start, "get", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return obs, receipt
 
     def dispatch_delete(self, **kwargs: Any) -> tuple[str, DispatchReceipt]:
@@ -335,13 +364,13 @@ class HybridDispatcher:
                 result = client.call_tool_sync("memory_delete", kwargs)
                 deleted_id = result.get("id", obs_id) if isinstance(result, dict) else obs_id
                 receipt = self._mcp_receipt(start, "delete")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return deleted_id, receipt
             except Exception as e:
                 self._on_mcp_error(e)
         self._service.delete(obs_id)
         receipt = self._direct_receipt(start, "delete", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return obs_id, receipt
 
     def dispatch_update(self, **kwargs: Any) -> tuple[Observation, DispatchReceipt]:
@@ -352,13 +381,13 @@ class HybridDispatcher:
                 result = client.call_tool_sync("memory_update", kwargs)
                 obs = Observation(**result) if isinstance(result, dict) else result
                 receipt = self._mcp_receipt(start, "update")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return obs, receipt
             except Exception as e:
                 self._on_mcp_error(e)
         obs = self._service.update(**kwargs)
         receipt = self._direct_receipt(start, "update", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return obs, receipt
 
     def dispatch_context(self, **kwargs: Any) -> tuple[list[Observation], DispatchReceipt]:
@@ -368,13 +397,13 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_context", kwargs)
                 receipt = self._mcp_receipt(start, "context")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return _to_observations(result), receipt
             except Exception as e:
                 self._on_mcp_error(e)
         results = self._service.get_recent(**kwargs)
         receipt = self._direct_receipt(start, "context", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return results, receipt
 
     # ------------------------------------------------------------------
@@ -388,7 +417,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_retrieve", kwargs)
                 receipt = self._mcp_receipt(start, "retrieve")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return _to_observations(result), receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -404,7 +433,7 @@ class HybridDispatcher:
             type=kwargs.get("type"),
         )
         receipt = self._direct_receipt(start, "retrieve", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return results, receipt
 
     def dispatch_stats(self, **kwargs: Any) -> tuple[dict, DispatchReceipt]:
@@ -414,7 +443,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_stats", kwargs)
                 receipt = self._mcp_receipt(start, "stats")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return result, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -423,7 +452,7 @@ class HybridDispatcher:
         svc = get_health_check_service()
         stats = svc.get_stats()
         receipt = self._direct_receipt(start, "stats", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return stats, receipt
 
     def dispatch_session_start(self, **kwargs: Any) -> tuple[dict, DispatchReceipt]:
@@ -433,7 +462,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_session_start", kwargs)
                 receipt = self._mcp_receipt(start, "session_start")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return result, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -446,7 +475,7 @@ class HybridDispatcher:
         )
         result = {"session_id": session.id, "status": "started"}
         receipt = self._direct_receipt(start, "session_start", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return result, receipt
 
     def dispatch_session_end(self, **kwargs: Any) -> tuple[dict, DispatchReceipt]:
@@ -456,7 +485,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_session_end", kwargs)
                 receipt = self._mcp_receipt(start, "session_end")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return result, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -466,7 +495,7 @@ class HybridDispatcher:
         session = svc.end_session(session_id=kwargs["session_id"], summary=kwargs.get("summary"))
         result = {"session_id": session.id, "status": "ended"}
         receipt = self._direct_receipt(start, "session_end", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return result, receipt
 
     def dispatch_message_send(self, **kwargs: Any) -> tuple[str, DispatchReceipt]:
@@ -477,7 +506,7 @@ class HybridDispatcher:
                 result = client.call_tool_sync("fork_message_send", kwargs)
                 msg_id = result if isinstance(result, str) else str(result)
                 receipt = self._mcp_receipt(start, "message_send")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return msg_id, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -494,7 +523,7 @@ class HybridDispatcher:
         )
         messenger.send(msg)
         receipt = self._direct_receipt(start, "message_send", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return msg.id, receipt
 
     def dispatch_message_receive(self, **kwargs: Any) -> tuple[list, DispatchReceipt]:
@@ -504,7 +533,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("fork_message_receive", kwargs)
                 receipt = self._mcp_receipt(start, "message_receive")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return result if isinstance(result, list) else [], receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -517,7 +546,7 @@ class HybridDispatcher:
         )
         result = [{"id": m.id, "from_agent": m.from_agent, "payload": m.payload} for m in messages]
         receipt = self._direct_receipt(start, "message_receive", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return result, receipt
 
     def dispatch_message_broadcast(self, **kwargs: Any) -> tuple[int, DispatchReceipt]:
@@ -528,7 +557,7 @@ class HybridDispatcher:
                 result = client.call_tool_sync("fork_message_broadcast", kwargs)
                 count = result if isinstance(result, int) else int(result)
                 receipt = self._mcp_receipt(start, "message_broadcast")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return count, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -540,7 +569,7 @@ class HybridDispatcher:
             payload=kwargs.get("payload", ""),
         )
         receipt = self._direct_receipt(start, "message_broadcast", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return count, receipt
 
     def dispatch_message_history(self, **kwargs: Any) -> tuple[list, DispatchReceipt]:
@@ -550,7 +579,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("fork_message_history", kwargs)
                 receipt = self._mcp_receipt(start, "message_history")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return result if isinstance(result, list) else [], receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -563,7 +592,7 @@ class HybridDispatcher:
         )
         result = [{"id": m.id, "from_agent": m.from_agent, "payload": m.payload} for m in messages]
         receipt = self._direct_receipt(start, "message_history", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return result, receipt
 
     def dispatch_message_cleanup(self, **kwargs: Any) -> tuple[str, DispatchReceipt]:
@@ -574,7 +603,7 @@ class HybridDispatcher:
                 result = client.call_tool_sync("fork_message_cleanup", kwargs)
                 msg = str(result) if result else "Cleanup complete"
                 receipt = self._mcp_receipt(start, "message_cleanup")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return msg, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -586,7 +615,7 @@ class HybridDispatcher:
         fs_count = cleanup_temp_files(max_age_seconds=kwargs.get("max_age", 300))
         msg = f"Database: {db_count} messages removed, Filesystem: {fs_count} files removed"
         receipt = self._direct_receipt(start, "message_cleanup", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return msg, receipt
 
     def dispatch_project_merge(self, **kwargs: Any) -> tuple[dict, DispatchReceipt]:
@@ -596,7 +625,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_merge_projects", kwargs)
                 receipt = self._mcp_receipt(start, "project_merge")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return result, receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -605,7 +634,7 @@ class HybridDispatcher:
             to_project=kwargs.get("to_project", ""),
         )
         receipt = self._direct_receipt(start, "project_merge", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return result, receipt
 
     def dispatch_timeline(self, **kwargs: Any) -> tuple[list[Observation], DispatchReceipt]:
@@ -615,7 +644,7 @@ class HybridDispatcher:
             try:
                 result = client.call_tool_sync("memory_timeline", kwargs)
                 receipt = self._mcp_receipt(start, "timeline")
-                _write_receipt(receipt)
+                self._record(receipt)
                 return _to_observations(result), receipt
             except Exception as e:
                 self._on_mcp_error(e)
@@ -627,5 +656,5 @@ class HybridDispatcher:
         ]
         filtered.sort(key=lambda o: o.timestamp)
         receipt = self._direct_receipt(start, "timeline", client)
-        _write_receipt(receipt)
+        self._record(receipt)
         return filtered, receipt
