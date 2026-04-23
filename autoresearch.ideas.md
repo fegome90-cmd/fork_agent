@@ -28,5 +28,5 @@
 - **httpx.Client pooling** — Pre-create client at import time. Saves ~5ms per call. Diminishing returns
 - **HTTP/2 keep-alive** — Reuse TCP connection across processes. Requires server changes
 - **DB integrity monitoring** — Auto-detect corruption before it causes fallbacks
-- **pytest-xdist** — Parallel test execution. Could help but adds complexity and flakiness
+- **pytest-xdist** — TRIED. 37 failures, high variance. Tests share SQLite state. Dead without test isolation refactoring.
 - **Production code: Event-based stop** — Replace time.sleep(30) in health_monitor_loop with threading.Event.wait(30) for instant shutdown

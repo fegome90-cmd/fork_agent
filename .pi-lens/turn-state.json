@@ -1,6 +1,25 @@
 {
-  "files": {},
+  "files": {
+    "tests/unit/scripts/test_trifecta_health.py": {
+      "modifiedRanges": [
+        {
+          "start": 83,
+          "end": 90
+        },
+        {
+          "start": 92,
+          "end": 109
+        },
+        {
+          "start": 112,
+          "end": 113
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-04-23T18:08:45.827Z"
+    }
+  },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-04-23T18:06:21.292Z"
+  "lastUpdated": "2026-04-23T18:08:45.827Z"
 }
