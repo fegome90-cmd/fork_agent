@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
+import signal
 import subprocess
 import time
 import uuid
@@ -178,16 +180,7 @@ class AgentPollingService:
                 "timestamp": int(time.time() * 1000),
             },
         )
-        # Kill the tmux session if running
-        session_name = f"poll-{run_id[:8]}"
-        try:
-            subprocess.run(
-                ["tmux", "kill-session", "-t", session_name],
-                capture_output=True,
-                timeout=5,
-            )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
+        self._terminate_spawned_agent(run_id)
         # Reset task to APPROVED so it can be re-picked
         if run.task_id:
             try:
@@ -351,6 +344,7 @@ class AgentPollingService:
 
     def _complete_run(self, run_id: str, task_id: str) -> None:
         """Mark a run as completed and complete the task."""
+        self._terminate_spawned_agent(run_id)
         try:
             self._task_service.complete(task_id)
         except (ValueError, TaskTransitionError):
@@ -368,6 +362,7 @@ class AgentPollingService:
     def _fail_run(self, run_id: str, error: str) -> None:
         """Mark a run as failed and reset the task for re-processing."""
         run = self._poll_run_repo.get_by_id(run_id)
+        self._terminate_spawned_agent(run_id)
         self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, error_message=error)
         self._run_dir.append_event(
             run_id,
@@ -383,3 +378,52 @@ class AgentPollingService:
                 self._task_service.retry(run.task_id)
             except (ValueError, TaskTransitionError):
                 pass  # Task might be deleted or already reset
+
+    def _terminate_spawned_agent(self, run_id: str) -> None:
+        """Best-effort cleanup for tmux panes and detached subprocesses."""
+        for event in reversed(self._run_dir.read_events(run_id)):
+            if event.get("type") != "agent_spawned":
+                continue
+
+            pane_id = event.get("pane_id")
+            if isinstance(pane_id, str) and pane_id:
+                try:
+                    subprocess.run(
+                        ["tmux", "kill-pane", "-t", pane_id],
+                        capture_output=True,
+                        timeout=5,
+                    )
+                except (subprocess.TimeoutExpired, FileNotFoundError):
+                    logger.debug("Failed to kill tmux pane %s for run %s", pane_id, run_id)
+
+            pid = event.get("pid")
+            if isinstance(pid, int):
+                self._terminate_pid(pid)
+            elif isinstance(pid, str) and pid.isdigit():
+                self._terminate_pid(int(pid))
+            return
+
+    def _terminate_pid(self, pid: int) -> None:
+        """Terminate a detached subprocess without raising if it already exited."""
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(pid, signal.SIGTERM)
+
+        deadline = time.monotonic() + 1.0
+        while time.monotonic() < deadline:
+            if not self._pid_exists(pid):
+                return
+            time.sleep(0.05)
+
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(pid, signal.SIGKILL)
+
+    @staticmethod
+    def _pid_exists(pid: int) -> bool:
+        """Return True when the process still exists."""
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True

@@ -36,3 +36,29 @@ class TestMkdirPermissions:
 
         actual_mode = run_dir.stat().st_mode & 0o777
         assert actual_mode == 0o700, f"Expected 0o700, got {oct(actual_mode)}"
+
+
+class TestReadEvents:
+    """Debt fix: run directories must support reading spawn metadata back."""
+
+    def test_read_events_returns_appended_events(self, tmp_path: Path) -> None:
+        directory = PollRunDirectory(tmp_path / "polls")
+        directory.create_run_dir("r1")
+        directory.append_event("r1", {"type": "agent_spawned", "pid": 1234})
+        directory.append_event("r1", {"type": "completed"})
+
+        events = directory.read_events("r1")
+
+        assert events == [
+            {"type": "agent_spawned", "pid": 1234},
+            {"type": "completed"},
+        ]
+
+    def test_read_events_ignores_malformed_lines(self, tmp_path: Path) -> None:
+        directory = PollRunDirectory(tmp_path / "polls")
+        run_dir = directory.create_run_dir("r1")
+        (run_dir / "events.jsonl").write_text('{"type":"ok"}\nnot-json\n', encoding="utf-8")
+
+        events = directory.read_events("r1")
+
+        assert events == [{"type": "ok"}]

@@ -80,6 +80,28 @@ class PollRunDirectory:
         with events_path.open("a", encoding="utf-8") as f:
             f.write(line)
 
+    def read_events(self, run_id: str) -> list[dict[str, object]]:
+        """Read events.jsonl for a run.
+
+        Returns an empty list when the file does not exist or contains
+        malformed JSON lines.
+        """
+        events_path = self._base_dir / run_id / "events.jsonl"
+        if not events_path.exists():
+            return []
+
+        events: list[dict[str, object]] = []
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                data = json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if isinstance(data, dict):
+                events.append(data)
+        return events
+
     def write_output(self, run_id: str, content: str) -> None:
         """Append content to output.log."""
         output_path = self._base_dir / run_id / "output.log"
