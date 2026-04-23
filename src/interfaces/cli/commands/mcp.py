@@ -62,7 +62,12 @@ def start(
     port: int = typer.Option(0, "--port", "-p"),
     host: str = typer.Option("127.0.0.1", "--host"),
 ) -> None:
-    """Start MCP server in background (streamable-http)."""
+    """Start MCP server in background (streamable-http).
+
+    Auto-assigns an available port. Server info written to
+    ~/.local/share/fork/.mcp-server.json. Use FORK_HYBRID=1 to route
+    CLI commands through this server.
+    """
     from pathlib import Path
 
     data_dir = Path(os.environ.get("FORK_DATA_DIR", os.path.expanduser("~/.local/share/fork")))
@@ -133,7 +138,11 @@ def start(
 
 @app.command()
 def stop() -> None:
-    """Stop background MCP server."""
+    """Stop background MCP server.
+
+    Sends SIGTERM, escalates to SIGKILL after 2s if still alive.
+    Removes the port file on cleanup.
+    """
     from src.interfaces.cli.hybrid import _get_port_file, discover_server
 
     info = discover_server()
@@ -154,7 +163,11 @@ def stop() -> None:
 
 @app.command()
 def status() -> None:
-    """Check MCP server status."""
+    """Check MCP server status.
+
+    Verifies PID is alive and /health endpoint responds.
+    Exits 0 if healthy, 1 if not responding.
+    """
     import httpx
 
     from src.interfaces.cli.hybrid import discover_server
