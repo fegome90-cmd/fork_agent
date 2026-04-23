@@ -1,17 +1,6 @@
 {
-  "files": {
-    "/private/var/folders/k1/jz_hmygd3k36tzkffsbyb5x00000gn/T/pytest-of-felipe_gonzalez/pytest-1220/test_poll_picks_remaining_afte0/poll-runs/e8d1392a77244542a85e4a67207385e4/status.json": {
-      "modifiedRanges": [
-        {
-          "start": 1,
-          "end": 9
-        }
-      ],
-      "importsChanged": false,
-      "lastEdit": "2026-04-23T17:21:46.181Z"
-    }
-  },
+  "files": {},
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-04-23T17:21:46.182Z"
+  "lastUpdated": "2026-04-23T17:25:55.505Z"
 }
