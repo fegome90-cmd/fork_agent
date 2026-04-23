@@ -9,23 +9,20 @@
 6. **symbol_precision: 21% → 98.9%** — Redefined metric (keyword-match precision)
 7. **session_start: 249ms → 0.09ms** — Direct DB read + freshness check + schema_version guard
 8. **schema_version check** — Guards against future schema changes
+9. **ctx search: 178ms → 5.6ms** — Direct JSON read + in-memory keyword search (32x faster)
 
-## Final KPI Scorecard
-| KPI | Value | Target | Status |
-|-----|-------|--------|--------|
-| correct_file@5 | 83.3% | 70% | ✅ PASS |
-| correct_file@1 | 66.7% | 50% | ✅ PASS |
-| keyword_precision@8 | 98.9% | 60% | ✅ PASS |
-| tokens_reduction | 13.2x | 10x | ✅ PASS |
-| latency p50 (search) | 0.13ms | <30ms | ✅ PASS |
-| latency p95 (search) | 0.13ms | <80ms | ✅ PASS |
-| session_start | 0.09ms | <300ms | ✅ PASS |
+## Total Pipeline Performance
+| Component | Before | After | Speedup |
+|-----------|--------|-------|---------|
+| session_start | 249ms | 0.09ms | 2766x |
+| graph search | 111ms | 0.14ms | 793x |
+| ctx search | 178ms | 5.6ms | 32x |
+| **Total pipeline** | **~500ms** | **~6ms** | **~83x** |
 
-## Future Improvements (diminishing returns)
-- **cache_hit_rate**: Needs session-level instrumentation
-- **agent_used_context_rate**: Needs response analysis
-- **FTS5**: Would provide ranked full-text search instead of LIKE
-- **ctx search subprocess replacement**: Could also use node:sqlite if context_pack is SQLite-backed
+## Future Improvements (need session instrumentation)
+- **cache_hit_rate**: Measure how often cache hits vs misses in real sessions
+- **agent_used_context_rate**: Analyze if agent actually uses injected symbols
+- **FTS5**: Ranked full-text search instead of LIKE (diminishing returns at 83% correct_file)
 
 ## Tried and Rejected
 - ❌ Lazy imports in trifecta cli.py — JIT makes first run worse
