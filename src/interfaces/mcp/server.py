@@ -93,8 +93,16 @@ def run_server(
         app = (
             mcp_server.sse_app(mount_path=mount_path)
             if transport == "sse"
-            else mcp_server.streamable_http_app(mount_path=mount_path)  # type: ignore[call-arg]
+            else mcp_server.streamable_http_app()
         )
+        # Add /health endpoint before auth middleware
+        import starlette.responses
+        import starlette.routing
+
+        async def _health(request: object) -> starlette.responses.JSONResponse:  # noqa: ARG001
+            return starlette.responses.JSONResponse({"status": "ok", "pid": os.getpid()})
+
+        app.routes.insert(0, starlette.routing.Route("/health", _health))
         app = _wrap_with_auth(app)
         uvicorn.run(app, host=host, port=port)
     else:
@@ -167,3 +175,7 @@ def run_server_cli() -> None:
         host=args.host,
         port=args.port,
     )
+
+
+if __name__ == "__main__":
+    run_server_cli()

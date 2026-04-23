@@ -478,10 +478,10 @@ class TestMapErrorMemoryError:
         from mcp.shared.exceptions import McpError
         from mcp.types import INTERNAL_ERROR
 
-        from src.application.exceptions import MemoryError
+        from src.application.exceptions import MemoryStoreError
         from src.interfaces.mcp.tools import _map_error
 
-        err = MemoryError("DB connection failed")
+        err = MemoryStoreError("DB connection failed")
         result = _map_error(err)
 
         assert isinstance(result, McpError)

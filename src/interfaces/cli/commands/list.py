@@ -55,9 +55,18 @@ def list_observations(
             f"Note: Auto-filtering by project '{effective_project}' (use --project to override, or --project '' for all)",
             err=True,
         )
-    results = memory_service.get_recent(
-        limit=limit, offset=offset, type=obs_type, project=effective_project
-    )
+    # Hybrid dispatch: route through MCP when FORK_HYBRID=1 and server available
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(memory_service)
+        results, _receipt = dispatcher.dispatch_list(
+            limit=limit, offset=offset, type=obs_type, project=effective_project
+        )
+    else:
+        results = memory_service.get_recent(
+            limit=limit, offset=offset, type=obs_type, project=effective_project
+        )
 
     if not results:
         typer.echo("No observations found")

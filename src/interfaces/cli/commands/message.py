@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from typing import Annotated
 
@@ -30,6 +31,17 @@ def send_message(
     ] = "COMMAND",
 ) -> None:
     """Send a message to another agent."""
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_message_send(
+            to_agent=to_agent, payload=payload, from_agent=from_agent, type=type
+        )
+        console.print(f"[green]Message sent successfully to {to_agent}[/green]")
+        return
+
     messenger = get_agent_messenger()
 
     try:
@@ -53,6 +65,17 @@ def broadcast_message(
     from_agent: Annotated[str, typer.Option(help="Source agent ID")] = "cli:0",
 ) -> None:
     """Send a message to all active tmux sessions."""
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_message_broadcast(
+            payload=payload, from_agent=from_agent
+        )
+        console.print("[green]Broadcast sent.[/green]")
+        return
+
     messenger = get_agent_messenger()
     count = messenger.broadcast(from_agent=from_agent, payload=payload)
     console.print(f"[green]Broadcast sent to {count} windows.[/green]")
@@ -63,6 +86,15 @@ def cleanup_messages(
     max_age: Annotated[int, typer.Option(help="Remove files older than N seconds")] = 300,
 ) -> None:
     """Cleanup expired messages from DB and temp files."""
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_message_cleanup(max_age=max_age)
+        console.print(f"[green]Cleanup complete:[/green] {result}")
+        return
+
     from src.application.services.messaging.message_protocol import cleanup_temp_files
 
     messenger = get_agent_messenger()
@@ -83,6 +115,33 @@ def show_history(
     limit: Annotated[int, typer.Option(help="Max messages to show")] = 20,
 ) -> None:
     """Show message history for an agent."""
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_message_history(agent_id=agent_id, limit=limit)
+        if not result:
+            console.print(f"No messages found for {agent_id}")
+            return
+        table = Table(title=f"Message History for {agent_id}")
+        table.add_column("Date", style="cyan")
+        table.add_column("From", style="magenta")
+        table.add_column("To", style="magenta")
+        table.add_column("Type", style="yellow")
+        table.add_column("Payload")
+        for msg in result:
+            if isinstance(msg, dict):
+                table.add_row(
+                    str(msg.get("created_at", "")),
+                    str(msg.get("from_agent", "")),
+                    str(msg.get("to_agent", "")),
+                    str(msg.get("message_type", "")),
+                    str(msg.get("payload", ""))[:50],
+                )
+        console.print(table)
+        return
+
     messenger = get_agent_messenger()
     history = messenger.get_history(agent_id, limit=limit)
 
@@ -123,6 +182,27 @@ def receive_messages(
     ] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
 ) -> None:
+    # Hybrid dispatch (non-watch only — watch polling not suitable for MCP)
+    if os.environ.get("FORK_HYBRID") == "1" and not watch:
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_message_receive(
+            agent_id=agent_id, limit=limit, mark_read=mark_read
+        )
+        if not result:
+            console.print(f"No messages for {agent_id}")
+            return
+        if json_output:
+            console.print_json(json.dumps(result, indent=2))
+            return
+        for msg in result:
+            console.print(
+                f"[cyan]{getattr(msg, 'id', msg)}[/cyan] from [magenta]{getattr(msg, 'from_agent', '?')}[/magenta]: {getattr(msg, 'payload', msg)}"
+            )
+        return
+
     messenger = get_agent_messenger()
 
     def _fetch() -> list[AgentMessage]:

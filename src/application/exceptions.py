@@ -1,27 +1,31 @@
 """Custom exceptions for the Memory subsystem."""
 
 
-class MemoryError(Exception):
-    """Base exception for all memory-related errors."""
+class MemoryStoreError(Exception):
+    """Base exception for all memory-related errors.
+
+    NOTE: Originally named ``MemoryError`` but renamed to avoid shadowing
+    the Python builtin ``MemoryError``.
+    """
 
     def __init__(self, message: str, original_exception: Exception | None = None):
         super().__init__(message)
         self.original_exception = original_exception
 
 
-class RepositoryError(MemoryError):
+class RepositoryError(MemoryStoreError):
     """Raised for errors originating from the data persistence layer."""
 
     pass
 
 
-class ServiceError(MemoryError):
+class ServiceError(MemoryStoreError):
     """Raised for errors in the business logic layer."""
 
     pass
 
 
-class SessionNotFoundError(MemoryError):
+class SessionNotFoundError(MemoryStoreError):
     """Raised when a session is not found."""
 
     def __init__(
@@ -32,7 +36,7 @@ class SessionNotFoundError(MemoryError):
         super().__init__(message, original_exception)
 
 
-class ObservationNotFoundError(MemoryError):
+class ObservationNotFoundError(MemoryStoreError):
     """Raised when a specific observation is not found."""
 
     def __init__(

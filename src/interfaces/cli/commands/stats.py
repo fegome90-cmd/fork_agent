@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -39,14 +40,18 @@ def stats(
     telemetry: bool = typer.Option(False, "--telemetry", "-t", help="Show telemetry stats"),
 ) -> None:
     """Show database statistics."""
-    # Get health check service for stats
-    health_service = _get_health_service_from_context(ctx)
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(ctx.obj)
+        db_stats, _receipt = dispatcher.dispatch_stats()
+    else:
+        # Get health check service for stats
+        health_service = _get_health_service_from_context(ctx)
+        db_stats = health_service.get_stats()
 
     typer.echo("📊 Database Statistics")
     typer.echo("=" * 40)
-
-    # Get database stats
-    db_stats = health_service.get_stats()
 
     typer.echo(f"Observations:     {db_stats['observation_count']}")
     typer.echo(f"FTS Entries:     {db_stats['fts_count']}")

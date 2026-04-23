@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.interfaces.mcp.server import run_server
+from src.interfaces.mcp.server import run_server_cli
 
 if __name__ == "__main__":
-    run_server()
+    run_server_cli()

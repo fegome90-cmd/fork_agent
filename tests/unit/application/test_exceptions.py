@@ -3,7 +3,7 @@
 import pytest
 
 from src.application.exceptions import (
-    MemoryError,
+    MemoryStoreError,
     ObservationNotFoundError,
     PhaseSkipError,
     RepositoryError,
@@ -13,9 +13,9 @@ from src.application.exceptions import (
 
 
 def test_raise_memory_error() -> None:
-    """Verify that MemoryError can be raised."""
-    with pytest.raises(MemoryError, match="Base memory error"):
-        raise MemoryError("Base memory error")
+    """Verify that MemoryStoreError can be raised."""
+    with pytest.raises(MemoryStoreError, match="Base memory error"):
+        raise MemoryStoreError("Base memory error")
 
 
 def test_raise_repository_error() -> None:
