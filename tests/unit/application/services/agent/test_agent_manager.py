@@ -136,7 +136,7 @@ class TestAgentManager:
 
     def test_health_check(self) -> None:
         manager = AgentManager()
-        manager._health_check_interval = 1  # fast loop for testing
+        manager._health_check_interval = 0  # fast loop for testing
         manager.start_health_monitoring()
         assert manager._health_thread is not None
         assert manager._health_thread.is_alive()
