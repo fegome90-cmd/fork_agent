@@ -1,6 +1,17 @@
 {
-  "files": {},
+  "files": {
+    "/tmp/test-runs/test/status.json": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 8
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-04-23T18:00:49.731Z"
+    }
+  },
   "turnCycles": 0,
   "maxCycles": 3,
-  "lastUpdated": "2026-04-23T17:58:43.844Z"
+  "lastUpdated": "2026-04-23T18:00:49.731Z"
 }
