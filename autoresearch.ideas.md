@@ -12,8 +12,21 @@
   - Fully synchronous — no asyncio.run() overhead
   - Protocol breakdown: initialize=2.6ms, notification=0.5ms, tool_call=2.5ms
 
+## Test Suite Optimization (Converged ✅)
+- **Eliminate time.sleep in tests** — 17.8→8.9s (-50%, 8.9s removed)
+  - Circuit breaker tests: recovery_timeout=0 + fake clock instead of real sleeps
+  - test_invariants: 0.5s→fake clock, 1.5s→0 (recovery_timeout=0)
+  - test_agent_manager health_check: 5s→1s (set interval=1, check thread.is_alive)
+  - Total removed: 4.6s sleeps + 4.2s thread join timeout
+- **Remaining**: ~8.9s for 2025 tests (4.4ms/test avg)
+  - ~1.5s subprocess tests (structurally necessary)
+  - ~1.5s concurrency tests (structurally necessary)
+  - ~5.9s across ~2000 fast tests (near pytest floor)
+
 ## Future (not pursued)
 - **Cross-process session reuse** — Unix socket + shared session. Only benefits shell mode, not one-shot CLI
 - **httpx.Client pooling** — Pre-create client at import time. Saves ~5ms per call. Diminishing returns
 - **HTTP/2 keep-alive** — Reuse TCP connection across processes. Requires server changes
 - **DB integrity monitoring** — Auto-detect corruption before it causes fallbacks
+- **pytest-xdist** — Parallel test execution. Could help but adds complexity and flakiness
+- **Production code: Event-based stop** — Replace time.sleep(30) in health_monitor_loop with threading.Event.wait(30) for instant shutdown
