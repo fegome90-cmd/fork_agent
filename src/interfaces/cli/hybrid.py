@@ -221,13 +221,8 @@ class HybridDispatcher:
         try:
             from src.infrastructure.persistence.container import get_telemetry_service
 
-            db = self._db_path or os.environ.get("FORK_MEMORY_DB")
-            if not db:
-                data_dir = os.environ.get(
-                    "FORK_DATA_DIR", os.path.expanduser("~/.local/share/fork")
-                )
-                db = str(Path(data_dir) / "memory.db")
-            telemetry = get_telemetry_service(Path(db))
+            db = Path(self._cli_db_path)
+            telemetry = get_telemetry_service(db)
             telemetry.track_hybrid_dispatch(
                 command=receipt.command,
                 mode=receipt.mode.value,
@@ -266,19 +261,6 @@ class HybridDispatcher:
             latency_ms=(time.monotonic() - start) * 1000,
             reason=reason,
         )
-
-    def _mcp_call(self, tool: str, kwargs: dict, start: float, cmd: str) -> Any | None:
-        """Attempt MCP call. Returns result or None (fallback signal)."""
-        client = self._get_mcp_client()
-        if client is None:
-            return None
-        try:
-            result = client.call_tool_sync(tool, kwargs)
-            receipt = self._mcp_receipt(start, cmd)
-            self._record(receipt)
-            return result
-        except Exception:
-            return None
 
     # ------------------------------------------------------------------
     # Phase 1 — save and list (unchanged)

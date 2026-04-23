@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,12 +28,12 @@ def _make_observation(
     id: str = "test-id-1234",
     timestamp: int = 1000000,
     content: str = "test content",
-    **overrides: object,
+    **overrides: Any,
 ) -> Observation:
     return Observation(id=id, timestamp=timestamp, content=content, **overrides)
 
 
-def _make_obs_dict(**overrides: object) -> dict:
+def _make_obs_dict(**overrides: Any) -> dict:
     base: dict = {"id": "test-id-1234", "timestamp": 1000000, "content": "test content"}
     base.update(overrides)
     return base

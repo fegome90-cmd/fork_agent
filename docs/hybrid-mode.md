@@ -146,14 +146,14 @@ def dispatch_mycommand(self, **kwargs: Any) -> tuple[Result, DispatchReceipt]:
         try:
             result = client.call_tool_sync("my_mcp_tool", kwargs)
             receipt = self._mcp_receipt(start, "mycommand")
-            _write_receipt(receipt)
+            self._record(receipt)
             return result, receipt
         except Exception as e:
             self._on_mcp_error(e)
     # Fallback: direct service call
     result = self._service.my_command(**kwargs)
     receipt = self._direct_receipt(start, "mycommand", client)
-    _write_receipt(receipt)
+    self._record(receipt)
     return result, receipt
 ```
 

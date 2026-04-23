@@ -750,15 +750,16 @@ class TelemetryService:
             )
 
         # Hybrid dispatch metrics
-        if "cli" in counts:
-            lines.extend(
-                [
-                    "",
-                    "# HELP fork_agent_hybrid_dispatches_total Total hybrid dispatches",
-                    "# TYPE fork_agent_hybrid_dispatches_total counter",
-                    f"fork_agent_hybrid_dispatches_total {counts.get('cli', 0)}",
-                ]
-            )
+        type_counts = self._repository.get_event_counts_by_type()
+        hybrid_count = type_counts.get("cli.hybrid_dispatch", 0)
+        lines.extend(
+            [
+                "",
+                "# HELP fork_agent_hybrid_dispatches_total Total hybrid dispatches",
+                "# TYPE fork_agent_hybrid_dispatches_total counter",
+                f"fork_agent_hybrid_dispatches_total {hybrid_count}",
+            ]
+        )
 
         # Message metrics
         if "message" in counts:
