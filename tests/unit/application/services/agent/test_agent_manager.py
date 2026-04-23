@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -138,7 +137,8 @@ class TestAgentManager:
     def test_health_check(self) -> None:
         manager = AgentManager()
         manager.start_health_monitoring()
-        time.sleep(0.05)  # minimal wait — just need thread to start
+        assert manager._health_thread is not None
+        assert manager._health_thread.is_alive()
         manager.stop_health_monitoring()
 
 
