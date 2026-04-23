@@ -33,10 +33,15 @@ class TestCircuitBreaker:
         assert cb.state == CircuitState.OPEN
 
     def test_half_open_after_recovery_timeout(self) -> None:
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
+        fake_time = [100.0]
+
+        def clock() -> float:
+            return fake_time[0]
+
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1, _clock=clock)
         cb.record_failure()
         assert cb.state == CircuitState.OPEN
-        time.sleep(1.1)
+        fake_time[0] += 1.1  # advance past recovery_timeout
         assert cb.state == CircuitState.HALF_OPEN
 
     def test_can_execute_closed(self) -> None:
@@ -133,7 +138,7 @@ class TestAgentManager:
     def test_health_check(self) -> None:
         manager = AgentManager()
         manager.start_health_monitoring()
-        time.sleep(1)
+        time.sleep(0.05)  # minimal wait — just need thread to start
         manager.stop_health_monitoring()
 
 
