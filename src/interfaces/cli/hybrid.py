@@ -3,7 +3,6 @@ falls back to direct service calls transparently. All 17 MCP-routable commands."
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -11,12 +10,11 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+import httpx
 
 from src.domain.entities.observation import Observation
-
-if TYPE_CHECKING:
-    from mcp.client.session import ClientSession
 
 logger = logging.getLogger("memory-hybrid")
 
@@ -102,65 +100,99 @@ def _to_observations(result: Any) -> list[Observation]:
 
 
 class MCPClientSDK:
-    """MCP client using official SDK (handles SSE + session management internally)."""
+    """Lightweight MCP client using raw httpx POST.
+
+    Bypasses the MCP SDK's streamablehttp_client (233ms import) and
+    ClientSession (async-only) overhead. Directly implements the
+    streamable-http JSON-RPC protocol.
+    """
 
     def __init__(self, url: str, timeout: float = 10.0) -> None:
         self._url = url
         self._timeout = timeout
-        self._session: ClientSession | None = None
-        self._http_cm: Any = None
-        self._session_cm: Any = None
+        self._client = httpx.Client(timeout=timeout)
+        self._session_id: str | None = None
+        self._msg_id = 0
+        self._headers = {
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+        }
+
+    def _next_id(self) -> int:
+        self._msg_id += 1
+        return self._msg_id
+
+    def _parse_sse(self, text: str) -> dict[str, Any]:
+        """Parse SSE response, extract JSON from data: lines."""
+        for line in text.split("\n"):
+            if line.startswith("data:"):
+                data: dict[str, Any] = json.loads(line[5:].strip())
+                return data
+        raise RuntimeError(f"No data line in SSE response: {text[:200]}")
+
+    def _ensure_session(self) -> None:
+        """Initialize MCP session if not already done."""
+        if self._session_id is not None:
+            return
+        r = self._client.post(
+            self._url,
+            json={
+                "jsonrpc": "2.0",
+                "id": self._next_id(),
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {"name": "fork-hybrid", "version": "1.0"},
+                },
+            },
+            headers=self._headers,
+        )
+        r.raise_for_status()
+        self._session_id = r.headers.get("mcp-session-id")
+        if self._session_id:
+            self._headers["Mcp-Session-Id"] = self._session_id
+        self._client.post(
+            self._url,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+            headers=self._headers,
+        )
 
     def call_tool_sync(self, tool_name: str, arguments: dict[str, Any]) -> Any:
-        """Synchronous wrapper — CLI is sync, SDK is async."""
-        return asyncio.run(self._call_tool(tool_name, arguments))
+        """Call an MCP tool synchronously via raw HTTP."""
+        self._ensure_session()
+        r = self._client.post(
+            self._url,
+            json={
+                "jsonrpc": "2.0",
+                "id": self._next_id(),
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+            },
+            headers=self._headers,
+        )
+        r.raise_for_status()
+        data = self._parse_sse(r.text)
+        if "error" in data:
+            raise RuntimeError(f"MCP JSON-RPC error: {data['error']}")
+        result = data.get("result", {})
+        if result.get("isError"):
+            content = result.get("content", [])
+            error_text = content[0].get("text", "unknown") if content else "unknown"
+            raise RuntimeError(f"MCP tool error: {error_text}")
+        for content in result.get("content", []):
+            if content.get("type") == "text":
+                text = content.get("text", "")
+                try:
+                    return json.loads(text)
+                except (json.JSONDecodeError, TypeError):
+                    return text
+        return result
 
-    async def _ensure_session(self) -> ClientSession:
-        """Get or create a cached MCP session."""
-        if self._session is not None:
-            return self._session
-        from mcp.client.session import ClientSession
-        from mcp.client.streamable_http import streamablehttp_client
-
-        # Use local vars first — only commit to instance on success
-        http_cm = streamablehttp_client(url=self._url, timeout=self._timeout)
-        read, write, _ = await http_cm.__aenter__()
-        session_cm = ClientSession(read, write)
-        session: ClientSession = await session_cm.__aenter__()
-        await session.initialize()
-        # Success — commit to instance
-        self._http_cm = http_cm
-        self._session_cm = session_cm
-        self._session = session
-        return session
-
-    async def _call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
-        session = await self._ensure_session()
-        result = await session.call_tool(tool_name, arguments)
-        if result.isError:
-            raise RuntimeError(f"MCP tool error: {result.content}")
-        for content in result.content:
-            if hasattr(content, "text"):
-                text_value = getattr(content, "text", None)
-                if isinstance(text_value, str):
-                    return json.loads(text_value)
-        return None
-
-    async def close(self) -> None:
-        """Clean up cached session."""
-        if self._session_cm is not None:
-            try:
-                await self._session_cm.__aexit__(None, None, None)
-            except Exception:
-                pass
-        if self._http_cm is not None:
-            try:
-                await self._http_cm.__aexit__(None, None, None)
-            except Exception:
-                pass
-        self._session = None
-        self._session_cm = None
-        self._http_cm = None
+    def close(self) -> None:
+        """Close the HTTP client."""
+        self._client.close()
+        self._session_id = None
 
 
 class HybridDispatcher:
