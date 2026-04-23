@@ -16,6 +16,11 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.application.services.task_board_service import TaskBoardService
+
 
 # Fast-path imports only — these are lightweight (~69ms total)
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
@@ -330,6 +335,19 @@ def get_memory_service_auto():
     return get_memory_service(db_path)
 
 
+def get_task_board_service(db_path: Path | None = None) -> TaskBoardService:
+    """Get a TaskBoardService instance wired with the SQLite repository."""
+    from src.application.services.task_board_service import TaskBoardService
+    from src.infrastructure.persistence.repositories.orchestration_task_repository import (
+        SqliteOrchestrationTaskRepository,
+    )
+
+    conn = get_database_connection(db_path)
+    repo = SqliteOrchestrationTaskRepository(connection=conn)
+    service: TaskBoardService = TaskBoardService(repo=repo)
+    return service
+
+
 def get_message_store(db_path: Path | None = None):
     """Get the MessageStore instance."""
     return get_container(db_path).message_repository()
@@ -357,3 +375,16 @@ def __getattr__(name: str) -> object:
 
         return getattr(_container_di, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def get_agent_polling_service(db_path: Path | None = None) -> "AgentPollingService":
+    """Get an AgentPollingService wired with SQLite repo and filesystem."""
+    from src.application.services.agent_polling_service import AgentPollingService
+    from src.infrastructure.persistence.repositories.poll_run_repository import SqlitePollRunRepository
+    from src.infrastructure.polling.poll_run_directory import PollRunDirectory
+
+    task_svc = get_task_board_service(db_path)
+    db = get_database_connection(db_path)
+    repo = SqlitePollRunRepository(connection=db)
+    run_dir = PollRunDirectory()
+    return AgentPollingService(task_service=task_svc, poll_run_repo=repo, run_dir=run_dir)
