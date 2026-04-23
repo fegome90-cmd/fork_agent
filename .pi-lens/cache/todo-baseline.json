@@ -53,7 +53,7 @@
       "type": "BUG",
       "message": "-8/BUG-9)",
       "file": "src/interfaces/cli/commands/save.py",
-      "line": 108,
+      "line": 109,
       "column": 48
     }
   ]

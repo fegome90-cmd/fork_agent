@@ -45,15 +45,71 @@
       "fileA": "src/interfaces/cli/commands/telemetry.py",
       "startA": 46,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 20,
+      "startB": 21,
       "lines": 11,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 138,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 50,
+      "lines": 10,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 179,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 50,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 209,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 50,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 231,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 178,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 254,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 178,
+      "lines": 10,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 277,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 231,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/task.py",
+      "startA": 298,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 231,
+      "lines": 9,
       "tokens": 0
     },
     {
       "fileA": "src/interfaces/cli/commands/search.py",
       "startA": 33,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 18,
+      "startB": 19,
       "lines": 12,
       "tokens": 0
     },
@@ -67,17 +123,17 @@
     },
     {
       "fileA": "src/interfaces/cli/commands/save.py",
-      "startA": 46,
+      "startA": 47,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 18,
+      "startB": 19,
       "lines": 12,
       "tokens": 0
     },
     {
       "fileA": "src/interfaces/cli/commands/retrieve.py",
-      "startA": 13,
+      "startA": 14,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 15,
+      "startB": 16,
       "lines": 15,
       "tokens": 0
     },
@@ -85,8 +141,24 @@
       "fileA": "src/interfaces/cli/commands/query.py",
       "startA": 17,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 15,
+      "startB": 16,
       "lines": 14,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/poll.py",
+      "startA": 160,
+      "fileB": "src/interfaces/cli/commands/task.py",
+      "startB": 353,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/interfaces/cli/commands/message.py",
+      "startA": 148,
+      "fileB": "src/interfaces/cli/commands/message.py",
+      "startB": 124,
+      "lines": 12,
       "tokens": 0
     },
     {
@@ -98,10 +170,18 @@
       "tokens": 0
     },
     {
+      "fileA": "src/interfaces/cli/commands/list.py",
+      "startA": 48,
+      "fileB": "src/interfaces/cli/commands/search.py",
+      "startB": 53,
+      "lines": 16,
+      "tokens": 0
+    },
+    {
       "fileA": "src/interfaces/cli/commands/health.py",
       "startA": 13,
       "fileB": "src/interfaces/cli/commands/stats.py",
-      "startB": 14,
+      "startB": 15,
       "lines": 15,
       "tokens": 0
     },
@@ -117,24 +197,24 @@
       "fileA": "src/interfaces/cli/commands/delete.py",
       "startA": 11,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 12,
+      "startB": 13,
       "lines": 18,
       "tokens": 0
     },
     {
       "fileA": "src/interfaces/cli/commands/context.py",
-      "startA": 10,
+      "startA": 11,
       "fileB": "src/interfaces/cli/commands/update.py",
-      "startB": 13,
+      "startB": 14,
       "lines": 17,
       "tokens": 0
     },
     {
       "fileA": "src/interfaces/cli/commands/compact.py",
-      "startA": 6,
+      "startA": 3,
       "fileB": "src/interfaces/cli/commands/context.py",
-      "startB": 5,
-      "lines": 21,
+      "startB": 3,
+      "lines": 24,
       "tokens": 0
     },
     {
@@ -314,6 +394,14 @@
       "tokens": 0
     },
     {
+      "fileA": "src/interfaces/cli/hybrid.py",
+      "startA": 563,
+      "fileB": "src/interfaces/cli/hybrid.py",
+      "startB": 517,
+      "lines": 9,
+      "tokens": 0
+    },
+    {
       "fileA": "src/infrastructure/tmux_orchestrator/retry.py",
       "startA": 98,
       "fileB": "src/infrastructure/tmux_orchestrator/retry.py",
@@ -370,7 +458,7 @@
       "tokens": 0
     }
   ],
-  "duplicatedLines": 618,
-  "totalLines": 31154,
-  "percentage": 1.98
+  "duplicatedLines": 721,
+  "totalLines": 34202,
+  "percentage": 2.11
 }

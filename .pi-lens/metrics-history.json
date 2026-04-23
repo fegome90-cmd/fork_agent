@@ -3,14 +3,14 @@
   "files": {
     "../../.pi/agent/extensions/trifecta-context-loader.ts": {
       "latest": {
-        "commit": "5a1c6343",
-        "timestamp": "2026-04-22T20:18:55.819Z",
-        "mi": 18.3,
-        "cognitive": 195,
-        "nesting": 8,
-        "lines": 423,
-        "maxCyclomatic": 80,
-        "entropy": 5.75
+        "commit": "80e300e0",
+        "timestamp": "2026-04-23T01:48:18.884Z",
+        "mi": 3.1,
+        "cognitive": 533,
+        "nesting": 6,
+        "lines": 1209,
+        "maxCyclomatic": 184,
+        "entropy": 7.05
       },
       "history": [
         {
@@ -42,10 +42,30 @@
           "lines": 423,
           "maxCyclomatic": 80,
           "entropy": 5.75
+        },
+        {
+          "commit": "80e300e0",
+          "timestamp": "2026-04-22T22:01:53.724Z",
+          "mi": 11.2,
+          "cognitive": 406,
+          "nesting": 10,
+          "lines": 773,
+          "maxCyclomatic": 105,
+          "entropy": 6.76
+        },
+        {
+          "commit": "80e300e0",
+          "timestamp": "2026-04-23T01:48:18.884Z",
+          "mi": 3.1,
+          "cognitive": 533,
+          "nesting": 6,
+          "lines": 1209,
+          "maxCyclomatic": 184,
+          "entropy": 7.05
         }
       ],
-      "trend": "stable"
+      "trend": "regressing"
     }
   },
-  "capturedAt": "2026-04-22T20:19:00.820Z"
+  "capturedAt": "2026-04-23T01:48:23.885Z"
 }
