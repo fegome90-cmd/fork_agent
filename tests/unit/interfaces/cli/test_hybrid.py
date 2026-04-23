@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 from pathlib import Path
@@ -447,3 +446,283 @@ class TestCheckDbMatch:
         with patch("src.interfaces.cli.hybrid.logger") as mock_logger:
             d._check_db_match()
             mock_logger.warning.assert_called()
+
+
+# ── Phase 6: Additional Hybrid Dispatch Tests ───────────
+
+
+class TestHybridDispatcherContext:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = [_make_obs_dict()]
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        results, receipt = d.dispatch_context(limit=10)
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert len(results) == 1
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        results, receipt = d.dispatch_context(limit=10)
+        assert receipt.mode == DispatchMode.FALLBACK
+
+
+class TestHybridDispatcherRetrieve:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = [_make_obs_dict()]
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        results, receipt = d.dispatch_retrieve(query="test")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert len(results) == 1
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        with (
+            patch("src.infrastructure.persistence.container.get_repository") as mock_repo,
+            patch(
+                "src.infrastructure.retrieval.v2.enhanced_search.EnhancedRetrievalSearchService"
+            ) as mock_svc_cls,
+        ):
+            mock_svc = MagicMock()
+            mock_svc.search.return_value = []
+            mock_svc_cls.return_value = mock_svc
+            results, receipt = d.dispatch_retrieve(query="test")
+        assert receipt.mode == DispatchMode.FALLBACK
+
+
+class TestHybridDispatcherProjectMerge:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = {"merged": True}
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        result, receipt = d.dispatch_project_merge(
+            from_projects="old_project", to_project="new_project"
+        )
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert result == {"merged": True}
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        mock_service.merge_projects.return_value = {"merged": True}
+        result, receipt = d.dispatch_project_merge(
+            from_projects="old_project", to_project="new_project"
+        )
+        assert receipt.mode == DispatchMode.FALLBACK
+        mock_service.merge_projects.assert_called_once()
+
+
+class TestHybridDispatcherTimeline:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = [_make_obs_dict()]
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        results, receipt = d.dispatch_timeline(run_id="run-1")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert len(results) == 1
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        mock_service.get_recent.return_value = []
+        results, receipt = d.dispatch_timeline(run_id="run-1")
+        assert receipt.mode == DispatchMode.FALLBACK
+
+
+class TestHybridDispatcherMessageReceive:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = [{"id": "m1", "payload": "hello"}]
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        results, receipt = d.dispatch_message_receive(agent_id="agent-1")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert len(results) == 1
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        with patch("src.infrastructure.persistence.container.get_agent_messenger") as mock_get:
+            mock_messenger = MagicMock()
+            mock_messenger.get_messages.return_value = []
+            mock_get.return_value = mock_messenger
+            results, receipt = d.dispatch_message_receive(agent_id="agent-1")
+        assert receipt.mode == DispatchMode.FALLBACK
+
+
+class TestHybridDispatcherMessageBroadcast:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = 5
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        count, receipt = d.dispatch_message_broadcast(from_agent="a", payload="hello")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert count == 5
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        with patch("src.infrastructure.persistence.container.get_agent_messenger") as mock_get:
+            mock_messenger = MagicMock()
+            mock_messenger.broadcast.return_value = 3
+            mock_get.return_value = mock_messenger
+            count, receipt = d.dispatch_message_broadcast(from_agent="a", payload="hello")
+        assert receipt.mode == DispatchMode.FALLBACK
+        assert count == 3
+
+
+class TestHybridDispatcherMessageCleanup:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = "Cleanup complete"
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        result, receipt = d.dispatch_message_cleanup(max_age=300)
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert result == "Cleanup complete"
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        with (
+            patch("src.infrastructure.persistence.container.get_agent_messenger") as mock_get,
+            patch(
+                "src.application.services.messaging.message_protocol.cleanup_temp_files"
+            ) as mock_cleanup,
+        ):
+            mock_messenger = MagicMock()
+            mock_messenger.store.cleanup_expired.return_value = 2
+            mock_get.return_value = mock_messenger
+            mock_cleanup.return_value = 5
+            result, receipt = d.dispatch_message_cleanup(max_age=300)
+        assert receipt.mode == DispatchMode.FALLBACK
+        assert "2 messages removed" in result
+        assert "5 files removed" in result
+
+
+class TestHybridDispatcherMessageHistory:
+    def test_mcp_success(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.return_value = [{"id": "m1", "payload": "hello"}]
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        results, receipt = d.dispatch_message_history(agent_id="agent-1")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert len(results) == 1
+
+    def test_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        with patch("src.infrastructure.persistence.container.get_agent_messenger") as mock_get:
+            mock_messenger = MagicMock()
+            mock_messenger.get_history.return_value = []
+            mock_get.return_value = mock_messenger
+            results, receipt = d.dispatch_message_history(agent_id="agent-1")
+        assert receipt.mode == DispatchMode.FALLBACK
+
+
+# ── Phase 6: Session Start/End Fallback ──────────────────
+
+
+class TestHybridDispatcherSessionFallback:
+    def test_session_start_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        mock_session = MagicMock()
+        mock_session.id = "s1"
+        with patch("src.interfaces.cli.dependencies.get_session_service") as mock_get:
+            mock_svc = MagicMock()
+            mock_svc.start_session.return_value = mock_session
+            mock_get.return_value = mock_svc
+            result, receipt = d.dispatch_session_start(agent_name="test")
+        assert receipt.mode == DispatchMode.FALLBACK
+        assert result["session_id"] == "s1"
+
+    def test_session_end_fallback(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        mock_session = MagicMock()
+        mock_session.id = "s1"
+        with patch("src.interfaces.cli.dependencies.get_session_service") as mock_get:
+            mock_svc = MagicMock()
+            mock_svc.end_session.return_value = mock_session
+            mock_get.return_value = mock_svc
+            result, receipt = d.dispatch_session_end(session_id="s1")
+        assert receipt.mode == DispatchMode.FALLBACK
+        assert result["status"] == "ended"
+
+
+# ── Phase 6: Edge Cases ──────────────────────────────────
+
+
+class TestForkMcpRequire:
+    def test_raises_when_no_server(
+        self, mock_service: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("FORK_MCP_REQUIRE", "1")
+        monkeypatch.setenv("FORK_DATA_DIR", str(tmp_path))
+        d = HybridDispatcher(mock_service)
+        with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
+            d._get_mcp_client()
+
+    def test_raises_on_mcp_failure(
+        self,
+        mock_service: MagicMock,
+        mock_mcp_client: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        receipt_file: Path,
+    ) -> None:
+        monkeypatch.setenv("FORK_MCP_REQUIRE", "1")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        mock_mcp_client.call_tool_sync.side_effect = RuntimeError("fail")
+        with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
+            d.dispatch_save(content="test")
+
+
+class TestOnMcpError:
+    def test_silent_fallback_by_default(
+        self, mock_service: MagicMock, mock_mcp_client: MagicMock, receipt_file: Path
+    ) -> None:
+        d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
+        mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
+        obs, receipt = d.dispatch_save(content="test")
+        assert receipt.mode == DispatchMode.FALLBACK
+
+
+class TestGetMcpClientCache:
+    def test_returns_cached_client_on_second_call(
+        self, mock_service: MagicMock, port_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        port_file.write_text(json.dumps({"pid": os.getpid(), "port": 8080, "host": "127.0.0.1"}))
+        d = HybridDispatcher(mock_service)
+        c1 = d._get_mcp_client()
+        c2 = d._get_mcp_client()
+        assert c1 is not None
+        assert c1 is c2  # same instance
