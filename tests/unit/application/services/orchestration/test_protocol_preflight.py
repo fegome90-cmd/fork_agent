@@ -14,7 +14,9 @@ def _save_plan(path: Path, phase: WorkflowPhase = WorkflowPhase.OUTLINED) -> Non
     PlanState(session_id="plan-1", phase=phase).save(path)
 
 
-def _completed(stdout: str = "", stderr: str = "", returncode: int = 0) -> subprocess.CompletedProcess[str]:
+def _completed(
+    stdout: str = "", stderr: str = "", returncode: int = 0
+) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
 
 

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import cast
 
 import typer
+from typer import Context
 
 from src.application.exceptions import PhaseSkipError
 from src.application.services.orchestration.events import (
@@ -79,7 +80,7 @@ class ShipPreflightError(Exception):
 def _get_hook_service() -> HookService:
     """Get HookService from ctx.obj if available (for testability), else use shared singleton."""
     try:
-        ctx = typer.get_current_context()  # type: ignore[attr-defined]
+        ctx = cast(Context, typer.get_current_context())
         if isinstance(ctx.obj, dict):
             if "hook_service" not in ctx.obj:
                 ctx.obj["hook_service"] = _get_shared_hook_service()
@@ -472,7 +473,9 @@ def execute(
     for warning in preflight.warnings:
         typer.echo(f"Warning: {warning}", err=True)
     if preflight.bypass_used:
-        typer.echo("WARNING: --no-protocol-gate bypass used; this is audited best-effort.", err=True)
+        typer.echo(
+            "WARNING: --no-protocol-gate bypass used; this is audited best-effort.", err=True
+        )
         _record_protocol_preflight_bypass(preflight)
     if not preflight.passed:
         typer.echo("Error: workflow execute preflight failed.", err=True)

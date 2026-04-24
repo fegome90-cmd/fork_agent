@@ -29,7 +29,6 @@ class TestWorkflowOutline:
     """Tests for workflow outline command."""
 
     def test_outline_creates_plan_state(self, tmp_path: Path) -> None:
-
         plan_file = tmp_path / "plan.md"
         with patch(
             "src.interfaces.cli.commands.workflow.get_plan_state_path",
@@ -44,7 +43,6 @@ class TestWorkflowOutline:
         assert "Plan created:" in result.stdout
 
     def test_outline_requires_task_description(self) -> None:
-
         result = runner.invoke(get_app(), ["outline"])
 
         assert result.exit_code != 0
@@ -72,7 +70,6 @@ class TestWorkflowExecute:
         assert result.exit_code == 1
 
     def test_execute_with_existing_plan(self, tmp_path: Path) -> None:
-
         plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
         plan_path = tmp_path / "plan-state.json"
         plan_state.save(plan_path)
@@ -127,7 +124,9 @@ class TestWorkflowExecute:
                 "src.interfaces.cli.commands.workflow.ProtocolPreflightService.run",
                 return_value=ProtocolPreflightResult(
                     passed=False,
-                    failures=["tmux is not available on PATH; workflow execute cannot spawn agents."],
+                    failures=[
+                        "tmux is not available on PATH; workflow execute cannot spawn agents."
+                    ],
                     checked_items=["tmux_available"],
                 ),
             ),
@@ -169,7 +168,9 @@ class TestWorkflowExecute:
                 "src.interfaces.cli.commands.workflow.ProtocolPreflightService.run",
                 return_value=ProtocolPreflightResult(
                     passed=True,
-                    warnings=["Protocol gate bypass used: missing .fork/init.yaml was allowed by --no-protocol-gate."],
+                    warnings=[
+                        "Protocol gate bypass used: missing .fork/init.yaml was allowed by --no-protocol-gate."
+                    ],
                     checked_items=["fork_init_yaml"],
                     bypass_used=True,
                 ),
@@ -214,7 +215,6 @@ class TestWorkflowVerify:
         assert result.exit_code == 1
 
     def test_verify_success(self, tmp_path: Path) -> None:
-
         plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
         exec_state = ExecuteState(session_id="test-exec", phase=WorkflowPhase.EXECUTED)
 
@@ -321,7 +321,6 @@ class TestWorkflowShip:
         assert result.exit_code == 1
 
     def test_ship_blocked_without_unlock(self, tmp_path: Path) -> None:
-
         verify_state = VerifyState(
             session_id="test-verify", unlock_ship=False, phase=WorkflowPhase.VERIFIED
         )
@@ -341,7 +340,6 @@ class TestWorkflowShip:
         assert "Verification not complete" in result.output
 
     def test_ship_allowed_with_unlock(self, tmp_path: Path) -> None:
-
         verify_state = VerifyState(
             session_id="test-verify", unlock_ship=True, phase=WorkflowPhase.VERIFIED
         )
@@ -537,7 +535,6 @@ class TestWorkflowStatus:
         assert "Workflow Status" in result.stdout
 
     def test_status_with_plan(self, tmp_path: Path) -> None:
-
         plan_state = PlanState(session_id="test-plan", phase=WorkflowPhase.OUTLINED)
         plan_path = tmp_path / "plan-state.json"
         plan_state.save(plan_path)
