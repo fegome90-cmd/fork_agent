@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+import click
 import typer
 
 from src.application.exceptions import PhaseSkipError
@@ -27,6 +28,10 @@ from src.application.services.orchestration.events import (
     WorktreeRemovedEvent,
 )
 from src.application.services.orchestration.hook_service import HookService
+from src.application.services.orchestration.protocol_preflight import (
+    ProtocolPreflightResult,
+    ProtocolPreflightService,
+)
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
@@ -75,14 +80,16 @@ class ShipPreflightError(Exception):
 def _get_hook_service() -> HookService:
     """Get HookService from ctx.obj if available (for testability), else use shared singleton."""
     try:
-        ctx = typer.get_current_context()  # type: ignore[attr-defined]
+        ctx = click.get_current_context(silent=True)
+        if ctx is None:
+            return cast(HookService, _get_shared_hook_service())
         if isinstance(ctx.obj, dict):
             if "hook_service" not in ctx.obj:
                 ctx.obj["hook_service"] = _get_shared_hook_service()
             return cast(HookService, ctx.obj["hook_service"])
     except RuntimeError:
         pass
-    return _get_shared_hook_service()
+    return cast(HookService, _get_shared_hook_service())
 
 
 def _dispatch_event(event: object, context: str = "") -> None:
@@ -131,6 +138,23 @@ def _send_workflow_message(phase: str, status: str, **kwargs: object) -> None:
         logger.debug("Sent workflow message: %s %s", phase, status)
     except Exception as e:
         logger.debug("Failed to send workflow message [%s:%s]: %s", phase, status, e)
+
+
+def _record_protocol_preflight_bypass(result: ProtocolPreflightResult) -> None:
+    """Persist protocol preflight bypass metadata best-effort."""
+    try:
+        memory = get_memory_service()
+        memory.save(
+            content="workflow:execute:protocol_preflight_bypass",
+            metadata={
+                "phase": "execute",
+                "event": "protocol_preflight_bypass",
+                "checked_items": result.checked_items,
+                "warnings": result.warnings,
+            },
+        )
+    except Exception as e:
+        logger.debug("Failed to save protocol preflight bypass event: %s", e)
 
 
 def _record_ship_event(event_name: str, metadata: dict[str, object]) -> None:
@@ -431,6 +455,11 @@ def execute(
     messaging: bool = typer.Option(
         True, "--messaging", help="Enable inter-agent messaging for coordination (default: enabled)"
     ),
+    no_protocol_gate: bool = typer.Option(
+        False,
+        "--no-protocol-gate",
+        help="Temporarily bypass only the missing .fork/init.yaml preflight failure.",
+    ),
 ) -> None:
     """Execute workflow plan tasks.
 
@@ -438,6 +467,23 @@ def execute(
     worktree creation, and event dispatching.
     """
     from src.interfaces.cli.dependencies import get_workflow_executor
+
+    plan_path = get_plan_state_path()
+    preflight = ProtocolPreflightService(plan_state_path=plan_path).run(
+        allow_missing_init_bypass=no_protocol_gate
+    )
+    for warning in preflight.warnings:
+        typer.echo(f"Warning: {warning}", err=True)
+    if preflight.bypass_used:
+        typer.echo(
+            "WARNING: --no-protocol-gate bypass used; this is audited best-effort.", err=True
+        )
+        _record_protocol_preflight_bypass(preflight)
+    if not preflight.passed:
+        typer.echo("Error: workflow execute preflight failed.", err=True)
+        for failure in preflight.failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(1)  # noqa: B904
 
     plan = _check_plan_exists()
 
