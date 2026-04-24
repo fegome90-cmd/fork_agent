@@ -13,8 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+import click
 import typer
-from typer import Context
 
 from src.application.exceptions import PhaseSkipError
 from src.application.services.orchestration.events import (
@@ -80,7 +80,9 @@ class ShipPreflightError(Exception):
 def _get_hook_service() -> HookService:
     """Get HookService from ctx.obj if available (for testability), else use shared singleton."""
     try:
-        ctx = cast(Context, typer.get_current_context())
+        ctx = click.get_current_context(silent=True)
+        if ctx is None:
+            return cast(HookService, _get_shared_hook_service())
         if isinstance(ctx.obj, dict):
             if "hook_service" not in ctx.obj:
                 ctx.obj["hook_service"] = _get_shared_hook_service()
