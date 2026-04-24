@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
+from src.application.services.orchestration.protocol_preflight import ProtocolPreflightResult
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
@@ -76,6 +77,13 @@ class TestWorkflowExecute:
         plan_path = tmp_path / "plan-state.json"
         plan_state.save(plan_path)
 
+        executor = MagicMock()
+        executor.execute_plan.return_value = MagicMock(
+            exec_state=ExecuteState(session_id="exec-1", phase=WorkflowPhase.EXECUTED),
+            spawned_sessions=["fork-worker-1"],
+            errors=[],
+        )
+
         with (
             patch(
                 "src.interfaces.cli.commands.workflow.get_plan_state_path",
@@ -85,11 +93,98 @@ class TestWorkflowExecute:
                 "src.interfaces.cli.commands.workflow.get_execute_state_path",
                 return_value=tmp_path / "execute-state.json",
             ),
+            patch(
+                "src.interfaces.cli.commands.workflow.ProtocolPreflightService.run",
+                return_value=ProtocolPreflightResult(passed=True, checked_items=["repo_root"]),
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=executor,
+            ),
         ):
             result = runner.invoke(get_app(), ["execute"])
 
         assert result.exit_code == 0
         assert "Execution started" in result.stdout
+
+    def test_execute_blocks_when_preflight_fails(self, tmp_path: Path) -> None:
+        plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+        executor = MagicMock()
+        execute_path = tmp_path / "execute-state.json"
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=execute_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.ProtocolPreflightService.run",
+                return_value=ProtocolPreflightResult(
+                    passed=False,
+                    failures=["tmux is not available on PATH; workflow execute cannot spawn agents."],
+                    checked_items=["tmux_available"],
+                ),
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=executor,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code == 1
+        assert "workflow execute preflight failed" in result.output
+        assert "tmux is not available" in result.output
+        executor.execute_plan.assert_not_called()
+        assert not execute_path.exists()
+
+    def test_execute_no_protocol_gate_audits_bypass(self, tmp_path: Path) -> None:
+        plan_state = PlanState(session_id="test-session", phase=WorkflowPhase.OUTLINED)
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+        executor = MagicMock()
+        executor.execute_plan.return_value = MagicMock(
+            exec_state=ExecuteState(session_id="exec-1", phase=WorkflowPhase.EXECUTED),
+            spawned_sessions=[],
+            errors=[],
+        )
+        memory = MagicMock()
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.ProtocolPreflightService.run",
+                return_value=ProtocolPreflightResult(
+                    passed=True,
+                    warnings=["Protocol gate bypass used: missing .fork/init.yaml was allowed by --no-protocol-gate."],
+                    checked_items=["fork_init_yaml"],
+                    bypass_used=True,
+                ),
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=executor,
+            ),
+            patch("src.interfaces.cli.commands.workflow.get_memory_service", return_value=memory),
+        ):
+            result = runner.invoke(get_app(), ["execute", "--no-protocol-gate"])
+
+        assert result.exit_code == 0
+        assert "--no-protocol-gate bypass used" in result.output
+        memory.save.assert_called_once()
 
 
 class TestWorkflowVerify:
@@ -233,9 +328,12 @@ class TestWorkflowShip:
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
-        with patch(
-            "src.interfaces.cli.commands.workflow.get_verify_state_path",
-            return_value=verify_path,
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_verify_state_path",
+                return_value=verify_path,
+            ),
+            patch("src.interfaces.cli.commands.workflow._enforce_ship_checkout_preflight"),
         ):
             result = runner.invoke(get_app(), ["ship"])
 
@@ -250,9 +348,12 @@ class TestWorkflowShip:
         verify_path = tmp_path / "verify-state.json"
         verify_state.save(verify_path)
 
-        with patch(
-            "src.interfaces.cli.commands.workflow.get_verify_state_path",
-            return_value=verify_path,
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_verify_state_path",
+                return_value=verify_path,
+            ),
+            patch("src.interfaces.cli.commands.workflow._enforce_ship_checkout_preflight"),
         ):
             result = runner.invoke(get_app(), ["ship"])
 
@@ -278,6 +379,7 @@ class TestWorkflowShip:
                 "src.interfaces.cli.commands.workflow.get_verify_state_path",
                 return_value=verify_path,
             ),
+            patch("src.interfaces.cli.commands.workflow._enforce_ship_checkout_preflight"),
             patch(
                 "src.interfaces.cli.commands.workflow._dispatch_event",
                 side_effect=lambda event, _context="", **_kwargs: dispatched.append(event),
