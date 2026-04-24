@@ -1,6 +1,7 @@
-# fork_agent - AGENTS.md (Root Source of Truth)
-> Guía maestra para orquestación de agentes autónomos y sub-agentes.  
-> **Última actualización**: 2026-04-23 | **Versión**: 2.5 (Trifecta Wired)
+# fork_agent - AGENTS.md (Quick Reference)
+> Referencia rápida para orquestación de agentes autónomos y sub-agentes.
+> **Última actualización**: 2026-04-23 | **Versión**: 2.6 (Governance)
+> **Fuente canónica**: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`
 
 ---
 
@@ -67,6 +68,7 @@ Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 | **Architect** | `zai/glm-5.1` | Diseño y toma de decisiones. |
 | **Implementer** | `zai/glm-5-turbo` | Escritura de código. |
 | **Verifier** | `zai/glm-5-turbo` | Validación y tests. |
+| **Analyst** | `zai/glm-5-turbo` | Investigación + propuesta de fix exacto. |
 
 ---
 
@@ -75,6 +77,26 @@ Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 - `PROJECT_DIR`: El repositorio que estás orquestando (Target).
 - `BACKEND_DIR`: El código fuente del orquestador (`~/Developer/tmux_fork`).
 - **Persistencia**: La base de datos de memoria reside por defecto en `~/.local/share/fork/memory.db`.
+
+---
+
+## 🛡 Governance Mode
+
+**Advisory-only:** `GOVERNANCE=1` activa guidelines para el orquestador. Sin code enforcement.
+
+Cuando está activo, las fases del protocolo se enriquecen con:
+- **CLOOP** (Clarify→Layout→Operate→Observe→Reflect)
+- **SDD** (propose→spec→design→tasks→gate→apply→verify→archive)
+- **Quality Check** (Phase 5.7)
+
+Sin `GOVERNANCE=1`, todo funciona idéntico.
+
+---
+
+## ⚡ Hybrid Mode
+
+`FORK_HYBRID=1` despacha herramientas vía MCP server (21 tools).
+Latencia: ~28ms por call (raw httpx JSON-RPC) vs ~234ms (MCP SDK).
 
 ---
 
@@ -97,4 +119,4 @@ tmux-live kill-all               # Limpieza total
 ```
 
 ---
-*Nota: Este documento es la Fuente de Verdad (SSoT). Si detectas discrepancias, prioriza lo dictado aquí o en `SKILL.md`.*
+*Nota: Referencia rápida — fuente canónica: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`. Si hay discrepancias, SKILL.md tiene prioridad.*
