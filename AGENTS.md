@@ -64,7 +64,7 @@ Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 
 | Rol | Modelo Recomendado | Propósito |
 | :--- | :--- | :--- |
-| **Explorer** | `zai/glm-5-turbo` | Investigación y mapeo. |
+| **Explorer** | `deepseek/deepseek-v4-flash` | Investigación y mapeo. |
 | **Architect** | `zai/glm-5.1` | Diseño y toma de decisiones. |
 | **Implementer** | `zai/glm-5-turbo` | Escritura de código. |
 | **Verifier** | `zai/glm-5-turbo` | Validación y tests. |
