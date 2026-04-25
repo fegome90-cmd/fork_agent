@@ -1,6 +1,6 @@
 # fork_agent - AGENTS.md (Quick Reference)
 > Referencia rápida para orquestación de agentes autónomos y sub-agentes.
-> **Última actualización**: 2026-04-23 | **Versión**: 2.6 (Governance)
+> **Última actualización**: 2026-04-25 | **Versión**: 2.7 (Test Coverage)
 > **Fuente canónica**: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`
 
 ---
@@ -35,7 +35,7 @@ Cualquier cambio sustancial DEBE seguir este flujo para garantizar la integridad
 
 1.  **Clarify**: Resolver ambigüedades con el usuario.
 2.  **Plan**: Crear el plan de implementación (`memory workflow outline`).
-3.  **Plan Gate**: Validación adversarial del plan (opcional pero recomendado).
+3.  **Plan Gate**: MANDATORY. Present plan to user and wait for approval. See protocol.md §1.5.
 4.  **Pre-flight**: Verificación de entorno (`trifecta-daemon-warmup` + `trifecta-auto-sync`).
 5.  **Save**: Persistir el estado inicial en memoria (`memory save`).
 6.  **Spawn**: Lanzar sub-agentes en tmux con contexto inyectado (`trifecta-context-inject`).
