@@ -24,8 +24,9 @@ class SqlitePollRunRepository:
             with self._connection as conn:
                 conn.execute(
                     """INSERT OR REPLACE INTO poll_runs
-                       (id, task_id, agent_name, status, started_at, ended_at, poll_run_dir, error_message)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, task_id, agent_name, status, started_at, ended_at, poll_run_dir, error_message,
+                        launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         run.id,
                         run.task_id,
@@ -35,6 +36,11 @@ class SqlitePollRunRepository:
                         run.ended_at,
                         run.poll_run_dir,
                         run.error_message,
+                        run.launch_method,
+                        run.launch_pane_id,
+                        run.launch_pid,
+                        run.launch_pgid,
+                        run.launch_recorded_at,
                     ),
                 )
         except sqlite3.Error as e:
@@ -46,7 +52,8 @@ class SqlitePollRunRepository:
             with self._connection as conn:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
-                              ended_at, poll_run_dir, error_message
+                              ended_at, poll_run_dir, error_message,
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
                        FROM poll_runs WHERE id = ?""",
                     (run_id,),
                 )
@@ -63,7 +70,8 @@ class SqlitePollRunRepository:
             with self._connection as conn:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
-                              ended_at, poll_run_dir, error_message
+                              ended_at, poll_run_dir, error_message,
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
                        FROM poll_runs WHERE status = ?
                        ORDER BY started_at DESC""",
                     (status.value,),
@@ -78,14 +86,31 @@ class SqlitePollRunRepository:
             with self._connection as conn:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
-                              ended_at, poll_run_dir, error_message
+                              ended_at, poll_run_dir, error_message,
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
                        FROM poll_runs
-                       WHERE status IN ('QUEUED', 'RUNNING')
+                       WHERE status IN ('QUEUED', 'SPAWNING', 'RUNNING', 'TERMINATING')
                        ORDER BY started_at DESC""",
                 )
                 return [self._row_to_run(row) for row in cursor.fetchall()]
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to list active poll runs: {e}", e) from e
+
+    def list_launch_blocking(self) -> list[PollRun]:
+        """Retrieve runs that must block duplicate launch attempts."""
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    """SELECT id, task_id, agent_name, status, started_at,
+                              ended_at, poll_run_dir, error_message,
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
+                       FROM poll_runs
+                       WHERE status IN ('QUEUED', 'SPAWNING', 'RUNNING', 'TERMINATING', 'QUARANTINED')
+                       ORDER BY started_at DESC""",
+                )
+                return [self._row_to_run(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to list launch blocking poll runs: {e}", e) from e
 
     # TODO: migrate all callers to cas_update_status
     def update_status(
@@ -95,7 +120,18 @@ class SqlitePollRunRepository:
 
         Terminal statuses (COMPLETED, FAILED, CANCELLED) also set ended_at.
         Non-terminal statuses set started_at.
+
+        Validates that the transition is allowed by the state machine.
+        Raises ValueError for invalid transitions.
         """
+        # Validate transition against state machine
+        current = self.get_by_id(run_id)
+        if current is not None and not current.can_transition_to(status):
+            raise ValueError(
+                f"Invalid poll run transition: {current.status.value} -> {status.value}"
+                f" for run {run_id}"
+            )
+
         now_ms = int(time.time() * 1000)
         try:
             with self._connection as conn:
@@ -170,6 +206,29 @@ class SqlitePollRunRepository:
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to count poll runs by status: {e}", e) from e
 
+    def record_launch_metadata(
+        self,
+        run_id: str,
+        *,
+        launch_method: str,
+        pane_id: str | None = None,
+        pid: int | None = None,
+        pgid: int | None = None,
+    ) -> bool:
+        """Persist launch metadata used for authoritative cleanup."""
+        now_ms = int(time.time() * 1000)
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    """UPDATE poll_runs
+                       SET launch_method = ?, launch_pane_id = ?, launch_pid = ?, launch_pgid = ?, launch_recorded_at = ?
+                       WHERE id = ?""",
+                    (launch_method, pane_id, pid, pgid, now_ms, run_id),
+                )
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise RepositoryError(f"Failed to record launch metadata: {e}", e) from e
+
     def remove(self, run_id: str) -> None:
         """Hard-delete a poll run."""
         try:
@@ -196,4 +255,9 @@ class SqlitePollRunRepository:
             ended_at=row["ended_at"],
             poll_run_dir=row["poll_run_dir"],
             error_message=row["error_message"],
+            launch_method=row["launch_method"],
+            launch_pane_id=row["launch_pane_id"],
+            launch_pid=row["launch_pid"],
+            launch_pgid=row["launch_pgid"],
+            launch_recorded_at=row["launch_recorded_at"],
         )

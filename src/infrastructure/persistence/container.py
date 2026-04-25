@@ -16,7 +16,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.application.services.agent_polling_service import AgentPollingService
@@ -264,11 +264,13 @@ def get_workflow_executor():
     if _workflow_executor is None:
         from src.application.services.workflow.executor import WorkflowExecutor
 
+        lifecycle_svc = get_lifecycle_service()
         _workflow_executor = WorkflowExecutor(
             tmux_orchestrator=get_tmux_orchestrator(),
             memory_service=get_memory_service(),
             workspace_manager=get_workspace_manager(),
             hook_service=get_hook_service(),
+            lifecycle_service=lifecycle_svc,
         )
     return _workflow_executor
 
@@ -380,7 +382,7 @@ def __getattr__(name: str) -> object:
 
 
 def get_agent_polling_service(db_path: Path | None = None) -> AgentPollingService:
-    """Get an AgentPollingService wired with SQLite repo and filesystem."""
+    """Get an AgentPollingService wired with SQLite repo, filesystem, and lifecycle service."""
     from src.application.services.agent_polling_service import AgentPollingService
     from src.infrastructure.persistence.repositories.poll_run_repository import (
         SqlitePollRunRepository,
@@ -390,8 +392,43 @@ def get_agent_polling_service(db_path: Path | None = None) -> AgentPollingServic
     task_svc = get_task_board_service(db_path)
     db = get_database_connection(db_path)
     repo = SqlitePollRunRepository(connection=db)
+    lifecycle_svc = get_lifecycle_service(db_path)
     run_dir = PollRunDirectory()
-    return AgentPollingService(task_service=task_svc, poll_run_repo=repo, run_dir=run_dir)
+    return AgentPollingService(
+        task_service=task_svc,
+        poll_run_repo=repo,
+        run_dir=run_dir,
+        lifecycle_service=lifecycle_svc,
+    )
+
+
+_lifecycle_service_instance: Any = None
+_lifecycle_service_lock = Lock()
+
+
+def get_lifecycle_service(db_path: Path | None = None):
+    """Get or create the singleton AgentLaunchLifecycleService.
+
+    Uses the same pattern as get_agent_polling_service for wiring
+    but caches the instance for reuse across API/CLI surfaces.
+    """
+    global _lifecycle_service_instance
+    if _lifecycle_service_instance is not None:
+        return _lifecycle_service_instance
+    with _lifecycle_service_lock:
+        if _lifecycle_service_instance is not None:
+            return _lifecycle_service_instance
+        from src.application.services.agent_launch_lifecycle_service import (
+            AgentLaunchLifecycleService,
+        )
+        from src.infrastructure.persistence.repositories.agent_launch_repository import (
+            SqliteAgentLaunchRepository,
+        )
+
+        db = get_database_connection(db_path)
+        launch_repo = SqliteAgentLaunchRepository(connection=db)
+        _lifecycle_service_instance = AgentLaunchLifecycleService(registry=launch_repo)
+    return _lifecycle_service_instance
 
 
 def get_template_service(db_path: Path | None = None) -> TemplateService:

@@ -18,10 +18,22 @@ class PollRunRepository(Protocol):
 
     def list_active(self) -> list[PollRun]: ...
 
+    def list_launch_blocking(self) -> list[PollRun]: ...
+
     def update_status(
         self, run_id: str, status: PollRunStatus, error_message: str | None = None
     ) -> None: ...
 
     def count_by_status(self) -> dict[str, int]: ...
+
+    def record_launch_metadata(
+        self,
+        run_id: str,
+        *,
+        launch_method: str,
+        pane_id: str | None = None,
+        pid: int | None = None,
+        pgid: int | None = None,
+    ) -> bool: ...
 
     def remove(self, run_id: str) -> None: ...

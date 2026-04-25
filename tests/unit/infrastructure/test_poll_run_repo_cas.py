@@ -26,7 +26,12 @@ def _make_repo(tmp_path: Path) -> SqlitePollRunRepository:
                 started_at INTEGER,
                 ended_at INTEGER,
                 poll_run_dir TEXT,
-                error_message TEXT
+                error_message TEXT,
+                launch_method TEXT,
+                launch_pane_id TEXT,
+                launch_pid INTEGER,
+                launch_pgid INTEGER,
+                launch_recorded_at INTEGER
             );
         """)
     return SqlitePollRunRepository(connection=conn)
@@ -102,3 +107,39 @@ class TestCountByStatus:
 
         result = repo.count_by_status()
         assert result == {}
+
+
+class TestLaunchMetadata:
+    """Phase 1: launch metadata must be persisted for cleanup."""
+
+    def test_record_launch_metadata_tmux(self, tmp_path: Path) -> None:
+        repo = _make_repo(tmp_path)
+        with repo._connection as conn:
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status) VALUES (?, ?, ?, ?)",
+                ("r1", "t1", "poll-agent", "SPAWNING"),
+            )
+
+        saved = repo.record_launch_metadata("r1", launch_method="tmux", pane_id="%9")
+        assert saved is True
+        run = repo.get_by_id("r1")
+        assert run is not None
+        assert run.launch_method == "tmux"
+        assert run.launch_pane_id == "%9"
+
+    def test_list_launch_blocking_includes_quarantined(self, tmp_path: Path) -> None:
+        repo = _make_repo(tmp_path)
+        with repo._connection as conn:
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status) VALUES ('r1', 't1', 'a', 'RUNNING')"
+            )
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status) VALUES ('r2', 't2', 'a', 'QUARANTINED')"
+            )
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status) VALUES ('r3', 't3', 'a', 'COMPLETED')"
+            )
+
+        runs = repo.list_launch_blocking()
+        run_ids = {run.id for run in runs}
+        assert run_ids == {"r1", "r2"}

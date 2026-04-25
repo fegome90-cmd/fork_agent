@@ -8,16 +8,41 @@ from enum import StrEnum
 
 class PollRunStatus(StrEnum):
     """Status of an autonomous poll run."""
+
     QUEUED = "QUEUED"
+    SPAWNING = "SPAWNING"
     RUNNING = "RUNNING"
+    TERMINATING = "TERMINATING"
+    QUARANTINED = "QUARANTINED"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
 
 _VALID_TRANSITIONS: dict[PollRunStatus, set[PollRunStatus]] = {
-    PollRunStatus.QUEUED: {PollRunStatus.RUNNING, PollRunStatus.CANCELLED},
-    PollRunStatus.RUNNING: {PollRunStatus.COMPLETED, PollRunStatus.FAILED, PollRunStatus.CANCELLED},
+    PollRunStatus.QUEUED: {
+        PollRunStatus.SPAWNING,
+        PollRunStatus.CANCELLED,
+        PollRunStatus.QUARANTINED,
+    },
+    PollRunStatus.SPAWNING: {
+        PollRunStatus.RUNNING,
+        PollRunStatus.QUARANTINED,
+        PollRunStatus.FAILED,
+        PollRunStatus.CANCELLED,
+    },
+    PollRunStatus.RUNNING: {
+        PollRunStatus.TERMINATING,
+        PollRunStatus.COMPLETED,
+        PollRunStatus.FAILED,
+        PollRunStatus.CANCELLED,
+    },
+    PollRunStatus.TERMINATING: {
+        PollRunStatus.COMPLETED,
+        PollRunStatus.FAILED,
+        PollRunStatus.CANCELLED,
+    },
+    PollRunStatus.QUARANTINED: {PollRunStatus.CANCELLED},
     PollRunStatus.COMPLETED: set(),
     PollRunStatus.FAILED: set(),
     PollRunStatus.CANCELLED: set(),
@@ -47,6 +72,11 @@ class PollRun:
     ended_at: int | None = None
     poll_run_dir: str | None = None
     error_message: str | None = None
+    launch_method: str | None = None
+    launch_pane_id: str | None = None
+    launch_pid: int | None = None
+    launch_pgid: int | None = None
+    launch_recorded_at: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id:
@@ -61,6 +91,12 @@ class PollRun:
             raise ValueError("started_at must be non-negative")
         if self.ended_at is not None and self.ended_at < 0:
             raise ValueError("ended_at must be non-negative")
+        if self.launch_pid is not None and self.launch_pid < 0:
+            raise ValueError("launch_pid must be non-negative")
+        if self.launch_pgid is not None and self.launch_pgid < 0:
+            raise ValueError("launch_pgid must be non-negative")
+        if self.launch_recorded_at is not None and self.launch_recorded_at < 0:
+            raise ValueError("launch_recorded_at must be non-negative")
 
     def can_transition_to(self, target: PollRunStatus) -> bool:
         """Check if transitioning to target status is allowed."""

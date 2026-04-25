@@ -153,9 +153,9 @@ class TestQueuedTimeout:
 
         service.check_runs()
 
-        # Should have called update_status with FAILED
+        # Should quarantine unresolved run after timeout (fail-closed).
         calls = [c for c in poll_repo.update_status.call_args_list]
-        assert any(c[0][1] == PollRunStatus.FAILED for c in calls)
+        assert any(c[0][1] == PollRunStatus.QUARANTINED for c in calls)
 
     def test_recent_queued_run_not_timed_out(self) -> None:
         service, poll_repo, task_service, run_dir = _make_service()
@@ -169,13 +169,8 @@ class TestQueuedTimeout:
 
         service.check_runs()
 
-        # Should NOT fail a recent QUEUED run — still within timeout
-        # But it WILL fail because "Spawn incomplete" (no status file)
-        # Just verify it doesn't use the timeout message
-        calls = [c for c in poll_repo.update_status.call_args_list]
-        for c in calls:
-            error_msg = c[0][2] if len(c[0]) > 2 else ""
-            assert "timeout" not in error_msg.lower()
+        # Should remain protected and unresolved, with no status transition.
+        poll_repo.update_status.assert_not_called()
 
 
 class TestMaxConcurrentSetter:

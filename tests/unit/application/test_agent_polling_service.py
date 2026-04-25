@@ -10,6 +10,7 @@ import pytest
 from src.application.services.agent_polling_service import (
     DEFAULT_CONCURRENCY,
     AgentPollingService,
+    LaunchHandle,
 )
 from src.application.services.task_board_service import TaskBoardService
 from src.domain.entities.orchestration_task import (
@@ -64,7 +65,27 @@ class MockRepo:
         return [
             r
             for r in self._runs.values()
-            if r.status in (PollRunStatus.QUEUED, PollRunStatus.RUNNING)
+            if r.status
+            in (
+                PollRunStatus.QUEUED,
+                PollRunStatus.SPAWNING,
+                PollRunStatus.RUNNING,
+                PollRunStatus.TERMINATING,
+            )
+        ]
+
+    def list_launch_blocking(self) -> list[PollRun]:
+        return [
+            r
+            for r in self._runs.values()
+            if r.status
+            in (
+                PollRunStatus.QUEUED,
+                PollRunStatus.SPAWNING,
+                PollRunStatus.RUNNING,
+                PollRunStatus.TERMINATING,
+                PollRunStatus.QUARANTINED,
+            )
         ]
 
     def update_status(
@@ -83,11 +104,34 @@ class MockRepo:
             counts[run.status.value] = counts.get(run.status.value, 0) + 1
         return counts
 
+    def record_launch_metadata(
+        self,
+        run_id: str,
+        *,
+        launch_method: str,
+        pane_id: str | None = None,
+        pid: int | None = None,
+        pgid: int | None = None,
+    ) -> bool:
+        run = self._runs.get(run_id)
+        if run is None:
+            return False
+        self._runs[run_id] = replace(
+            run,
+            launch_method=launch_method,
+            launch_pane_id=pane_id,
+            launch_pid=pid,
+            launch_pgid=pgid,
+            launch_recorded_at=1,
+        )
+        return True
+
 
 def _make_service(
     max_concurrent: int = DEFAULT_CONCURRENCY,
     task_service: MagicMock | None = None,
     repo: MockRepo | None = None,
+    allow_subprocess_fallback: bool = True,
 ) -> tuple[AgentPollingService, MagicMock, MockRepo, MagicMock]:
     ts: MagicMock = task_service or MagicMock(spec=TaskBoardService)
     r: MockRepo = repo or MockRepo()
@@ -100,6 +144,7 @@ def _make_service(
         poll_run_repo=r,
         run_dir=rd,
         max_concurrent=max_concurrent,
+        allow_subprocess_fallback=allow_subprocess_fallback,
     )
     return svc, ts, r, rd
 
@@ -120,7 +165,12 @@ class TestPollOnce:
         ts.list.return_value = [task]
         ts.start.return_value = None
 
-        runs = svc.poll_once()
+        with patch.object(
+            AgentPollingService,
+            "_spawn_agent",
+            return_value=LaunchHandle(method="tmux", pane_id="%1"),
+        ):
+            runs = svc.poll_once()
         assert len(runs) == 1
         assert runs[0].task_id == "task-1"
         assert runs[0].status == PollRunStatus.RUNNING
@@ -134,7 +184,12 @@ class TestPollOnce:
         tasks = [_make_task(f"task-{i}") for i in range(3)]
         ts.list.return_value = tasks
 
-        runs = svc.poll_once()
+        with patch.object(
+            AgentPollingService,
+            "_spawn_agent",
+            return_value=LaunchHandle(method="tmux", pane_id="%1"),
+        ):
+            runs = svc.poll_once()
         assert len(runs) == 2
 
     def test_at_cap_returns_empty(self) -> None:
@@ -154,6 +209,47 @@ class TestPollOnce:
         ts.list.return_value = [_make_task("task-1")]
         runs = svc.poll_once()
         assert len(runs) == 0
+
+    def test_quarantined_run_blocks_relaunch_across_cycles(self) -> None:
+        svc, ts, repo, rd = _make_service()
+        repo.save(_make_run("run-q", task_id="task-1", status=PollRunStatus.QUARANTINED))
+        ts.list.return_value = [_make_task("task-1")]
+
+        first = svc.poll_once()
+        second = svc.poll_once()
+
+        assert first == []
+        assert second == []
+        ts.start.assert_not_called()
+
+    def test_ambiguous_spawn_result_is_quarantined(self) -> None:
+        svc, ts, repo, rd = _make_service()
+        task = _make_task("task-1")
+        ts.list.return_value = [task]
+        with patch.object(AgentPollingService, "_spawn_agent", return_value=None):
+            runs = svc.poll_once()
+
+        assert len(runs) == 1
+        assert runs[0].status == PollRunStatus.QUARANTINED
+        ts.start.assert_called_once_with("task-1", owner="poll-agent")
+
+    def test_metadata_persisted_before_running(self) -> None:
+        svc, ts, repo, rd = _make_service()
+        task = _make_task("task-1")
+        ts.list.return_value = [task]
+        with patch.object(
+            AgentPollingService,
+            "_spawn_agent",
+            return_value=LaunchHandle(method="subprocess", pid=123, pgid=123),
+        ):
+            runs = svc.poll_once()
+
+        assert runs[0].status == PollRunStatus.RUNNING
+        saved = repo.get_by_id(runs[0].id)
+        assert saved is not None
+        assert saved.launch_method == "subprocess"
+        assert saved.launch_pid == 123
+        assert saved.launch_pgid == 123
 
 
 class TestCheckRuns:

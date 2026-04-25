@@ -24,6 +24,13 @@ from src.interfaces.api.models import (
 logger = logging.getLogger(__name__)
 
 
+def _get_lifecycle_service():
+    """Get the AgentLaunchLifecycleService (lazy, singleton)."""
+    from src.infrastructure.persistence.container import get_lifecycle_service
+
+    return get_lifecycle_service()
+
+
 def _determine_status(tmux_error: str | None, agent_error: str | None) -> str:
     """Determine session status based on errors."""
     if tmux_error:
@@ -251,7 +258,7 @@ async def create_session(
     request: AgentSessionCreate,
     _: str = Depends(verify_api_key),
 ) -> AgentSessionResponse:
-    """Crea una nueva sesión de agente (with concurrency guard)."""
+    """Crea una nueva sesión de agente (with concurrency guard and lifecycle dedup)."""
     # Check concurrency limit
     acquired = _session_semaphore.acquire(blocking=False)
     if not acquired:
@@ -286,6 +293,55 @@ async def create_session(
 
         session_id = f"fork-{request.agent_type}-{uuid.uuid4().hex[:12]}"
 
+        # Claim canonical launch slot via lifecycle service
+        canonical_key = f"api:{session_id}"
+        lifecycle_launch_id: str | None = None
+        lifecycle = _get_lifecycle_service()
+        attempt = lifecycle.request_launch(
+            canonical_key=canonical_key,
+            surface="api",
+            owner_type="session",
+            owner_id=session_id,
+        )
+        if attempt.decision == "suppressed":
+            # Return existing session info instead of creating a duplicate
+            logger.info(
+                "API launch suppressed for task %s: %s",
+                request.task[:50],
+                attempt.reason or "already active",
+            )
+            existing = attempt.existing_launch
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "A session is already active for this task.",
+                    "existing_launch_id": existing.launch_id if existing else None,
+                    "existing_status": existing.status.value if existing else None,
+                    "existing_tmux_session": existing.tmux_session if existing else None,
+                },
+            )
+        if attempt.decision == "error":
+            logger.error(
+                "Lifecycle registry error for API session %s: %s",
+                session_id,
+                attempt.reason,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Launch registry unavailable: {attempt.reason}",
+            )
+        if attempt.launch is not None:
+            lifecycle_launch_id = attempt.launch.launch_id
+
+        # Notify lifecycle that spawn is starting
+        if lifecycle_launch_id is not None:
+            ok = lifecycle.confirm_spawning(lifecycle_launch_id)
+            if not ok:
+                logger.warning(
+                    "CAS failed for launch %s during spawning — split-brain risk",
+                    lifecycle_launch_id,
+                )
+
         # Create tmux session if requested
         if request.tmux:
             try:
@@ -308,14 +364,32 @@ async def create_session(
                         logger.info(
                             f"Launched {backend.display_name} in tmux session: {tmux_session_name}"
                         )
+                        # Confirm active in lifecycle registry
+                        if lifecycle_launch_id is not None:
+                            ok = lifecycle.confirm_active(
+                                lifecycle_launch_id,
+                                backend="tmux",
+                                termination_handle_type="tmux-session",
+                                termination_handle_value=tmux_session_name,
+                                tmux_session=tmux_session_name,
+                            )
+                            if not ok:
+                                logger.warning(
+                                    "CAS failed for launch %s during confirm_active — split-brain risk",
+                                    lifecycle_launch_id,
+                                )
                     else:
                         agent_error = f"Failed to launch agent in {tmux_session_name}"
                         logger.warning(agent_error)
+                        if lifecycle_launch_id is not None:
+                            lifecycle.mark_failed(lifecycle_launch_id, agent_error)
             except Exception as e:
                 logger.error(f"Failed to create tmux session: {e}", exc_info=True)
                 # Expose error in response instead of silently failing
                 tmux_error = str(e)
                 tmux_session_name = None
+                if lifecycle_launch_id is not None:
+                    lifecycle.mark_failed(lifecycle_launch_id, f"tmux error: {e}")
 
         # Track hooks if requested
         hooks = []
@@ -405,6 +479,67 @@ async def delete_session(
             # Log at ERROR level - don't silently continue
             logger.error(f"Failed to kill tmux session {session.tmux_session}: {e}", exc_info=True)
 
+    # Terminate lifecycle record if lifecycle service is available
+    try:
+        lifecycle = _get_lifecycle_service()
+        active = lifecycle.get_active_launch(f"api:{session_id}")
+        if active is not None:
+            lifecycle.begin_termination(active.launch_id)
+            lifecycle.confirm_terminated(active.launch_id)
+    except Exception as e:
+        logger.error("Lifecycle termination failed for session %s: %s", session_id, e)
+
     # Remove from store
     SessionStore.delete(session_id)
     logger.info(f"Session deleted: session_id={session_id}")
+
+
+@router.get("/launches/status")
+async def get_launch_status(
+    _: str = Depends(verify_api_key),
+) -> dict:
+    """Get launch registry status summary for operator triage.
+
+    Returns counts by status, active launches, and quarantined launches
+    so operators can distinguish started/suppressed/quarantined/failed decisions.
+    """
+    try:
+        lifecycle = _get_lifecycle_service()
+        summary = lifecycle.get_status_summary()
+        active = lifecycle.list_active_launches()
+        quarantined = lifecycle.list_quarantined_launches()
+
+        return {
+            "counts_by_status": summary,
+            "active_launches": [
+                {
+                    "launch_id": l.launch_id,
+                    "canonical_key": l.canonical_key,
+                    "surface": l.surface,
+                    "owner_type": l.owner_type,
+                    "owner_id": l.owner_id,
+                    "status": l.status.value,
+                    "backend": l.backend,
+                    "tmux_session": l.tmux_session,
+                    "created_at": l.created_at,
+                    "lease_expires_at": l.lease_expires_at,
+                }
+                for l in active
+            ],
+            "quarantined_launches": [
+                {
+                    "launch_id": l.launch_id,
+                    "canonical_key": l.canonical_key,
+                    "surface": l.surface,
+                    "quarantine_reason": l.quarantine_reason,
+                    "created_at": l.created_at,
+                }
+                for l in quarantined
+            ],
+        }
+    except Exception as e:
+        logger.error("Failed to get launch status: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Launch registry unavailable: {e}",
+        ) from e

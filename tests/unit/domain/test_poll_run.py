@@ -11,7 +11,10 @@ class TestPollRunStatus:
     """Tests for PollRunStatus enum."""
 
     def test_all_statuses_exist(self) -> None:
-        expected = {"QUEUED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"}
+        expected = {
+            "QUEUED", "SPAWNING", "RUNNING", "TERMINATING", "QUARANTINED",
+            "COMPLETED", "FAILED", "CANCELLED",
+        }
         actual = {s.value for s in PollRunStatus}
         assert actual == expected
 
@@ -114,8 +117,8 @@ class TestPollRunTransitions:
                 f"{source.value} should not transition to {target.value}"
             )
 
-    def test_queued_to_running(self) -> None:
-        assert _make_run(PollRunStatus.QUEUED).can_transition_to(PollRunStatus.RUNNING)
+    def test_queued_to_spawning(self) -> None:
+        assert _make_run(PollRunStatus.QUEUED).can_transition_to(PollRunStatus.SPAWNING)
 
     def test_queued_to_cancelled(self) -> None:
         assert _make_run(PollRunStatus.QUEUED).can_transition_to(PollRunStatus.CANCELLED)
@@ -126,6 +129,9 @@ class TestPollRunTransitions:
     def test_queued_cannot_fail(self) -> None:
         assert not _make_run(PollRunStatus.QUEUED).can_transition_to(PollRunStatus.FAILED)
 
+    def test_queued_cannot_go_running_directly(self) -> None:
+        assert not _make_run(PollRunStatus.QUEUED).can_transition_to(PollRunStatus.RUNNING)
+
     def test_running_to_completed(self) -> None:
         assert _make_run(PollRunStatus.RUNNING).can_transition_to(PollRunStatus.COMPLETED)
 
@@ -135,16 +141,19 @@ class TestPollRunTransitions:
     def test_running_to_cancelled(self) -> None:
         assert _make_run(PollRunStatus.RUNNING).can_transition_to(PollRunStatus.CANCELLED)
 
+    def test_running_to_terminating(self) -> None:
+        assert _make_run(PollRunStatus.RUNNING).can_transition_to(PollRunStatus.TERMINATING)
+
     def test_running_cannot_requeue(self) -> None:
         assert not _make_run(PollRunStatus.RUNNING).can_transition_to(PollRunStatus.QUEUED)
 
     @pytest.mark.parametrize(
         "source,valid_targets",
         [
-            (PollRunStatus.QUEUED, {PollRunStatus.RUNNING, PollRunStatus.CANCELLED}),
+            (PollRunStatus.QUEUED, {PollRunStatus.SPAWNING, PollRunStatus.CANCELLED, PollRunStatus.QUARANTINED}),
             (
                 PollRunStatus.RUNNING,
-                {PollRunStatus.COMPLETED, PollRunStatus.FAILED, PollRunStatus.CANCELLED},
+                {PollRunStatus.TERMINATING, PollRunStatus.COMPLETED, PollRunStatus.FAILED, PollRunStatus.CANCELLED},
             ),
         ],
     )
