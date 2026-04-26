@@ -356,7 +356,7 @@ class AgentManager:
                     lifecycle_launch_id = attempt.launch.launch_id
 
             # Currently only TmuxAgent is supported
-            agent: Agent = TmuxAgent(config)
+            agent = TmuxAgent(config)
 
             # Notify lifecycle that spawn is starting
             if lifecycle_launch_id is not None and self._lifecycle is not None:

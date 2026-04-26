@@ -154,7 +154,7 @@ class TestQueuedTimeout:
         service.check_runs()
 
         # Should quarantine unresolved run after timeout (fail-closed).
-        calls = [c for c in poll_repo.update_status.call_args_list]
+        calls = list(poll_repo.update_status.call_args_list)
         assert any(c[0][1] == PollRunStatus.QUARANTINED for c in calls)
 
     def test_recent_queued_run_not_timed_out(self) -> None:

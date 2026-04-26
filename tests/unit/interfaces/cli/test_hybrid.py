@@ -246,8 +246,8 @@ class TestHybridDispatcherSearch:
         assert receipt.mode == DispatchMode.FALLBACK
         # Verify no double-retry bug (only 1 receipt for search)
         if receipt_file.exists():
-            lines = [l for l in receipt_file.read_text().strip().split("\n") if l]
-            search_receipts = [l for l in lines if '"search"' in l]
+            lines = [line for line in receipt_file.read_text().strip().split("\n") if line]
+            search_receipts = [line for line in lines if '"search"' in line]
             assert len(search_receipts) <= 1
 
 
@@ -377,7 +377,7 @@ class TestHybridDispatcherMessage:
         mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
         d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
         with (
-            patch("src.domain.entities.message.MessageType") as mock_mt,
+            patch("src.domain.entities.message.MessageType"),
             patch("src.domain.entities.message.AgentMessage") as mock_msg,
             patch("src.infrastructure.persistence.container.get_agent_messenger") as mock_get,
         ):
@@ -487,7 +487,7 @@ class TestHybridDispatcherRetrieve:
         mock_mcp_client.call_tool_sync.side_effect = Exception("fail")
         d = _dispatcher_with_mcp(mock_service, mock_mcp_client)
         with (
-            patch("src.infrastructure.persistence.container.get_repository") as mock_repo,
+            patch("src.infrastructure.persistence.container.get_repository"),
             patch(
                 "src.infrastructure.retrieval.v2.enhanced_search.EnhancedRetrievalSearchService"
             ) as mock_svc_cls,

@@ -224,19 +224,15 @@ class TestLifecycleTransitions:
         svc.confirm_spawning(lid)
         svc.quarantine(lid, "ambiguous")
 
-        # New request should still be suppressed (QUARANTINED is not in blocking
-        # statuses, so this SHOULD be claimable — quarantine means "we're done
-        # with this attempt, needs manual recovery")
-        # Actually, let me check: QUARANTINED is NOT in BLOCKING_STATUSES.
-        # So a new claim SHOULD succeed after quarantine.
+        # QUARANTINED IS in BLOCKING_STATUSES — it must block relaunches
+        # until manual recovery clears the quarantine.
         new_attempt = svc.request_launch(
             canonical_key="task:blocked",
             surface="polling",
             owner_type="task",
             owner_id="blocked",
         )
-        # QUARANTINED is not blocking, so new claim should succeed
-        assert new_attempt.decision == "claimed"
+        assert new_attempt.decision == "suppressed"
 
 
 class TestExpiredLeaseReconciliation:

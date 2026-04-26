@@ -28,7 +28,6 @@ from src.infrastructure.persistence.repositories.agent_launch_repository import 
     SqliteAgentLaunchRepository,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers — mirrors patterns from test_agent_launch_lifecycle_service.py
 # ---------------------------------------------------------------------------
@@ -273,7 +272,7 @@ class TestNearConcurrentLaunchAttempts:
             )
 
         active = svc.list_active_launches()
-        matching = [l for l in active if l.canonical_key == canonical_key]
+        matching = [launch for launch in active if launch.canonical_key == canonical_key]
         assert len(matching) == 1, "Registry must have exactly one active launch for this key"
 
 
@@ -368,7 +367,6 @@ class TestCleanupAfterTerminalStates:
 
     def test_all_terminal_states_free_canonical_key(self, tmp_path: Path) -> None:
         """Every terminal state should free the canonical key for new claims."""
-        svc_factory = lambda: _make_service(tmp_path / "fresh")
 
         terminal_transitions = [
             ("terminated", lambda s, lid: (
@@ -426,10 +424,12 @@ class TestQuarantinePreventsRelaunchLoop:
     def test_quarantined_launch_allows_new_claim_after_manual_recovery(
         self, tmp_path: Path,
     ) -> None:
-        """QUARANTINED is NOT a blocking status, so a new claim is allowed.
+        """QUARANTINED IS a blocking status — operator must force-terminate first.
 
-        However, the operator must explicitly decide to relaunch. The quarantine
-        reason is visible in the audit trail.
+        The quarantine reason is visible in the audit trail. Recovery means:
+        1. Operator inspects the quarantined launch
+        2. Force-terminates it (moves to TERMINATED)
+        3. Then a new claim is allowed
         """
         svc = _make_service(tmp_path)
         attempt = svc.request_launch(
@@ -447,8 +447,19 @@ class TestQuarantinePreventsRelaunchLoop:
         assert record.status == LaunchStatus.QUARANTINED
         assert record.quarantine_reason == "Ambiguous spawn result"
 
-        # QUARANTINED is not in BLOCKING_STATUSES, so a new claim is allowed
-        # This represents manual operator recovery
+        # QUARANTINED blocks new claims — must force-terminate first
+        blocked_attempt = svc.request_launch(
+            canonical_key="task:quarantine-relaunch",
+            surface="polling",
+            owner_type="task",
+            owner_id="quarantine-relaunch",
+        )
+        assert blocked_attempt.decision == "suppressed"
+
+        # Operator force-terminates the quarantined launch (QUARANTINED → FAILED)
+        svc.mark_failed(attempt.launch.launch_id, "Manual recovery: force-clearing quarantine")
+
+        # Now a new claim succeeds — manual recovery complete
         new_attempt = svc.request_launch(
             canonical_key="task:quarantine-relaunch",
             surface="polling",
@@ -991,7 +1002,7 @@ class TestLaunchDecisionObservability:
         svc.mark_failed(f.launch.launch_id, "done")
 
         active_launches = svc.list_active_launches()
-        active_ids = {l.launch_id for l in active_launches}
+        active_ids = {launch.launch_id for launch in active_launches}
         assert active.launch_id in active_ids
         assert f.launch.launch_id not in active_ids
 

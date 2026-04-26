@@ -606,7 +606,7 @@ class ObservationRepository:
 
         return result
 
-    def get_by_topic_key(self, topic_key: str, project: str | None) -> Observation | None:
+    def get_by_topic_key(self, topic_key: str, project: str | None = None) -> Observation | None:
         """Get an observation by topic_key, preferring same-project match.
 
         When project is provided, first tries to match both topic_key and project.

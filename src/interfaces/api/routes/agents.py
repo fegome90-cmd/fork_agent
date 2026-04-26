@@ -100,6 +100,7 @@ def _load_session_from_disk(session_id: str) -> AgentSession | None:
             started_at=datetime.fromisoformat(data["started_at"]),
             tmux_session=data.get("tmux_session"),
             hooks=data.get("hooks", []),
+            canonical_key=data.get("canonical_key"),
         )
     except Exception as e:
         logger.warning(f"Failed to load session from disk for {session_id}: {e}")
@@ -127,6 +128,7 @@ def _save_session_to_disk(session: AgentSession) -> bool:
             "started_at": session.started_at.isoformat(),
             "tmux_session": session.tmux_session,
             "hooks": session.hooks,
+            "canonical_key": session.canonical_key,
         }
         session_file.write_text(json.dumps(data, indent=2))
         logger.info(f"Persisted session to disk: {session.session_id}")
@@ -412,6 +414,7 @@ async def create_session(
             started_at=datetime.now(),
             tmux_session=tmux_session_name,
             hooks=hooks,
+            canonical_key=canonical_key,
         )
 
         SessionStore.set(session_id, session)
@@ -488,7 +491,7 @@ async def delete_session(
     # Terminate lifecycle record if lifecycle service is available
     try:
         lifecycle = _get_lifecycle_service()
-        active = lifecycle.get_active_launch(f"api:{session_id}")
+        active = lifecycle.get_active_launch(session.canonical_key) if session.canonical_key else None
         if active is not None:
             lifecycle.begin_termination(active.launch_id)
             lifecycle.confirm_terminated(active.launch_id)
@@ -519,28 +522,28 @@ async def get_launch_status(
             "counts_by_status": summary,
             "active_launches": [
                 {
-                    "launch_id": l.launch_id,
-                    "canonical_key": l.canonical_key,
-                    "surface": l.surface,
-                    "owner_type": l.owner_type,
-                    "owner_id": l.owner_id,
-                    "status": l.status.value,
-                    "backend": l.backend,
-                    "tmux_session": l.tmux_session,
-                    "created_at": l.created_at,
-                    "lease_expires_at": l.lease_expires_at,
+                    "launch_id": launch.launch_id,
+                    "canonical_key": launch.canonical_key,
+                    "surface": launch.surface,
+                    "owner_type": launch.owner_type,
+                    "owner_id": launch.owner_id,
+                    "status": launch.status.value,
+                    "backend": launch.backend,
+                    "tmux_session": launch.tmux_session,
+                    "created_at": launch.created_at,
+                    "lease_expires_at": launch.lease_expires_at,
                 }
-                for l in active
+                for launch in active
             ],
             "quarantined_launches": [
                 {
-                    "launch_id": l.launch_id,
-                    "canonical_key": l.canonical_key,
-                    "surface": l.surface,
-                    "quarantine_reason": l.quarantine_reason,
-                    "created_at": l.created_at,
+                    "launch_id": launch.launch_id,
+                    "canonical_key": launch.canonical_key,
+                    "surface": launch.surface,
+                    "quarantine_reason": launch.quarantine_reason,
+                    "created_at": launch.created_at,
                 }
-                for l in quarantined
+                for launch in quarantined
             ],
         }
     except Exception as e:

@@ -27,6 +27,7 @@ BLOCKING_STATUSES: frozenset[LaunchStatus] = frozenset(
         LaunchStatus.SPAWNING,
         LaunchStatus.ACTIVE,
         LaunchStatus.TERMINATING,
+        LaunchStatus.QUARANTINED,
     }
 )
 

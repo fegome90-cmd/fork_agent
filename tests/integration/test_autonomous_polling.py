@@ -6,10 +6,11 @@ Uses temp-file SQLite + temp directories for full-stack testing.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from src.application.services.agent_polling_service import AgentPollingService
+from src.application.services.agent_polling_service import AgentPollingService, LaunchHandle
 from src.application.services.task_board_service import TaskBoardService
 from src.domain.entities.orchestration_task import OrchestrationTaskStatus
 from src.domain.entities.poll_run import PollRunStatus
@@ -21,6 +22,8 @@ from src.infrastructure.persistence.repositories.poll_run_repository import (
     SqlitePollRunRepository,
 )
 from src.infrastructure.polling.poll_run_directory import PollRunDirectory
+
+_FAKE_HANDLE = LaunchHandle(method="subprocess", pid=99999, pgid=99999)
 
 
 @pytest.fixture
@@ -65,6 +68,20 @@ def svc(
         run_dir=run_dir,
         max_concurrent=4,
     )
+
+
+@pytest.fixture(autouse=True)
+def _stub_spawn_agent():
+    """Stub _spawn_agent to return a fake handle for all tests in this module.
+
+    Tests focus on polling logic, not on actual tmux/subprocess agent spawning.
+    """
+    with patch.object(
+        AgentPollingService,
+        "_spawn_agent",
+        return_value=_FAKE_HANDLE,
+    ):
+        yield
 
 
 def _create_approved_task(task_svc: TaskBoardService, subject: str = "Test task") -> str:

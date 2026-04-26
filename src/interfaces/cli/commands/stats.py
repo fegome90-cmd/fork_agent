@@ -23,7 +23,7 @@ def _get_health_service_from_context(ctx: typer.Context) -> HealthCheckService:
     if ctx.parent and ctx.parent.params:
         db_path = Path(ctx.parent.params.get("db_path", str(get_default_db_path())))
 
-    return get_health_check_service(db_path)
+    return get_health_check_service(db_path)  # type: ignore[no-any-return]
 
 
 def _get_db_path_from_context(ctx: typer.Context) -> Path:

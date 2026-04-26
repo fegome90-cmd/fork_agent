@@ -59,6 +59,7 @@ class AgentSession(BaseModel):
     started_at: datetime
     tmux_session: str | None = None
     hooks: list[dict[str, str]] | None = None
+    canonical_key: str | None = None
 
 
 class AgentSessionCreate(BaseModel):
@@ -227,6 +228,7 @@ class MetricsResponse(BaseModel):
 
     cpu: float
     memory: str
+    memory_total: str = "0MB"
     uptime: int
     requests_total: int
     errors_total: int

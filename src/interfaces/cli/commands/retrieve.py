@@ -51,7 +51,7 @@ def retrieve(
     else:
         db_path = _get_db_path_from_context(ctx)
         repository = get_repository(db_path)
-        service = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
+        service = EnhancedRetrievalSearchService(repository)
         results = service.search(query=query, limit=limit, project=project, type=type)
 
     if not results:

@@ -92,7 +92,7 @@ class SqliteAgentLaunchRepository:
                 cursor = conn.execute(
                     """SELECT * FROM agent_launch_registry
                        WHERE canonical_key = ?
-                         AND status IN ('RESERVED', 'SPAWNING', 'ACTIVE', 'TERMINATING')
+                         AND status IN ('RESERVED', 'SPAWNING', 'ACTIVE', 'TERMINATING', 'QUARANTINED')
                        ORDER BY created_at DESC LIMIT 1""",
                     (canonical_key,),
                 )

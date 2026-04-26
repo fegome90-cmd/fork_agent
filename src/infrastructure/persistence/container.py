@@ -364,7 +364,7 @@ def get_agent_messenger(db_path: Path | None = None):
 
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
-    return get_container(db_path).database_connection()
+    return get_container(db_path).database_connection()  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -431,11 +431,11 @@ def get_lifecycle_service(db_path: Path | None = None):
 def get_template_service(db_path: Path | None = None) -> TemplateService:
     """Get a TemplateService wired with SQLite repos and filesystem."""
     from src.application.services.template_service import TemplateService
+    from src.infrastructure.agent_templates.template_directory import TemplateDirectory
     from src.infrastructure.persistence.repositories.agent_template_repository import (
         SqliteAgentTemplateRepository,
         SqliteTeamRepository,
     )
-    from src.infrastructure.agent_templates.template_directory import TemplateDirectory
 
     path = db_path or get_default_db_path()
     conn = get_database_connection(path)

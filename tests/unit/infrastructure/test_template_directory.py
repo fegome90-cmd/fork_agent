@@ -73,7 +73,7 @@ class TestSaveTemplate:
         finally:
             td_mod._USER_DIR = original
 
-    def test_rejects_builtin_scope(self, tmp_path: Path) -> None:
+    def test_rejects_builtin_scope(self, tmp_path: Path) -> None:  # noqa: ARG002
         td = TemplateDirectory()
         t = _make_template(scope=TemplateScope.BUILTIN)
         with pytest.raises(ValueError, match="BUILTIN"):

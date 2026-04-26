@@ -15,7 +15,7 @@ app = typer.Typer()
 def _get_session_service(db_path: Path | None = None) -> SessionService:
     from src.infrastructure.persistence.container import get_session_service
 
-    return get_session_service(db_path)
+    return get_session_service(db_path)  # type: ignore[no-any-return]
 
 
 @app.command()

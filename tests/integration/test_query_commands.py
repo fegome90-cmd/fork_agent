@@ -22,7 +22,10 @@ from src.application.services.workflow.executor import WorkflowExecutor
 from src.application.services.workflow.state import Task
 from src.domain.entities.message import AgentMessage, MessageType
 from src.infrastructure.persistence.container import create_container
-from src.interfaces.cli.main import app
+from src.interfaces.cli.main import _register_commands, app
+
+# Ensure commands are registered before any test invocation (lazy-loading).
+_register_commands()
 
 
 @pytest.fixture

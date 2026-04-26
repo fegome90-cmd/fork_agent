@@ -3,6 +3,7 @@ falls back to direct service calls transparently. All 17 MCP-routable commands."
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -78,10 +79,8 @@ def discover_server() -> dict[str, Any] | None:
         os.kill(pid, 0)  # Raises ProcessLookupError if dead
         return info
     except (json.JSONDecodeError, ProcessLookupError, PermissionError, KeyError, OSError):
-        try:
+        with contextlib.suppress(OSError):
             port_file.unlink()
-        except OSError:
-            pass
         return None
 
 
@@ -439,7 +438,7 @@ class HybridDispatcher:
         from src.infrastructure.retrieval.v2.enhanced_search import EnhancedRetrievalSearchService
 
         repository = get_repository()
-        svc = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
+        svc = EnhancedRetrievalSearchService(repository)
         results = svc.search(
             query=kwargs.get("query", ""),
             limit=kwargs.get("limit"),

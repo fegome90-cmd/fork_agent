@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import contextlib
-from dataclasses import dataclass
 import logging
 import os
 import signal
 import subprocess
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -248,10 +248,8 @@ class AgentPollingService:
         self._terminate_spawned_agent(run_id)
         # Reset task to APPROVED so it can be re-picked
         if run.task_id:
-            try:
+            with contextlib.suppress(ValueError, TaskTransitionError):
                 self._task_service.retry(run.task_id)
-            except (ValueError, TaskTransitionError):
-                pass
         result = self._poll_run_repo.get_by_id(run_id)
         if result is None:
             raise ValueError(f"Poll run '{run_id}' disappeared after update")
@@ -529,10 +527,8 @@ class AgentPollingService:
     def _complete_run(self, run_id: str, task_id: str) -> None:
         """Mark a run as completed and complete the task."""
         self._terminate_spawned_agent(run_id)
-        try:
+        with contextlib.suppress(ValueError, TaskTransitionError):
             self._task_service.complete(task_id)
-        except (ValueError, TaskTransitionError):
-            pass  # Task might already be completed — acceptable for polling
         self._poll_run_repo.update_status(run_id, PollRunStatus.COMPLETED)
         run = self._poll_run_repo.get_by_id(run_id)
         if run is not None:
@@ -562,10 +558,8 @@ class AgentPollingService:
         )
         # Reset task to APPROVED so it can be re-picked
         if run is not None and run.task_id:
-            try:
+            with contextlib.suppress(ValueError, TaskTransitionError):
                 self._task_service.retry(run.task_id)
-            except (ValueError, TaskTransitionError):
-                pass  # Task might be deleted or already reset
 
     def _finalize_launch(self, run: PollRun, *, failed: bool = False, error: str | None = None) -> None:
         """Best-effort finalization of the AgentLaunch for a completed/failed run."""
