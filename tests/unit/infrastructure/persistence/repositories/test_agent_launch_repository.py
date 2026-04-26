@@ -52,33 +52,25 @@ def _claim_kwargs(overrides: dict | None = None) -> dict:
 class TestClaimDuplicateKeyReturnsNone:
     """Duplicate canonical_key (partial unique index) → returns None."""
 
-    def test_duplicate_canonical_key_returns_none(
-        self, repo: SqliteAgentLaunchRepository
-    ) -> None:
+    def test_duplicate_canonical_key_returns_none(self, repo: SqliteAgentLaunchRepository) -> None:
         first = repo.claim(**_claim_kwargs())
         assert first is not None
 
         second = repo.claim(**_claim_kwargs({"launch_id": "launch-2"}))
         assert second is None
 
-    def test_duplicate_launch_id_also_returns_none(
-        self, repo: SqliteAgentLaunchRepository
-    ) -> None:
+    def test_duplicate_launch_id_also_returns_none(self, repo: SqliteAgentLaunchRepository) -> None:
         """PRIMARY KEY violation on launch_id → message contains 'unique' → returns None."""
         repo.claim(**_claim_kwargs())
         # Same launch_id, different canonical_key → PRIMARY KEY violation
         result = repo.claim(**_claim_kwargs({"canonical_key": "task:t-different"}))
         assert result is None
 
-    def test_different_canonical_keys_both_succeed(
-        self, repo: SqliteAgentLaunchRepository
-    ) -> None:
+    def test_different_canonical_keys_both_succeed(self, repo: SqliteAgentLaunchRepository) -> None:
         first = repo.claim(**_claim_kwargs())
         assert first is not None
 
-        second = repo.claim(
-            **_claim_kwargs({"launch_id": "launch-2", "canonical_key": "task:t-2"})
-        )
+        second = repo.claim(**_claim_kwargs({"launch_id": "launch-2", "canonical_key": "task:t-2"}))
         assert second is not None
 
 

@@ -44,7 +44,16 @@ class SqliteAgentLaunchRepository:
                        (launch_id, canonical_key, surface, owner_type, owner_id,
                         status, created_at, reserved_at, lease_expires_at)
                        VALUES (?, ?, ?, ?, ?, 'RESERVED', ?, ?, ?)""",
-                    (launch_id, canonical_key, surface, owner_type, owner_id, now_ms, now_ms, lease_expires_at),
+                    (
+                        launch_id,
+                        canonical_key,
+                        surface,
+                        owner_type,
+                        owner_id,
+                        now_ms,
+                        now_ms,
+                        lease_expires_at,
+                    ),
                 )
             logger.info(
                 "Claimed launch %s for canonical_key=%s surface=%s",
@@ -64,9 +73,7 @@ class SqliteAgentLaunchRepository:
                     canonical_key,
                 )
                 return None
-            raise RepositoryError(
-                f"Unexpected IntegrityError during claim: {e}", e
-            ) from e
+            raise RepositoryError(f"Unexpected IntegrityError during claim: {e}", e) from e
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to claim launch: {e}", e) from e
 
@@ -133,8 +140,12 @@ class SqliteAgentLaunchRepository:
             LaunchStatus.SUPPRESSED_DUPLICATE,
         )
         ended_at_val = int(time.time() * 1000) if is_terminal else None
-        spawn_started_at_val = int(time.time() * 1000) if new_status == LaunchStatus.SPAWNING else None
-        spawn_confirmed_at_val = int(time.time() * 1000) if new_status == LaunchStatus.ACTIVE else None
+        spawn_started_at_val = (
+            int(time.time() * 1000) if new_status == LaunchStatus.SPAWNING else None
+        )
+        spawn_confirmed_at_val = (
+            int(time.time() * 1000) if new_status == LaunchStatus.ACTIVE else None
+        )
 
         try:
             with self._connection as conn:

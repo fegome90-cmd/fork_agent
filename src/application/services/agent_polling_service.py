@@ -561,7 +561,9 @@ class AgentPollingService:
             with contextlib.suppress(ValueError, TaskTransitionError):
                 self._task_service.retry(run.task_id)
 
-    def _finalize_launch(self, run: PollRun, *, failed: bool = False, error: str | None = None) -> None:
+    def _finalize_launch(
+        self, run: PollRun, *, failed: bool = False, error: str | None = None
+    ) -> None:
         """Best-effort finalization of the AgentLaunch for a completed/failed run."""
         if self._lifecycle_service is None or run.canonical_key is None:
             return

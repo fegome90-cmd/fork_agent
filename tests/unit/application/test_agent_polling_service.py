@@ -321,7 +321,9 @@ class TestSpawnCleanup:
 
     def test_complete_run_terminates_spawned_subprocess(self) -> None:
         svc, ts, repo, rd = _make_service()
-        rd.read_events.return_value = [{"type": "agent_spawned", "pid": 4242, "method": "subprocess"}]
+        rd.read_events.return_value = [
+            {"type": "agent_spawned", "pid": 4242, "method": "subprocess"}
+        ]
 
         with patch.object(AgentPollingService, "_terminate_pid") as terminate_pid:
             svc._complete_run("run-1", "task-1")
@@ -329,7 +331,9 @@ class TestSpawnCleanup:
 
     def test_fail_run_terminates_spawned_tmux_pane(self) -> None:
         svc, ts, repo, rd = _make_service()
-        rd.read_events.return_value = [{"type": "agent_spawned", "pane_id": "%42", "method": "tmux"}]
+        rd.read_events.return_value = [
+            {"type": "agent_spawned", "pane_id": "%42", "method": "tmux"}
+        ]
 
         with patch("subprocess.run") as run_mock:
             svc._fail_run("run-1", "boom")
@@ -338,7 +342,9 @@ class TestSpawnCleanup:
     def test_cancel_run_terminates_spawned_subprocess(self) -> None:
         svc, ts, repo, rd = _make_service()
         repo.save(_make_run("run-1", status=PollRunStatus.RUNNING))
-        rd.read_events.return_value = [{"type": "agent_spawned", "pid": "4242", "method": "subprocess"}]
+        rd.read_events.return_value = [
+            {"type": "agent_spawned", "pid": "4242", "method": "subprocess"}
+        ]
 
         with patch.object(AgentPollingService, "_terminate_pid") as terminate_pid:
             svc.cancel_run("run-1")

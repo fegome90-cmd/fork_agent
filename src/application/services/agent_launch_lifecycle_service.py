@@ -209,8 +209,7 @@ class AgentLaunchLifecycleService:
         )
         if result:
             logger.info(
-                "LAUNCH_DECISION decision=failed launch_id=%s"
-                " canonical_key=%s error=%s",
+                "LAUNCH_DECISION decision=failed launch_id=%s canonical_key=%s error=%s",
                 launch_id,
                 launch.canonical_key,
                 error[:200],

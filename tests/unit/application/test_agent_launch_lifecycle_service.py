@@ -145,13 +145,16 @@ class TestLifecycleTransitions:
         lid = attempt.launch.launch_id
 
         assert svc.confirm_spawning(lid) is True
-        assert svc.confirm_active(
-            lid,
-            backend="tmux",
-            termination_handle_type="tmux-pane",
-            termination_handle_value="%42",
-            tmux_pane_id="%42",
-        ) is True
+        assert (
+            svc.confirm_active(
+                lid,
+                backend="tmux",
+                termination_handle_type="tmux-pane",
+                termination_handle_value="%42",
+                tmux_pane_id="%42",
+            )
+            is True
+        )
 
         launch = svc.get_launch(lid)
         assert launch is not None

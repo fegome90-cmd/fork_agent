@@ -14,7 +14,9 @@ from src.application.services.workflow.state import Task
 from src.domain.entities.agent_launch import AgentLaunch, LaunchStatus
 
 
-def _make_task(task_id: str = "task-abc", slug: str = "test-task", description: str = "Do thing") -> Task:
+def _make_task(
+    task_id: str = "task-abc", slug: str = "test-task", description: str = "Do thing"
+) -> Task:
     return Task(id=task_id, slug=slug, description=description)
 
 
@@ -29,7 +31,9 @@ def _make_claimed_launch(launch_id: str = "launch-001") -> AgentLaunch:
     )
 
 
-def _make_active_launch(launch_id: str = "launch-001", tmux_session: str = "fork-test-abc123") -> AgentLaunch:
+def _make_active_launch(
+    launch_id: str = "launch-001", tmux_session: str = "fork-test-abc123"
+) -> AgentLaunch:
     return AgentLaunch(
         launch_id=launch_id,
         canonical_key="workflow:task-abc",
@@ -83,7 +87,8 @@ class TestWorkflowExecutorWithLifecycle:
         lifecycle = MagicMock(spec=AgentLaunchLifecycleService)
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
         lifecycle.confirm_active.return_value = True
@@ -142,7 +147,8 @@ class TestWorkflowExecutorWithLifecycle:
         lifecycle = MagicMock(spec=AgentLaunchLifecycleService)
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
 
@@ -164,7 +170,8 @@ class TestWorkflowExecutorWithLifecycle:
         # First call: claimed
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
         lifecycle.confirm_active.return_value = True

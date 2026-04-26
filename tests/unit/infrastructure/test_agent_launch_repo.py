@@ -455,7 +455,11 @@ class TestAgentLaunchEntity:
         assert terminal.is_blocking is False
 
     def test_terminal_property(self) -> None:
-        for status in (LaunchStatus.TERMINATED, LaunchStatus.FAILED, LaunchStatus.SUPPRESSED_DUPLICATE):
+        for status in (
+            LaunchStatus.TERMINATED,
+            LaunchStatus.FAILED,
+            LaunchStatus.SUPPRESSED_DUPLICATE,
+        ):
             launch = AgentLaunch(
                 launch_id="x",
                 canonical_key="task:1",

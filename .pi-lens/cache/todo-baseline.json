@@ -3,63 +3,63 @@
     {
       "type": "TODO",
       "message": "migrate all callers to cas_update_status",
-      "file": "src/infrastructure/persistence/repositories/poll_run_repository.py",
-      "line": 90,
+      "file": "../src/infrastructure/persistence/repositories/poll_run_repository.py",
+      "line": 115,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
-      "file": "src/interfaces/api/routes/agents.py",
-      "line": 78,
+      "file": "../src/interfaces/api/routes/agents.py",
+      "line": 85,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
-      "file": "src/interfaces/api/routes/agents.py",
-      "line": 107,
+      "file": "../src/interfaces/api/routes/agents.py",
+      "line": 114,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
-      "file": "src/interfaces/api/routes/agents.py",
-      "line": 136,
+      "file": "../src/interfaces/api/routes/agents.py",
+      "line": 143,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Track persistence status",
-      "file": "src/interfaces/api/routes/agents.py",
-      "line": 171,
+      "file": "../src/interfaces/api/routes/agents.py",
+      "line": 178,
       "column": 32
     },
     {
       "type": "BUG",
       "message": "FIX: Track deletion status",
-      "file": "src/interfaces/api/routes/agents.py",
-      "line": 178,
+      "file": "../src/interfaces/api/routes/agents.py",
+      "line": 185,
       "column": 33
     },
     {
       "type": "BUG",
       "message": "FIX: Thread-safe counters",
-      "file": "src/interfaces/api/routes/system.py",
+      "file": "../src/interfaces/api/routes/system.py",
       "line": 22,
       "column": 37
     },
     {
       "type": "BUG",
       "message": "FIX: Thread-safe read",
-      "file": "src/interfaces/api/routes/system.py",
+      "file": "../src/interfaces/api/routes/system.py",
       "line": 84,
       "column": 28
     },
     {
       "type": "BUG",
       "message": "-8/BUG-9)",
-      "file": "src/interfaces/cli/commands/save.py",
+      "file": "../src/interfaces/cli/commands/save.py",
       "line": 109,
       "column": 48
     }

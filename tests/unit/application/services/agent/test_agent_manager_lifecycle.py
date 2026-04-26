@@ -63,7 +63,8 @@ class TestAgentManagerWithLifecycle:
         lifecycle = MagicMock(spec=AgentLaunchLifecycleService)
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
         lifecycle.confirm_active.return_value = True
@@ -121,7 +122,8 @@ class TestAgentManagerWithLifecycle:
         lifecycle = MagicMock(spec=AgentLaunchLifecycleService)
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
 
@@ -142,7 +144,8 @@ class TestAgentManagerWithLifecycle:
         lifecycle = MagicMock(spec=AgentLaunchLifecycleService)
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
         lifecycle.confirm_active.return_value = True
@@ -170,7 +173,8 @@ class TestAgentManagerWithLifecycle:
         # First call: claimed
         claimed = _make_claimed_launch()
         lifecycle.request_launch.return_value = LaunchAttempt(
-            launch=claimed, decision="claimed",
+            launch=claimed,
+            decision="claimed",
         )
         lifecycle.confirm_spawning.return_value = True
         lifecycle.confirm_active.return_value = True

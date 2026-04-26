@@ -324,8 +324,11 @@ def assign_task(
             raise typer.Exit(1) from None
 
         from src.domain.entities.orchestration_task import OrchestrationTaskStatus
+
         if task.status != OrchestrationTaskStatus.APPROVED:
-            console.print(f"[red]Error: Task is {task.status.value}, must be APPROVED to assign.[/red]")
+            console.print(
+                f"[red]Error: Task is {task.status.value}, must be APPROVED to assign.[/red]"
+            )
             raise typer.Exit(1) from None
 
         # Send assignment message via message CLI
@@ -339,11 +342,13 @@ def assign_task(
 
         db = get_database_connection()
         msg_repo = SqliteMessageRepository(connection=db)
-        payload = json.dumps({
-            "task_id": task_id,
-            "task_subject": task.subject,
-            "assigned_by": "cli",
-        })
+        payload = json.dumps(
+            {
+                "task_id": task_id,
+                "task_subject": task.subject,
+                "assigned_by": "cli",
+            }
+        )
         msg = AgentMessage.create(
             from_agent="cli",
             to_agent=to_agent,

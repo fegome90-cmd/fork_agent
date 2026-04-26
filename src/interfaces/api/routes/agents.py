@@ -298,9 +298,7 @@ async def create_session(
 
         # Claim canonical launch slot via lifecycle service
         task_prefix = (
-            hashlib.sha256(request.task.encode()).hexdigest()[:12]
-            if request.task
-            else "untitled"
+            hashlib.sha256(request.task.encode()).hexdigest()[:12] if request.task else "untitled"
         )
         canonical_key = f"api:{request.agent_type}:{task_prefix}"
         lifecycle_launch_id: str | None = None
@@ -491,7 +489,9 @@ async def delete_session(
     # Terminate lifecycle record if lifecycle service is available
     try:
         lifecycle = _get_lifecycle_service()
-        active = lifecycle.get_active_launch(session.canonical_key) if session.canonical_key else None
+        active = (
+            lifecycle.get_active_launch(session.canonical_key) if session.canonical_key else None
+        )
         if active is not None:
             lifecycle.begin_termination(active.launch_id)
             lifecycle.confirm_terminated(active.launch_id)

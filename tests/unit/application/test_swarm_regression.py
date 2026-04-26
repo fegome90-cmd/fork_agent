@@ -96,12 +96,15 @@ def _run_full_lifecycle(
     lid = attempt.launch.launch_id
 
     assert svc.confirm_spawning(lid) is True
-    assert svc.confirm_active(
-        lid,
-        backend=backend,
-        termination_handle_type=handle_type,
-        termination_handle_value=handle_value,
-    ) is True
+    assert (
+        svc.confirm_active(
+            lid,
+            backend=backend,
+            termination_handle_type=handle_type,
+            termination_handle_value=handle_value,
+        )
+        is True
+    )
     launch = svc.get_launch(lid)
     assert launch is not None
     return launch
@@ -140,7 +143,8 @@ class TestRepeatedPollingSingleLaunch:
         assert len(suppressed) == 19, "All other poll cycles should be suppressed"
 
     def test_suppressed_attempts_reference_same_existing_launch(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         svc = _make_service(tmp_path)
         canonical_key = "task:dedup-ref"
@@ -232,9 +236,7 @@ class TestNearConcurrentLaunchAttempts:
 
         decisions = {polling_attempt.decision, api_attempt.decision}
         assert "claimed" in decisions
-        claimed_count = sum(
-            1 for a in (polling_attempt, api_attempt) if a.decision == "claimed"
-        )
+        claimed_count = sum(1 for a in (polling_attempt, api_attempt) if a.decision == "claimed")
         assert claimed_count == 1, "Exactly one surface must win"
 
     def test_five_surfaces_same_key_one_wins(self, tmp_path: Path) -> None:
@@ -369,17 +371,21 @@ class TestCleanupAfterTerminalStates:
         """Every terminal state should free the canonical key for new claims."""
 
         terminal_transitions = [
-            ("terminated", lambda s, lid: (
-                s.confirm_spawning(lid),
-                s.confirm_active(lid, backend="tmux",
-                                 termination_handle_type="tmux-pane",
-                                 termination_handle_value="%1"),
-                s.begin_termination(lid),
-                s.confirm_terminated(lid),
-            )),
-            ("failed", lambda s, lid: (
-                s.mark_failed(lid, "boom"),
-            )),
+            (
+                "terminated",
+                lambda s, lid: (
+                    s.confirm_spawning(lid),
+                    s.confirm_active(
+                        lid,
+                        backend="tmux",
+                        termination_handle_type="tmux-pane",
+                        termination_handle_value="%1",
+                    ),
+                    s.begin_termination(lid),
+                    s.confirm_terminated(lid),
+                ),
+            ),
+            ("failed", lambda s, lid: (s.mark_failed(lid, "boom"),)),
         ]
 
         for label, transitions in terminal_transitions:
@@ -422,7 +428,8 @@ class TestQuarantinePreventsRelaunchLoop:
     """
 
     def test_quarantined_launch_allows_new_claim_after_manual_recovery(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """QUARANTINED IS a blocking status — operator must force-terminate first.
 
@@ -491,14 +498,18 @@ class TestQuarantinePreventsRelaunchLoop:
         for initial_state, setup in (
             ("RESERVED", lambda svc, lid: None),
             ("SPAWNING", lambda svc, lid: svc.confirm_spawning(lid)),
-            ("ACTIVE", lambda svc, lid: (
-                svc.confirm_spawning(lid),
-                svc.confirm_active(
-                    lid, backend="tmux",
-                    termination_handle_type="tmux-pane",
-                    termination_handle_value="%1",
+            (
+                "ACTIVE",
+                lambda svc, lid: (
+                    svc.confirm_spawning(lid),
+                    svc.confirm_active(
+                        lid,
+                        backend="tmux",
+                        termination_handle_type="tmux-pane",
+                        termination_handle_value="%1",
+                    ),
                 ),
-            )),
+            ),
         ):
             base = tmp_path / f"q_{initial_state}"
             base.mkdir(parents=True, exist_ok=True)
@@ -815,8 +826,7 @@ class TestAllSurfacesObeySameDedup:
                     owner_id="matrix-target",
                 )
                 assert attempt.decision == "suppressed", (
-                    f"Surface {second_surface} should be suppressed after"
-                    f" {first_surface} claimed"
+                    f"Surface {second_surface} should be suppressed after {first_surface} claimed"
                 )
 
 
@@ -879,6 +889,7 @@ class MockPollRunRepo:
         self, run_id: str, status: PollRunStatus, error_message: str | None = None
     ) -> None:
         from dataclasses import replace
+
         run = self._runs.get(run_id)
         if run:
             self._runs[run_id] = replace(run, status=status, error_message=error_message)
@@ -902,6 +913,7 @@ class MockPollRunRepo:
         pgid: int | None = None,
     ) -> bool:
         from dataclasses import replace
+
         run = self._runs.get(run_id)
         if run is None:
             return False
@@ -953,7 +965,8 @@ class TestLaunchDecisionObservability:
         assert summary.get("FAILED", 0) >= 1
 
     def test_suppressed_attempt_includes_existing_launch_info(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """When a launch is suppressed, the existing launch info is available."""
         svc = _make_service(tmp_path)

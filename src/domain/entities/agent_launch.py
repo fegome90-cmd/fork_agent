@@ -16,7 +16,9 @@ class LaunchStatus(StrEnum):
     TERMINATING = "TERMINATING"
     TERMINATED = "TERMINATED"
     FAILED = "FAILED"
-    SUPPRESSED_DUPLICATE = "SUPPRESSED_DUPLICATE"  # Reserved for internal dedup — not set via public API
+    SUPPRESSED_DUPLICATE = (
+        "SUPPRESSED_DUPLICATE"  # Reserved for internal dedup — not set via public API
+    )
     QUARANTINED = "QUARANTINED"
 
 

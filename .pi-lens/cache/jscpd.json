@@ -259,9 +259,9 @@
     },
     {
       "fileA": "src/interfaces/api/models/__init__.py",
-      "startA": 162,
+      "startA": 163,
       "fileB": "src/interfaces/api/models/__init__.py",
-      "startB": 149,
+      "startB": 150,
       "lines": 9,
       "tokens": 0
     },
@@ -434,10 +434,18 @@
       "tokens": 0
     },
     {
+      "fileA": "src/domain/ports/agent_launch_repository.py",
+      "startA": 46,
+      "fileB": "src/infrastructure/persistence/repositories/agent_launch_repository.py",
+      "startB": 106,
+      "lines": 21,
+      "tokens": 0
+    },
+    {
       "fileA": "src/domain/entities/observation.py",
       "startA": 57,
       "fileB": "src/interfaces/api/models/__init__.py",
-      "startB": 176,
+      "startB": 177,
       "lines": 9,
       "tokens": 0
     },
@@ -450,15 +458,55 @@
       "tokens": 0
     },
     {
+      "fileA": "src/application/services/agent_polling_service.py",
+      "startA": 206,
+      "fileB": "src/application/services/agent_polling_service.py",
+      "startB": 168,
+      "lines": 14,
+      "tokens": 0
+    },
+    {
       "fileA": ".gemini/skills/superpowers-systematic-debugging/condition-based-waiting-example.ts",
       "startA": 115,
       "fileB": ".gemini/skills/superpowers-systematic-debugging/condition-based-waiting-example.ts",
       "startB": 23,
       "lines": 9,
       "tokens": 0
+    },
+    {
+      "fileA": "artifacts/reconciliation/workflow-dirty-full.diff",
+      "startA": 85,
+      "fileB": "artifacts/reconciliation/workflow-lifecycle-bughunt-extra.patch",
+      "startB": 6,
+      "lines": 43,
+      "tokens": 0
+    },
+    {
+      "fileA": "artifacts/reconciliation/workflow-dirty-full.diff",
+      "startA": 128,
+      "fileB": "artifacts/reconciliation/workflow-lifecycle-bughunt-extra.patch",
+      "startB": 49,
+      "lines": 39,
+      "tokens": 0
+    },
+    {
+      "fileA": "artifacts/reconciliation/workflow-dirty-full.diff",
+      "startA": 183,
+      "fileB": "artifacts/reconciliation/workflow-lifecycle-bughunt-extra.patch",
+      "startB": 104,
+      "lines": 61,
+      "tokens": 0
+    },
+    {
+      "fileA": "artifacts/WO-PROTO-001A-protocol-preflight.patch",
+      "startA": 359,
+      "fileB": "artifacts/reconciliation/workflow-dirty-full.diff",
+      "startB": 2,
+      "lines": 83,
+      "tokens": 0
     }
   ],
-  "duplicatedLines": 721,
-  "totalLines": 36126,
-  "percentage": 2
+  "duplicatedLines": 976,
+  "totalLines": 38938,
+  "percentage": 2.51
 }

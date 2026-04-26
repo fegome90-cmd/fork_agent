@@ -1,4 +1,5 @@
 # fork_agent - AGENTS.md (Quick Reference)
+
 > Referencia rápida para orquestación de agentes autónomos y sub-agentes.
 > **Última actualización**: 2026-04-25 | **Versión**: 2.7 (Test Coverage)
 > **Fuente canónica**: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`
@@ -6,14 +7,15 @@
 ---
 
 ## Source of Truth
+
 Este repositorio opera bajo la **Constitucion de Codigo Agentico v1.1**.  
 Source of Truth: `https://github.com/fegome90-cmd/constitucion-ai`
 
-| Seccion | Fuente |
-|---------|--------|
-| Agent Rules | [AGENTS.md](AGENTS.md) |
-| System Architecture | `src/infrastructure/` |
-| Orquestación | `src/application/services/orchestration/` |
+| Seccion             | Fuente                                    |
+| ------------------- | ----------------------------------------- |
+| Agent Rules         | [AGENTS.md](AGENTS.md)                    |
+| System Architecture | `src/infrastructure/`                     |
+| Orquestación        | `src/application/services/orchestration/` |
 
 ---
 
@@ -22,6 +24,7 @@ Source of Truth: `https://github.com/fegome90-cmd/constitucion-ai`
 `tmux_fork` es un orquestador multi-agente diseñado para manejar tareas de alta complejidad mediante la paralelización y el uso de un grafo de conocimiento (Trifecta).
 
 ### Componentes Clave:
+
 - **Orquestador (Tú)**: Planifica, delega y monitorea.
 - **Trifecta (v2.0)**: Motor de contexto semántico con latencia <1ms.
 - **tmux-live**: Infraestructura de visualización de agentes en tiempo real.
@@ -51,6 +54,7 @@ Cualquier cambio sustancial DEBE seguir este flujo para garantizar la integridad
 Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 
 ### Comandos Esenciales:
+
 - `trifecta ctx search "<query>"`: Búsqueda semántica en el grafo.
 - `trifecta ast symbols <file>`: Extracción de símbolos y tipos.
 - `trifecta-context-inject`: Script para ensamblar el prompt enriquecido.
@@ -62,13 +66,14 @@ Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 
 **Regla de Oro (P11)**: Los modelos gratuitos fallan un 30-70% en tareas paralelas. Usar el tier pagado para 2+ agentes concurrentes.
 
-| Rol | Modelo Recomendado | Propósito |
-| :--- | :--- | :--- |
-| **Explorer** | `deepseek/deepseek-v4-flash` | Investigación y mapeo. |
-| **Architect** | `zai/glm-5.1` | Diseño y toma de decisiones. |
-| **Implementer** | `zai/glm-5-turbo` | Escritura de código. |
-| **Verifier** | `zai/glm-5-turbo` | Validación y tests. |
-| **Analyst** | `zai/glm-5-turbo` | Investigación + propuesta de fix exacto. |
+| Rol                    | Modelo Recomendado           | Propósito                                |
+| :--------------------- | :--------------------------- | :--------------------------------------- |
+| **Explorer (locate)**  | `opencode/minimax-m2.5-free` | Búsquedas, grep, paths.                  |
+| **Explorer (analyze)** | `zai/glm-5-turbo`            | Análisis, comparación, síntesis.         |
+| **Architect**          | `zai/glm-5.1`                | Diseño y toma de decisiones.             |
+| **Implementer**        | `zai/glm-5-turbo`            | Escritura de código.                     |
+| **Verifier**           | `zai/glm-5-turbo`            | Validación y tests.                      |
+| **Analyst**            | `zai/glm-5-turbo`            | Investigación + propuesta de fix exacto. |
 
 ---
 
@@ -85,6 +90,7 @@ Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 **Advisory-only:** `GOVERNANCE=1` activa guidelines para el orquestador. Sin code enforcement.
 
 Cuando está activo, las fases del protocolo se enriquecen con:
+
 - **CLOOP** (Clarify→Layout→Operate→Observe→Reflect)
 - **SDD** (propose→spec→design→tasks→gate→apply→verify→archive)
 - **Quality Check** (Phase 5.7)
@@ -103,6 +109,7 @@ Latencia: ~28ms por call (raw httpx JSON-RPC) vs ~234ms (MCP SDK).
 ## 📋 Comandos de Referencia Rápida
 
 ### Gestión de Tareas (Fork CLI):
+
 ```bash
 fork task create "Descripción"   # PENDING -> PLANNING
 fork task submit-plan <id>       # PLANNING -> APPROVED
@@ -111,6 +118,7 @@ fork task complete <id>          # IN_PROGRESS -> COMPLETED
 ```
 
 ### Orquestación en Vivo (tmux-live):
+
 ```bash
 tmux-live init                   # Inicializar panel de control
 tmux-live launch <role> <name>   # Lanzar sub-agente
@@ -119,4 +127,5 @@ tmux-live kill-all               # Limpieza total
 ```
 
 ---
-*Nota: Referencia rápida — fuente canónica: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`. Si hay discrepancias, SKILL.md tiene prioridad.*
+
+_Nota: Referencia rápida — fuente canónica: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`. Si hay discrepancias, SKILL.md tiene prioridad._

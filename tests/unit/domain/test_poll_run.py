@@ -12,8 +12,14 @@ class TestPollRunStatus:
 
     def test_all_statuses_exist(self) -> None:
         expected = {
-            "QUEUED", "SPAWNING", "RUNNING", "TERMINATING", "QUARANTINED",
-            "COMPLETED", "FAILED", "CANCELLED",
+            "QUEUED",
+            "SPAWNING",
+            "RUNNING",
+            "TERMINATING",
+            "QUARANTINED",
+            "COMPLETED",
+            "FAILED",
+            "CANCELLED",
         }
         actual = {s.value for s in PollRunStatus}
         assert actual == expected
@@ -150,10 +156,18 @@ class TestPollRunTransitions:
     @pytest.mark.parametrize(
         "source,valid_targets",
         [
-            (PollRunStatus.QUEUED, {PollRunStatus.SPAWNING, PollRunStatus.CANCELLED, PollRunStatus.QUARANTINED}),
+            (
+                PollRunStatus.QUEUED,
+                {PollRunStatus.SPAWNING, PollRunStatus.CANCELLED, PollRunStatus.QUARANTINED},
+            ),
             (
                 PollRunStatus.RUNNING,
-                {PollRunStatus.TERMINATING, PollRunStatus.COMPLETED, PollRunStatus.FAILED, PollRunStatus.CANCELLED},
+                {
+                    PollRunStatus.TERMINATING,
+                    PollRunStatus.COMPLETED,
+                    PollRunStatus.FAILED,
+                    PollRunStatus.CANCELLED,
+                },
             ),
         ],
     )
