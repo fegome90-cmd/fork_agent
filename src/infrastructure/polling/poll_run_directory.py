@@ -50,6 +50,7 @@ class PollRunDirectory:
     def write_status(self, run_id: str, data: dict[str, object]) -> None:
         """Atomically write status.json for a run."""
         run_dir = self._base_dir / run_id
+        run_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         status_path = run_dir / "status.json"
         # Atomic write: temp file then rename
         fd, tmp = tempfile.mkstemp(dir=run_dir, suffix=".tmp")

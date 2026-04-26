@@ -25,8 +25,9 @@ class SqlitePollRunRepository:
                 conn.execute(
                     """INSERT OR REPLACE INTO poll_runs
                        (id, task_id, agent_name, status, started_at, ended_at, poll_run_dir, error_message,
-                        launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
+                        canonical_key)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         run.id,
                         run.task_id,
@@ -41,6 +42,7 @@ class SqlitePollRunRepository:
                         run.launch_pid,
                         run.launch_pgid,
                         run.launch_recorded_at,
+                        run.canonical_key,
                     ),
                 )
         except sqlite3.Error as e:
@@ -53,7 +55,8 @@ class SqlitePollRunRepository:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
-                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
+                              canonical_key
                        FROM poll_runs WHERE id = ?""",
                     (run_id,),
                 )
@@ -71,7 +74,8 @@ class SqlitePollRunRepository:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
-                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
+                              canonical_key
                        FROM poll_runs WHERE status = ?
                        ORDER BY started_at DESC""",
                     (status.value,),
@@ -87,7 +91,8 @@ class SqlitePollRunRepository:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
-                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
+                              canonical_key
                        FROM poll_runs
                        WHERE status IN ('QUEUED', 'SPAWNING', 'RUNNING', 'TERMINATING')
                        ORDER BY started_at DESC""",
@@ -103,7 +108,8 @@ class SqlitePollRunRepository:
                 cursor = conn.execute(
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
-                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at
+                              launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
+                              canonical_key
                        FROM poll_runs
                        WHERE status IN ('QUEUED', 'SPAWNING', 'RUNNING', 'TERMINATING', 'QUARANTINED')
                        ORDER BY started_at DESC""",
@@ -147,8 +153,8 @@ class SqlitePollRunRepository:
                     )
                 else:
                     conn.execute(
-                        "UPDATE poll_runs SET status = ?, started_at = ? WHERE id = ?",
-                        (status.value, now_ms, run_id),
+                        "UPDATE poll_runs SET status = ?, started_at = ?, error_message = ? WHERE id = ?",
+                        (status.value, now_ms, error_message, run_id),
                     )
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to update poll run status: {e}", e) from e
@@ -260,4 +266,5 @@ class SqlitePollRunRepository:
             launch_pid=row["launch_pid"],
             launch_pgid=row["launch_pgid"],
             launch_recorded_at=row["launch_recorded_at"],
+            canonical_key=row["canonical_key"],
         )

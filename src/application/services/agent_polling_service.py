@@ -316,6 +316,7 @@ class AgentPollingService:
             agent_name=POLL_AGENT_OWNER,
             status=PollRunStatus.QUEUED,
             poll_run_dir=str(run_dir),
+            canonical_key=f"task:{task_id}",
         )
         self._poll_run_repo.save(run)
 
@@ -533,6 +534,9 @@ class AgentPollingService:
         except (ValueError, TaskTransitionError):
             pass  # Task might already be completed — acceptable for polling
         self._poll_run_repo.update_status(run_id, PollRunStatus.COMPLETED)
+        run = self._poll_run_repo.get_by_id(run_id)
+        if run is not None:
+            self._finalize_launch(run)
         self._run_dir.append_event(
             run_id,
             {
@@ -547,6 +551,7 @@ class AgentPollingService:
         run = self._poll_run_repo.get_by_id(run_id)
         self._terminate_spawned_agent(run_id)
         self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, error_message=error)
+        self._finalize_launch(run, failed=True, error=error) if run is not None else None
         self._run_dir.append_event(
             run_id,
             {
@@ -561,6 +566,22 @@ class AgentPollingService:
                 self._task_service.retry(run.task_id)
             except (ValueError, TaskTransitionError):
                 pass  # Task might be deleted or already reset
+
+    def _finalize_launch(self, run: PollRun, *, failed: bool = False, error: str | None = None) -> None:
+        """Best-effort finalization of the AgentLaunch for a completed/failed run."""
+        if self._lifecycle_service is None or run.canonical_key is None:
+            return
+        try:
+            launch = self._lifecycle_service.get_active_launch(run.canonical_key)
+            if launch is None:
+                return
+            if failed:
+                self._lifecycle_service.mark_failed(launch.launch_id, error=error or "run failed")
+            else:
+                self._lifecycle_service.begin_termination(launch.launch_id)
+                self._lifecycle_service.confirm_terminated(launch.launch_id)
+        except Exception:
+            logger.warning("Failed to finalize launch for run %s", run.id, exc_info=True)
 
     def _terminate_spawned_agent(self, run_id: str) -> None:
         """Best-effort cleanup for tmux panes and detached subprocesses."""

@@ -28,7 +28,7 @@ from src.infrastructure.persistence.repositories.poll_run_repository import (
 
 @pytest.fixture
 def in_memory_db(tmp_path: Path) -> DatabaseConnection:
-    """Create an in-memory SQLite with migrations applied."""
+    """Create a temp-file SQLite with migrations applied."""
     db_path = tmp_path / "test.db"
     config = DatabaseConfig(db_path=db_path)
     # Resolve migrations dir from project root

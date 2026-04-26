@@ -81,7 +81,7 @@ class TemplateService:
         default_reads: list[str] | None = None,
         interactive: bool = True,
         max_depth: int = 1,
-        team_id: str | None = None,
+        team_id_or_name: str | None = None,
     ) -> AgentTemplate:
         """Create or update a template."""
         from src.domain.entities.agent_template import AgentTemplate, TemplateScope
@@ -93,11 +93,11 @@ class TemplateService:
             template_id = existing.id
         # If scope changed, keep new UUID to avoid stale prefix
 
-        # Validate team exists when team_id provided
-        if team_id and self._team_repo.get_by_id(team_id) is None:
-            team = self._team_repo.get_by_name(team_id)
+        # Validate team exists when team_id_or_name provided
+        if team_id_or_name and self._team_repo.get_by_id(team_id_or_name) is None:
+            team = self._team_repo.get_by_name(team_id_or_name)
             if team is None:
-                raise ValueError(f"Team '{team_id}' not found")
+                raise ValueError(f"Team '{team_id_or_name}' not found")
 
         template = AgentTemplate(
             id=template_id,
@@ -112,7 +112,7 @@ class TemplateService:
             default_reads=tuple(default_reads) if default_reads else (),
             interactive=interactive,
             max_depth=max_depth,
-            team_id=team_id if team_id else None,
+            team_id=team_id_or_name if team_id_or_name else None,
         )
 
         # Persist to both filesystem and DB

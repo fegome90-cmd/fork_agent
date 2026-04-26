@@ -93,14 +93,14 @@ def run_server(
         app = (
             mcp_server.sse_app(mount_path=mount_path)
             if transport == "sse"
-            else mcp_server.streamable_http_app()
+            else mcp_server.streamable_http_app()  # TODO: streamable-http does not support mount_path — requires upstream FastMCP change
         )
         # Add /health endpoint before auth middleware
         import starlette.responses
         import starlette.routing
 
         async def _health(request: object) -> starlette.responses.JSONResponse:  # noqa: ARG001
-            return starlette.responses.JSONResponse({"status": "ok", "pid": os.getpid()})
+            return starlette.responses.JSONResponse({"status": "ok"})
 
         app.routes.insert(0, starlette.routing.Route("/health", _health))
         app = _wrap_with_auth(app)

@@ -58,7 +58,6 @@ def serve(
 
 @app.command()
 def start(
-    background: bool = typer.Option(True, "--background/--foreground"),  # noqa: ARG001
     port: int = typer.Option(0, "--port", "-p"),
     host: str = typer.Option("127.0.0.1", "--host"),
 ) -> None:

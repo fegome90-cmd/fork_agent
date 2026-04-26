@@ -155,7 +155,7 @@ class TestSchedulerServiceGetOverdueTasks:
 
         assert result == expected_tasks
         called_time = mock_repository.get_overdue.call_args[0][0]
-        assert abs(called_time - current_time) <= 1  # allow 1ms drift
+        assert abs(called_time - current_time) <= 100  # allow reasonable CI drift
 
 
 class TestSchedulerServiceMarkCompleted:

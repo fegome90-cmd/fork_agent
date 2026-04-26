@@ -402,22 +402,18 @@ def get_agent_polling_service(db_path: Path | None = None) -> AgentPollingServic
     )
 
 
-_lifecycle_service_instance: Any = None
+_lifecycle_service_cache: dict[str, Any] = {}
 _lifecycle_service_lock = Lock()
 
 
 def get_lifecycle_service(db_path: Path | None = None):
-    """Get or create the singleton AgentLaunchLifecycleService.
-
-    Uses the same pattern as get_agent_polling_service for wiring
-    but caches the instance for reuse across API/CLI surfaces.
-    """
-    global _lifecycle_service_instance
-    if _lifecycle_service_instance is not None:
-        return _lifecycle_service_instance
+    """Get or create the AgentLaunchLifecycleService, cached per resolved db_path."""
+    resolved = str(db_path or "default")
+    if resolved in _lifecycle_service_cache:
+        return _lifecycle_service_cache[resolved]
     with _lifecycle_service_lock:
-        if _lifecycle_service_instance is not None:
-            return _lifecycle_service_instance
+        if resolved in _lifecycle_service_cache:
+            return _lifecycle_service_cache[resolved]
         from src.application.services.agent_launch_lifecycle_service import (
             AgentLaunchLifecycleService,
         )
@@ -427,8 +423,9 @@ def get_lifecycle_service(db_path: Path | None = None):
 
         db = get_database_connection(db_path)
         launch_repo = SqliteAgentLaunchRepository(connection=db)
-        _lifecycle_service_instance = AgentLaunchLifecycleService(registry=launch_repo)
-    return _lifecycle_service_instance
+        svc = AgentLaunchLifecycleService(registry=launch_repo)
+        _lifecycle_service_cache[resolved] = svc
+    return svc
 
 
 def get_template_service(db_path: Path | None = None) -> TemplateService:

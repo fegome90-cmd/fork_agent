@@ -77,6 +77,7 @@ class PollRun:
     launch_pid: int | None = None
     launch_pgid: int | None = None
     launch_recorded_at: int | None = None
+    canonical_key: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id:
