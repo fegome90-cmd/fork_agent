@@ -1,6 +1,6 @@
 """Polling + lifecycle integration tests.
 
-Wires real AgentLaunchLifecycleService (in-memory SQLite) into
+Wires real AgentLaunchLifecycleService (tmp-file SQLite) into
 AgentPollingService to verify suppress / quarantine / confirm paths.
 """
 

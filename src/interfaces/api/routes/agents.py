@@ -396,6 +396,15 @@ async def create_session(
                 tmux_session_name = None
                 if lifecycle_launch_id is not None:
                     lifecycle.mark_failed(lifecycle_launch_id, f"tmux error: {e}")
+        else:
+            # Non-tmux path: immediately mark as active (no agent process to track)
+            if lifecycle_launch_id is not None:
+                lifecycle.confirm_active(
+                    lifecycle_launch_id,
+                    backend="api",
+                    termination_handle_type="api-session",
+                    termination_handle_value=session_id,
+                )
 
         # Track hooks if requested
         hooks = []

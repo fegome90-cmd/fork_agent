@@ -89,8 +89,11 @@ class AgentLaunchLifecycleService:
                         existing_launch=existing,
                         reason=f"Active launch {existing.launch_id} in status {existing.status.value}",
                     )
-                # Lease expired but still blocking — quarantine it
-                self._quarantine_expired(existing)
+                # Lease expired — but only quarantine pre-ACTIVE launches.
+                # ACTIVE launches are managed explicitly and should never
+                # be quarantined based on lease expiry.
+                if existing.status in (LaunchStatus.RESERVED, LaunchStatus.SPAWNING):
+                    self._quarantine_expired(existing)
 
             # Attempt atomic claim
             launch_id = uuid.uuid4().hex
@@ -181,6 +184,7 @@ class AgentLaunchLifecycleService:
             tmux_session=tmux_session,
             process_pid=process_pid,
             process_pgid=process_pgid,
+            clear_lease=True,
         )
         if result:
             logger.info(

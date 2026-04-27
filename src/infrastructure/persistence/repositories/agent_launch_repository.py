@@ -125,6 +125,7 @@ class SqliteAgentLaunchRepository:
         process_pgid: int | None = None,
         tmux_session: str | None = None,
         tmux_pane_id: str | None = None,
+        clear_lease: bool = False,
     ) -> bool:
         """CAS update — only succeeds if current status matches expected_status.
 
@@ -132,7 +133,7 @@ class SqliteAgentLaunchRepository:
         column values when optional parameters are None. No dynamic SQL construction.
 
         Note: COALESCE(?, column) means passing NULL will NOT clear an existing
-        value. To explicitly clear a field, a separate UPDATE statement is needed.
+        value. Use clear_lease=True to explicitly set lease_expires_at = NULL.
         """
         is_terminal = new_status in (
             LaunchStatus.TERMINATED,
@@ -147,10 +148,9 @@ class SqliteAgentLaunchRepository:
             int(time.time() * 1000) if new_status == LaunchStatus.ACTIVE else None
         )
 
-        try:
-            with self._connection as conn:
-                cursor = conn.execute(
-                    """UPDATE agent_launch_registry SET
+        # Build SET clause — conditionally include lease_expires_at = NULL
+        if clear_lease:
+            set_clause = """
                         status = ?,
                         ended_at = COALESCE(?, ended_at),
                         spawn_started_at = COALESCE(?, spawn_started_at),
@@ -163,8 +163,29 @@ class SqliteAgentLaunchRepository:
                         process_pid = COALESCE(?, process_pid),
                         process_pgid = COALESCE(?, process_pgid),
                         tmux_session = COALESCE(?, tmux_session),
-                        tmux_pane_id = COALESCE(?, tmux_pane_id)
-                       WHERE launch_id = ? AND status = ?""",
+                        tmux_pane_id = COALESCE(?, tmux_pane_id),
+                        lease_expires_at = NULL"""
+        else:
+            set_clause = """
+                        status = ?,
+                        ended_at = COALESCE(?, ended_at),
+                        spawn_started_at = COALESCE(?, spawn_started_at),
+                        spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
+                        last_error = COALESCE(?, last_error),
+                        quarantine_reason = COALESCE(?, quarantine_reason),
+                        backend = COALESCE(?, backend),
+                        termination_handle_type = COALESCE(?, termination_handle_type),
+                        termination_handle_value = COALESCE(?, termination_handle_value),
+                        process_pid = COALESCE(?, process_pid),
+                        process_pgid = COALESCE(?, process_pgid),
+                        tmux_session = COALESCE(?, tmux_session),
+                        tmux_pane_id = COALESCE(?, tmux_pane_id)"""
+
+        try:
+            with self._connection as conn:
+                cursor = conn.execute(
+                    f"UPDATE agent_launch_registry SET{set_clause}"
+                    "\n                       WHERE launch_id = ? AND status = ?",
                     (
                         new_status.value,
                         ended_at_val,
