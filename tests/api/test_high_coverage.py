@@ -19,6 +19,31 @@ class TestAllEndpoints:
         r = client.get("/api/v1/metrics", headers=auth_headers)
         assert r.status_code == 200
 
+    def test_metrics_contract(self, client, auth_headers):
+        r = client.get("/api/v1/metrics", headers=auth_headers)
+
+        assert r.status_code == 200
+
+        payload = r.json()
+        assert set(payload) == {
+            "cpu",
+            "memory",
+            "uptime",
+            "requests_total",
+            "errors_total",
+        }
+
+        assert isinstance(payload["cpu"], float)
+        assert isinstance(payload["memory"], str)
+        assert isinstance(payload["uptime"], int)
+        assert isinstance(payload["requests_total"], int)
+        assert isinstance(payload["errors_total"], int)
+
+        memory_parts = payload["memory"].split("/")
+        assert len(memory_parts) == 2
+        assert all(part.endswith("MB") for part in memory_parts)
+        assert "memory_total" not in payload
+
     def test_logs(self, client, auth_headers):
         r = client.get("/api/v1/logs", headers=auth_headers)
         assert r.status_code == 200

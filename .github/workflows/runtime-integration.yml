@@ -1,0 +1,52 @@
+name: Runtime Integration (manual)
+
+# Optional runtime checks for environments that have the local agent stack installed.
+# Prerequisites expected on the runner PATH:
+# - tmux: terminal multiplexer used by runtime orchestration tests
+# - opencode: OpenCode CLI backend for agent execution checks
+# - pi: pi.dev Agent CLI backend for agent execution checks
+#
+# This workflow is intentionally workflow_dispatch-only so default CI remains
+# portable and does not depend on host-specific runtime state or external daemons.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-integration:
+    name: Runtime integration checks
+    runs-on: self-hosted
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Document runtime prerequisites
+        run: |
+          echo "This manual workflow expects these commands on PATH: tmux, opencode, pi."
+          echo "It is not part of default CI because those dependencies are host/runtime-specific."
+
+      - name: Verify runtime prerequisites
+        run: |
+          command -v tmux
+          command -v opencode
+          command -v pi
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run runtime integration checks
+        run: uv run pytest tests/integration tests/e2e -m "integration or requires_tmux" -q

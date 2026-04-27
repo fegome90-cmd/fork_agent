@@ -148,14 +148,15 @@ jobs:
         run: uv sync --all-extras
 
       - name: Run bandit
-        run: uv run bandit -r src/ -ll -f sarif -o bandit-report.sarif
+        run: uv run --extra dev bandit -r src/ -ll -f json -o bandit-report.json
 
-      - name: Upload bandit SARIF
+      - name: Upload bandit report
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: bandit-report.sarif
-          category: bandit
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 7
 
       - name: Check for known vulnerabilities
         run: uv audit

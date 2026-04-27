@@ -4,13 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from click.testing import Result
-from typer.testing import CliRunner
+from click.testing import CliRunner, Result
 
-from src.interfaces.cli.main import _register_commands, app
-
-# Ensure commands are registered before any invocation (lazy-loading).
-_register_commands()
+from src.interfaces.cli.main import cli
 
 runner = CliRunner()
 
@@ -20,7 +16,7 @@ class TestMemoryCommandsE2E:
 
     def _invoke(self, db_path: str, args: list[str]) -> Result:
         """Helper: invoke CLI with --db flag pointing to temp database."""
-        return runner.invoke(app, ["--db", db_path, *args])
+        return runner.invoke(cli, ["--db", db_path, *args])
 
     def test_save_and_get(self, tmp_path: Path) -> None:
         db = str(tmp_path / "test.db")

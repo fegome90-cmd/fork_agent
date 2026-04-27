@@ -13,15 +13,36 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from src.application.services.agent_polling_service import AgentPollingService
+    from src.application.services.cleanup_service import CleanupService
+    from src.application.services.memory_service import MemoryService
+    from src.application.services.messaging.agent_messenger import AgentMessenger
+    from src.application.services.orchestration.hook_service import HookService
+    from src.application.services.scheduler_service import SchedulerService
+    from src.application.services.session_service import SessionService
+    from src.application.services.sync.sync_service import SyncService
     from src.application.services.task_board_service import TaskBoardService
+    from src.application.services.telemetry.telemetry_service import TelemetryService
     from src.application.services.template_service import TemplateService
+    from src.application.services.workflow.executor import WorkflowExecutor
+    from src.application.services.workspace.workspace_manager import WorkspaceManager
+    from src.domain.ports.observation_repository import (
+        ObservationRepository as ObservationRepositoryPort,
+    )
+    from src.infrastructure.persistence._container_di import Container as DIContainer
+    from src.infrastructure.persistence.health_check import HealthCheckService
+    from src.infrastructure.persistence.message_store import MessageStore
+    from src.infrastructure.persistence.repositories.promise_repository import (
+        PromiseContractRepository,
+    )
+    from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
 
 
 # Fast-path imports only — these are lightweight (~69ms total)
@@ -143,20 +164,20 @@ def _get_or_create_fast(
 # Convenience Factory Functions (Canonical SSOT)
 # ---------------------------------------------------------------------------
 
-_container_cache: dict[str, object] = {}
+_container_cache: dict[str, DIContainer] = {}
 _container_lock = Lock()
 
 # Global singleton instances for non-container services
-_hook_service: object | None = None
-_workflow_executor: object | None = None
+_hook_service: HookService | None = None
+_workflow_executor: WorkflowExecutor | None = None
 
 
 # Reference to create_container — can be patched in tests.
 # At runtime, lazily resolves to the real implementation.
-_create_container_ref = None
+_create_container_ref: Callable[[Path | None, Path | None], DIContainer] | None = None
 
 
-def _get_create_container():
+def _get_create_container() -> Callable[[Path | None, Path | None], DIContainer]:
     """Resolve create_container lazily (patchable for tests)."""
     global _create_container_ref
     if _create_container_ref is None:
@@ -169,12 +190,15 @@ def _get_create_container():
 # Alias for backward-compat patching: tests do
 #   patch("src.infrastructure.persistence.container.create_container", ...)
 # This works because __getattr__ resolves it.
-def create_container(db_path=None, export_dir=None):
+def create_container(
+    db_path: Path | None = None,
+    export_dir: Path | None = None,
+) -> DIContainer:
     """Create a DI container (lazy-loaded, patchable for tests)."""
     return _get_create_container()(db_path, export_dir)
 
 
-def get_container(db_path: Path | None = None):
+def get_container(db_path: Path | None = None) -> DIContainer:
     """Get or create cached DI container (lazy-loads dependency_injector)."""
     cache_key = str(db_path or "default")
     if cache_key not in _container_cache:
@@ -190,17 +214,20 @@ def get_repository(db_path: Path | None = None) -> ObservationRepository:
     return repo
 
 
-def get_memory_service(db_path: Path | None = None):
+def get_memory_service(db_path: Path | None = None) -> MemoryService:
     """Get a MemoryService instance (fast path)."""
     from src.application.services.memory_service import MemoryService
     from src.application.services.telemetry.telemetry_service import TelemetryService
 
     repo, telemetry_repo = _get_or_create_fast(db_path)
     telemetry_svc = TelemetryService(repository=telemetry_repo)
-    return MemoryService(repository=repo, telemetry_service=telemetry_svc)
+    return MemoryService(
+        repository=cast("ObservationRepositoryPort", repo),
+        telemetry_service=telemetry_svc,
+    )
 
 
-def get_telemetry_service(db_path: Path | None = None):
+def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
     """Get a TelemetryService instance (fast path)."""
     from src.application.services.telemetry.telemetry_service import TelemetryService
 
@@ -208,7 +235,7 @@ def get_telemetry_service(db_path: Path | None = None):
     return TelemetryService(repository=telemetry_repo)
 
 
-def get_hook_service():
+def get_hook_service() -> HookService:
     """Get the singleton HookService instance (no DI container needed)."""
     global _hook_service
     if _hook_service is None:
@@ -223,42 +250,45 @@ def get_hook_service():
 # ---------------------------------------------------------------------------
 
 
-def get_tmux_orchestrator():
+def get_tmux_orchestrator() -> TmuxOrchestrator:
     """Get the singleton TmuxOrchestrator instance."""
-    return get_container().tmux_orchestrator()
+    return cast("TmuxOrchestrator", get_container().tmux_orchestrator())
 
 
-def get_session_service(db_path: Path | None = None):
+def get_session_service(db_path: Path | None = None) -> SessionService:
     """Get a SessionService instance."""
-    return get_container(db_path).session_service()
+    return cast("SessionService", get_container(db_path).session_service())
 
 
-def get_sync_service(db_path: Path | None = None):
+def get_sync_service(db_path: Path | None = None) -> SyncService:
     """Get a SyncService instance."""
-    return get_container(db_path).sync_service()
+    return cast("SyncService", get_container(db_path).sync_service())
 
 
-def get_health_service(db_path: Path | None = None):
+def get_health_service(db_path: Path | None = None) -> HealthCheckService:
     """Get a HealthCheckService instance."""
-    return get_container(db_path).health_check_service()
+    return cast("HealthCheckService", get_container(db_path).health_check_service())
 
 
-def get_health_check_service(db_path: Path | None = None):
+def get_health_check_service(db_path: Path | None = None) -> HealthCheckService:
     """Alias for get_health_service() — backward compat for CLI commands."""
     return get_health_service(db_path)
 
 
-def get_promise_repository(db_path: Path | None = None):
+def get_promise_repository(db_path: Path | None = None) -> PromiseContractRepository:
     """Get the singleton PromiseContractRepository instance."""
-    return get_container(db_path).promise_contract_repository()
+    return cast(
+        "PromiseContractRepository",
+        get_container(db_path).promise_contract_repository(),
+    )
 
 
-def get_workspace_manager(db_path: Path | None = None):
+def get_workspace_manager(db_path: Path | None = None) -> WorkspaceManager:
     """Get the WorkspaceManager instance via DI container."""
-    return get_container(db_path).workspace_manager()
+    return cast("WorkspaceManager", get_container(db_path).workspace_manager())
 
 
-def get_workflow_executor():
+def get_workflow_executor() -> WorkflowExecutor:
     """Get the singleton WorkflowExecutor instance."""
     global _workflow_executor
     if _workflow_executor is None:
@@ -273,14 +303,14 @@ def get_workflow_executor():
     return _workflow_executor
 
 
-def get_cleanup_service(db_path: Path | None = None):
+def get_cleanup_service(db_path: Path | None = None) -> CleanupService:
     """Get a CleanupService instance."""
-    return get_container(db_path).cleanup_service()
+    return cast("CleanupService", get_container(db_path).cleanup_service())
 
 
-def get_scheduler_service(db_path: Path | None = None):
+def get_scheduler_service(db_path: Path | None = None) -> SchedulerService:
     """Get a SchedulerService instance."""
-    return get_container(db_path).scheduler_service()
+    return cast("SchedulerService", get_container(db_path).scheduler_service())
 
 
 def _detect_workspace_fast() -> Path | None:
@@ -331,7 +361,7 @@ def detect_memory_db_path() -> Path:
     return DEFAULT_DB_PATH
 
 
-def get_memory_service_auto():
+def get_memory_service_auto() -> MemoryService:
     """Get MemoryService with automatic workspace-aware DB path detection."""
     db_path = detect_memory_db_path()
     return get_memory_service(db_path)
@@ -350,19 +380,19 @@ def get_task_board_service(db_path: Path | None = None) -> TaskBoardService:
     return service
 
 
-def get_message_store(db_path: Path | None = None):
+def get_message_store(db_path: Path | None = None) -> MessageStore:
     """Get the MessageStore instance."""
-    return get_container(db_path).message_repository()
+    return cast("MessageStore", get_container(db_path).message_repository())
 
 
-def get_agent_messenger(db_path: Path | None = None):
+def get_agent_messenger(db_path: Path | None = None) -> AgentMessenger:
     """Get the AgentMessenger instance."""
-    return get_container(db_path).agent_messenger()
+    return cast("AgentMessenger", get_container(db_path).agent_messenger())
 
 
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
-    return get_container(db_path).database_connection()
+    return cast(DatabaseConnection, get_container(db_path).database_connection())
 
 
 # ---------------------------------------------------------------------------

@@ -387,6 +387,22 @@ class TestIncrementalSync:
 
 
 class TestGitSyncBackend:
+    @pytest.fixture(autouse=True)
+    def _deterministic_git_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Keep Git tests independent from the host global git config."""
+        git_config = tmp_path / "gitconfig"
+        git_config.write_text(
+            "[init]\n"
+            "\tdefaultBranch = main\n"
+            "[user]\n"
+            "\tname = Test User\n"
+            "\temail = test@example.invalid\n"
+        )
+        monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(git_config))
+        monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+
     def test_init_repo(self, tmp_path: Path) -> None:
         git = GitSyncBackend(sync_dir=tmp_path)
         git.init_repo()
@@ -401,7 +417,11 @@ class TestGitSyncBackend:
 
         # Create bare remote first
         bare_remote = tmp_path / "remote.git"
-        subprocess.run(["git", "init", "--bare", str(bare_remote)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "init", "--bare", "--initial-branch=main", str(bare_remote)],
+            check=True,
+            capture_output=True,
+        )
 
         git = GitSyncBackend(sync_dir=sync_dir, remote_url=str(bare_remote))
         git.init_repo()
