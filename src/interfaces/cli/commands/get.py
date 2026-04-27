@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import typer
 
@@ -19,17 +20,24 @@ def get(
 ) -> None:
     memory_service = ctx.obj
 
-    try:
-        obs = resolve_observation_id(memory_service, observation_id)
-    except ObservationNotFoundError:
-        typer.echo(f"Observation not found: {observation_id}", err=True)
-        raise typer.Exit(1) from None
-    except ValueError as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1) from None
-    except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1) from None
+    # Hybrid dispatch: route through MCP when FORK_HYBRID=1 and server available
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(memory_service)
+        obs, _receipt = dispatcher.dispatch_get(id=observation_id)
+    else:
+        try:
+            obs = resolve_observation_id(memory_service, observation_id)
+        except ObservationNotFoundError:
+            typer.echo(f"Observation not found: {observation_id}", err=True)
+            raise typer.Exit(1) from None
+        except ValueError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(1) from None
+        except Exception as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(1) from None
 
     if obs is None:
         typer.echo(f"Observation not found: {observation_id}", err=True)

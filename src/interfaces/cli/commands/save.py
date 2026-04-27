@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -150,14 +151,28 @@ def save(
         meta_dict["structured"] = structured_fields
 
     try:
-        observation = memory_service.save(
-            content=content,
-            metadata=meta_dict if meta_dict else None,
-            topic_key=topic_key,
-            project=project,
-            type=obs_type.value if obs_type else None,
-            title=title,
-        )
+        # Hybrid dispatch: route through MCP when FORK_HYBRID=1 and server available
+        if os.environ.get("FORK_HYBRID") == "1":
+            from src.interfaces.cli.hybrid import HybridDispatcher
+
+            dispatcher = HybridDispatcher(memory_service)
+            observation, _receipt = dispatcher.dispatch_save(
+                content=content,
+                metadata=meta_dict if meta_dict else None,
+                topic_key=topic_key,
+                project=project,
+                type=obs_type.value if obs_type else None,
+                title=title,
+            )
+        else:
+            observation = memory_service.save(
+                content=content,
+                metadata=meta_dict if meta_dict else None,
+                topic_key=topic_key,
+                project=project,
+                type=obs_type.value if obs_type else None,
+                title=title,
+            )
         typer.echo(f"Saved: {observation.id}")
     except (ValueError, TypeError) as e:
         typer.echo(f"Error: {e}", err=True)

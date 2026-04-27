@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -33,10 +32,15 @@ class TestCircuitBreaker:
         assert cb.state == CircuitState.OPEN
 
     def test_half_open_after_recovery_timeout(self) -> None:
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
+        fake_time = [100.0]
+
+        def clock() -> float:
+            return fake_time[0]
+
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1, _clock=clock)
         cb.record_failure()
         assert cb.state == CircuitState.OPEN
-        time.sleep(1.1)
+        fake_time[0] += 1.1  # advance past recovery_timeout
         assert cb.state == CircuitState.HALF_OPEN
 
     def test_can_execute_closed(self) -> None:
@@ -83,7 +87,15 @@ class TestTmuxAgent:
 
 
 class TestAgentManager:
-    def test_spawn_and_terminate(self) -> None:
+    @patch("src.application.services.agent.agent_manager.TmuxAgent")
+    def test_spawn_and_terminate(self, mock_tmux_agent_class: MagicMock) -> None:
+        mock_agent = MagicMock()
+        mock_agent.spawn.return_value = True
+        mock_agent.terminate.return_value = True
+        mock_agent.name = "test-agent"
+        mock_agent.status = AgentStatus.HEALTHY
+        mock_tmux_agent_class.return_value = mock_agent
+
         manager = AgentManager()
         config = AgentConfig(
             name="test-agent",
@@ -95,14 +107,22 @@ class TestAgentManager:
         assert agent is not None
         assert agent.name == "test-agent"
         assert agent.status == AgentStatus.HEALTHY
+        mock_tmux_agent_class.assert_called_once_with(config)
+        mock_agent.spawn.assert_called_once_with()
 
         result = manager.terminate_agent("test-agent")
         assert result is True
+        mock_agent.terminate.assert_called_once_with()
 
-    def test_duplicate_agent_fails(self) -> None:
-        import subprocess
+    @patch("src.application.services.agent.agent_manager.TmuxAgent")
+    def test_duplicate_agent_fails(self, mock_tmux_agent_class: MagicMock) -> None:
+        mock_agent = MagicMock()
+        mock_agent.spawn.return_value = True
+        mock_agent.name = "test-agent-2"
+        mock_agent.status = AgentStatus.HEALTHY
+        mock_agent.terminate.return_value = True
+        mock_tmux_agent_class.return_value = mock_agent
 
-        subprocess.run(["tmux", "kill-session", "-t", "test-dup-session"], capture_output=True)
         manager = AgentManager()
         config = AgentConfig(
             name="test-agent-2",
@@ -114,10 +134,20 @@ class TestAgentManager:
         agent2 = manager.spawn_agent(config)
         assert agent1 is not None
         assert agent2 is None
+        mock_tmux_agent_class.assert_called_once_with(config)
+        mock_agent.spawn.assert_called_once_with()
         if agent1:
             manager.terminate_agent("test-agent-2")
 
-    def test_list_agents(self) -> None:
+    @patch("src.application.services.agent.agent_manager.TmuxAgent")
+    def test_list_agents(self, mock_tmux_agent_class: MagicMock) -> None:
+        mock_agent = MagicMock()
+        mock_agent.spawn.return_value = True
+        mock_agent.terminate.return_value = True
+        mock_agent.name = "test-list-agent"
+        mock_agent.status = AgentStatus.HEALTHY
+        mock_tmux_agent_class.return_value = mock_agent
+
         manager = AgentManager()
         config = AgentConfig(
             name="test-list-agent",
@@ -128,12 +158,15 @@ class TestAgentManager:
         manager.spawn_agent(config)
         agents = manager.list_agents()
         assert len(agents) == 1
+        assert agents[0].name == "test-list-agent"
         manager.terminate_agent("test-list-agent")
 
     def test_health_check(self) -> None:
         manager = AgentManager()
+        manager._health_check_interval = 0  # fast loop for testing
         manager.start_health_monitoring()
-        time.sleep(1)
+        assert manager._health_thread is not None
+        assert manager._health_thread.is_alive()
         manager.stop_health_monitoring()
 
 

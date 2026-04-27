@@ -73,6 +73,32 @@ def mock_hooks() -> MagicMock:
     return mock
 
 
+class FakeAgentBackend:
+    """Stable backend test double that avoids host runtime dependency checks."""
+
+    name = "fake-backend"
+    default_model = "fake-model"
+
+    def is_available(self) -> bool:
+        """Report availability without checking opencode/pi on the host."""
+        return True
+
+    def build_launch_command(self, prompt: str, model: str | None = None) -> list[str]:
+        """Return a deterministic launch command for tests that inspect backends."""
+        return ["fake-agent", "--model", model or self.default_model, prompt]
+
+
+@pytest.fixture(autouse=True)
+def fake_default_backend(monkeypatch: pytest.MonkeyPatch) -> FakeAgentBackend:
+    """Patch WorkflowExecutor's imported backend getter for unit-test isolation."""
+    backend = FakeAgentBackend()
+    monkeypatch.setattr(
+        "src.application.services.workflow.executor.get_default_backend",
+        lambda: backend,
+    )
+    return backend
+
+
 @pytest.fixture
 def executor(
     mock_tmux: MagicMock,

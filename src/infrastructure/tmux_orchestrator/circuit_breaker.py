@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import typing
 from enum import Enum
 
 from src.infrastructure.tmux_orchestrator.resilience_policy import (
@@ -27,6 +28,8 @@ class TmuxCircuitBreaker:
         failure_threshold: int | None = None,
         recovery_timeout: int | None = None,
         half_open_max_calls: int | None = None,
+        *,
+        _clock: typing.Callable[[], float] | None = None,
     ) -> None:
         if policy is not None:
             p = policy
@@ -56,6 +59,7 @@ class TmuxCircuitBreaker:
         self._last_failure_time: float = 0.0
         self._half_open_calls = 0
         self._lock = threading.Lock()
+        self._clock = _clock or time.time
 
     @property
     def policy(self) -> ResiliencePolicy:
@@ -70,7 +74,7 @@ class TmuxCircuitBreaker:
         with self._lock:
             if (
                 self._state == CircuitState.OPEN
-                and time.time() - self._last_failure_time >= self._recovery_timeout
+                and self._clock() - self._last_failure_time >= self._recovery_timeout
             ):
                 self._state = CircuitState.HALF_OPEN
                 self._half_open_calls = 0
@@ -84,7 +88,7 @@ class TmuxCircuitBreaker:
     def record_failure(self) -> None:
         with self._lock:
             self._failure_count += 1
-            self._last_failure_time = time.time()
+            self._last_failure_time = self._clock()
             if self._failure_count >= self._failure_threshold:
                 self._state = CircuitState.OPEN
                 logger.warning(f"Circuit breaker OPEN after {self._failure_count} failures")

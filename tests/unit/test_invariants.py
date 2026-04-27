@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import threading
-import time
 from pathlib import Path
 
 import pytest
@@ -177,24 +176,26 @@ class TestCircuitBreakerRecoveryTimeout:
     def test_transitions_to_half_open_after_timeout(self) -> None:
         from src.application.services.agent.agent_manager import CircuitBreaker, CircuitState
 
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0)
         cb.record_failure()
 
-        assert cb.state == CircuitState.OPEN
-
-        time.sleep(1.5)
-
+        # recovery_timeout=0 transitions immediately
         assert cb.state == CircuitState.HALF_OPEN
 
     def test_remains_open_before_timeout(self) -> None:
         from src.application.services.agent.agent_manager import CircuitBreaker, CircuitState
 
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=2)
+        fake_time = [100.0]
+
+        def clock() -> float:
+            return fake_time[0]
+
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=2, _clock=clock)
         cb.record_failure()
 
         assert cb.state == CircuitState.OPEN
 
-        time.sleep(0.5)
+        fake_time[0] += 1.0  # advance 1s — still before 2s recovery timeout
 
         assert cb.state == CircuitState.OPEN
 

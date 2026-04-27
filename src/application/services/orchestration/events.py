@@ -250,3 +250,20 @@ class WorktreeRemovedEvent:
     """
 
     workspace_name: str
+
+
+@dataclass(frozen=True)
+class TrifectaIndexEvent:
+    """Event fired when Trifecta graph index completes.
+
+    Attributes:
+        repo_path: Absolute path to the repository.
+        duration_ms: Time taken to index in milliseconds.
+        node_count: Number of nodes in the graph.
+        edge_count: Number of edges in the graph.
+    """
+
+    repo_path: str
+    duration_ms: int
+    node_count: int = 0
+    edge_count: int = 0

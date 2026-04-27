@@ -11,7 +11,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from src.application.exceptions import (
-    MemoryError,
+    MemoryStoreError,
     ObservationNotFoundError,
     SessionNotFoundError,
 )
@@ -123,6 +123,12 @@ def init_service(db_path: str | None = None) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _validate_topic_key(topic_key: str | None) -> None:
+    """Reject path traversal patterns in topic_key."""
+    if topic_key and ".." in topic_key.split("/"):
+        raise ValueError(f"Invalid topic_key: path traversal detected in '{topic_key}'")
+
+
 def _map_error(e: Exception) -> Any:
     """Map domain exceptions to MCP error codes.
 
@@ -138,6 +144,6 @@ def _map_error(e: Exception) -> Any:
         return McpError(ErrorData(code=INVALID_PARAMS, message=str(e)))
     if isinstance(e, SessionNotFoundError):
         return McpError(ErrorData(code=INVALID_PARAMS, message=str(e)))
-    if isinstance(e, MemoryError):
+    if isinstance(e, MemoryStoreError):
         return McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
     return McpError(ErrorData(code=INTERNAL_ERROR, message=f"Internal error: {e}"))

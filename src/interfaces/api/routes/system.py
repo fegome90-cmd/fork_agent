@@ -98,8 +98,7 @@ async def get_metrics(_: str = Depends(verify_api_key)) -> MetricsResponse:
 
     return MetricsResponse(
         cpu=cpu_percent,
-        memory=memory_used,
-        memory_total=memory_total,
+        memory=f"{memory_used}/{memory_total}",
         uptime=uptime,
         requests_total=request_count,
         errors_total=error_count,

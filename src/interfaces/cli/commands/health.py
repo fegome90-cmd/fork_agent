@@ -48,6 +48,56 @@ def health(
     typer.echo(f"FTS Entries:            {result.fts_count}")
     typer.echo(f"Database Size:          {result.db_size_bytes:,} bytes")
 
+    # Trifecta graph health
+    try:
+        import json as json_mod
+        import subprocess
+
+        repo_path = Path.cwd()
+        result_trifecta = subprocess.run(
+            ["trifecta", "graph", "status", "-s", str(repo_path), "--json"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result_trifecta.returncode == 0:
+            graph_data = json_mod.loads(result_trifecta.stdout)
+            node_count = graph_data.get("node_count", 0)
+            edge_count = graph_data.get("edge_count", 0)
+            last_indexed = graph_data.get("last_indexed_at", "never")
+            graph_exists = graph_data.get("exists", False)
+
+            if graph_exists and node_count > 0:
+                staleness = ""
+                if last_indexed and last_indexed != "never":
+                    from datetime import UTC, datetime
+
+                    try:
+                        indexed_time = datetime.fromisoformat(
+                            last_indexed.replace("Z", "+00:00"),
+                        )
+                        age_hours = (datetime.now(UTC) - indexed_time).total_seconds() / 3600
+                        if age_hours < 1:
+                            staleness = f"{int(age_hours * 60)}m ago (fresh)"
+                        elif age_hours < 24:
+                            staleness = f"{int(age_hours)}h ago (fresh)"
+                        else:
+                            staleness = f"{int(age_hours)}h ago (STALE)"
+                    except Exception:
+                        staleness = last_indexed
+
+                typer.echo(
+                    f"Trifecta Graph:          {node_count} nodes, {edge_count} edges | {staleness}",
+                )
+            else:
+                typer.echo("Trifecta Graph:          not initialized")
+        else:
+            typer.echo("Trifecta Graph:          CLI not available")
+    except FileNotFoundError:
+        typer.echo("Trifecta Graph:          CLI not found")
+    except Exception:
+        typer.echo("Trifecta Graph:          check failed")
+
     if result.issues:
         typer.echo("\n⚠️  Issues found:")
         for issue in result.issues:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import typer
@@ -37,7 +38,16 @@ def merge(
             typer.echo("Aborted.")
             raise typer.Abort()
 
-    result: dict[str, Any] = memory_service.merge_projects(from_projects, to_project)
+    result: dict[str, Any]
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(memory_service)
+        result, _receipt = dispatcher.dispatch_project_merge(
+            from_projects=from_projects, to_project=to_project
+        )
+    else:
+        result = memory_service.merge_projects(from_projects, to_project)
     typer.echo(f"Merged {result.get('observations_updated', 0)} observations into '{to_project}'")
     if result.get("sessions_updated"):
         typer.echo(f"Updated {result['sessions_updated']} sessions")

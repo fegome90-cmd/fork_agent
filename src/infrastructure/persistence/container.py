@@ -13,9 +13,37 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from src.application.services.agent_polling_service import AgentPollingService
+    from src.application.services.cleanup_service import CleanupService
+    from src.application.services.memory_service import MemoryService
+    from src.application.services.messaging.agent_messenger import AgentMessenger
+    from src.application.services.orchestration.hook_service import HookService
+    from src.application.services.scheduler_service import SchedulerService
+    from src.application.services.session_service import SessionService
+    from src.application.services.sync.sync_service import SyncService
+    from src.application.services.task_board_service import TaskBoardService
+    from src.application.services.telemetry.telemetry_service import TelemetryService
+    from src.application.services.template_service import TemplateService
+    from src.application.services.workflow.executor import WorkflowExecutor
+    from src.application.services.workspace.workspace_manager import WorkspaceManager
+    from src.domain.ports.observation_repository import (
+        ObservationRepository as ObservationRepositoryPort,
+    )
+    from src.infrastructure.persistence._container_di import Container as DIContainer
+    from src.infrastructure.persistence.health_check import HealthCheckService
+    from src.infrastructure.persistence.message_store import MessageStore
+    from src.infrastructure.persistence.repositories.promise_repository import (
+        PromiseContractRepository,
+    )
+    from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
+
 
 # Fast-path imports only — these are lightweight (~69ms total)
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
@@ -136,20 +164,20 @@ def _get_or_create_fast(
 # Convenience Factory Functions (Canonical SSOT)
 # ---------------------------------------------------------------------------
 
-_container_cache: dict[str, object] = {}
+_container_cache: dict[str, DIContainer] = {}
 _container_lock = Lock()
 
 # Global singleton instances for non-container services
-_hook_service: object | None = None
-_workflow_executor: object | None = None
+_hook_service: HookService | None = None
+_workflow_executor: WorkflowExecutor | None = None
 
 
 # Reference to create_container — can be patched in tests.
 # At runtime, lazily resolves to the real implementation.
-_create_container_ref = None
+_create_container_ref: Callable[[Path | None, Path | None], DIContainer] | None = None
 
 
-def _get_create_container():
+def _get_create_container() -> Callable[[Path | None, Path | None], DIContainer]:
     """Resolve create_container lazily (patchable for tests)."""
     global _create_container_ref
     if _create_container_ref is None:
@@ -162,12 +190,15 @@ def _get_create_container():
 # Alias for backward-compat patching: tests do
 #   patch("src.infrastructure.persistence.container.create_container", ...)
 # This works because __getattr__ resolves it.
-def create_container(db_path=None, export_dir=None):
+def create_container(
+    db_path: Path | None = None,
+    export_dir: Path | None = None,
+) -> DIContainer:
     """Create a DI container (lazy-loaded, patchable for tests)."""
     return _get_create_container()(db_path, export_dir)
 
 
-def get_container(db_path: Path | None = None):
+def get_container(db_path: Path | None = None) -> DIContainer:
     """Get or create cached DI container (lazy-loads dependency_injector)."""
     cache_key = str(db_path or "default")
     if cache_key not in _container_cache:
@@ -183,17 +214,20 @@ def get_repository(db_path: Path | None = None) -> ObservationRepository:
     return repo
 
 
-def get_memory_service(db_path: Path | None = None):
+def get_memory_service(db_path: Path | None = None) -> MemoryService:
     """Get a MemoryService instance (fast path)."""
     from src.application.services.memory_service import MemoryService
     from src.application.services.telemetry.telemetry_service import TelemetryService
 
     repo, telemetry_repo = _get_or_create_fast(db_path)
     telemetry_svc = TelemetryService(repository=telemetry_repo)
-    return MemoryService(repository=repo, telemetry_service=telemetry_svc)
+    return MemoryService(
+        repository=cast("ObservationRepositoryPort", repo),
+        telemetry_service=telemetry_svc,
+    )
 
 
-def get_telemetry_service(db_path: Path | None = None):
+def get_telemetry_service(db_path: Path | None = None) -> TelemetryService:
     """Get a TelemetryService instance (fast path)."""
     from src.application.services.telemetry.telemetry_service import TelemetryService
 
@@ -201,7 +235,7 @@ def get_telemetry_service(db_path: Path | None = None):
     return TelemetryService(repository=telemetry_repo)
 
 
-def get_hook_service():
+def get_hook_service() -> HookService:
     """Get the singleton HookService instance (no DI container needed)."""
     global _hook_service
     if _hook_service is None:
@@ -216,42 +250,45 @@ def get_hook_service():
 # ---------------------------------------------------------------------------
 
 
-def get_tmux_orchestrator():
+def get_tmux_orchestrator() -> TmuxOrchestrator:
     """Get the singleton TmuxOrchestrator instance."""
-    return get_container().tmux_orchestrator()
+    return cast("TmuxOrchestrator", get_container().tmux_orchestrator())
 
 
-def get_session_service(db_path: Path | None = None):
+def get_session_service(db_path: Path | None = None) -> SessionService:
     """Get a SessionService instance."""
-    return get_container(db_path).session_service()
+    return cast("SessionService", get_container(db_path).session_service())
 
 
-def get_sync_service(db_path: Path | None = None):
+def get_sync_service(db_path: Path | None = None) -> SyncService:
     """Get a SyncService instance."""
-    return get_container(db_path).sync_service()
+    return cast("SyncService", get_container(db_path).sync_service())
 
 
-def get_health_service(db_path: Path | None = None):
+def get_health_service(db_path: Path | None = None) -> HealthCheckService:
     """Get a HealthCheckService instance."""
-    return get_container(db_path).health_check_service()
+    return cast("HealthCheckService", get_container(db_path).health_check_service())
 
 
-def get_health_check_service(db_path: Path | None = None):
+def get_health_check_service(db_path: Path | None = None) -> HealthCheckService:
     """Alias for get_health_service() — backward compat for CLI commands."""
     return get_health_service(db_path)
 
 
-def get_promise_repository(db_path: Path | None = None):
+def get_promise_repository(db_path: Path | None = None) -> PromiseContractRepository:
     """Get the singleton PromiseContractRepository instance."""
-    return get_container(db_path).promise_contract_repository()
+    return cast(
+        "PromiseContractRepository",
+        get_container(db_path).promise_contract_repository(),
+    )
 
 
-def get_workspace_manager(db_path: Path | None = None):
+def get_workspace_manager(db_path: Path | None = None) -> WorkspaceManager:
     """Get the WorkspaceManager instance via DI container."""
-    return get_container(db_path).workspace_manager()
+    return cast("WorkspaceManager", get_container(db_path).workspace_manager())
 
 
-def get_workflow_executor():
+def get_workflow_executor() -> WorkflowExecutor:
     """Get the singleton WorkflowExecutor instance."""
     global _workflow_executor
     if _workflow_executor is None:
@@ -266,49 +303,96 @@ def get_workflow_executor():
     return _workflow_executor
 
 
-def get_cleanup_service(db_path: Path | None = None):
+def get_cleanup_service(db_path: Path | None = None) -> CleanupService:
     """Get a CleanupService instance."""
-    return get_container(db_path).cleanup_service()
+    return cast("CleanupService", get_container(db_path).cleanup_service())
 
 
-def get_scheduler_service(db_path: Path | None = None):
+def get_scheduler_service(db_path: Path | None = None) -> SchedulerService:
     """Get a SchedulerService instance."""
-    return get_container(db_path).scheduler_service()
+    return cast("SchedulerService", get_container(db_path).scheduler_service())
+
+
+def _detect_workspace_fast() -> Path | None:
+    """Fast workspace detection — bypasses DI container to avoid dependency_injector import.
+
+    The full WorkspaceManager via get_workspace_manager() triggers the DI container
+    (~160ms overhead from dependency_injector). This fast path does the same git
+    worktree detection using only GitCommandExecutor (~18ms total).
+    """
+    try:
+        from pathlib import Path as _Path
+
+        from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor as _Git
+
+        git = _Git()
+        cwd = _Path.cwd()
+        try:
+            repo_root = git.get_repo_root(cwd)
+        except Exception:
+            return None
+
+        # In main repo (not worktree) → no workspace DB
+        if cwd.resolve() == repo_root.resolve():
+            return None
+
+        # In a worktree → check for .memory/ dir
+        worktrees = git.worktree_list()
+        cwd_resolved = cwd.resolve()
+        for wt in worktrees:
+            wt_path = _Path(wt["path"]).resolve()
+            if wt_path == cwd_resolved or cwd.is_relative_to(wt_path):
+                worktree_db_dir = wt_path / ".memory"
+                worktree_db_dir.mkdir(parents=True, exist_ok=True)
+                return worktree_db_dir / "observations.db"
+    except (OSError, ValueError, Exception):
+        pass
+    return None
 
 
 def detect_memory_db_path() -> Path:
     """Detect the appropriate memory DB path based on current workspace."""
     try:
-        workspace_manager = get_workspace_manager()
-        workspace = workspace_manager.detect_workspace()
-        if workspace is not None:
-            worktree_db_dir = workspace.path / ".memory"
-            worktree_db_dir.mkdir(parents=True, exist_ok=True)
-            return worktree_db_dir / "observations.db"
-    except (OSError, ValueError):
+        result = _detect_workspace_fast()
+        if result is not None:
+            return result
+    except (OSError, ValueError, Exception):
         pass
     return DEFAULT_DB_PATH
 
 
-def get_memory_service_auto():
+def get_memory_service_auto() -> MemoryService:
     """Get MemoryService with automatic workspace-aware DB path detection."""
     db_path = detect_memory_db_path()
     return get_memory_service(db_path)
 
 
-def get_message_store(db_path: Path | None = None):
+def get_task_board_service(db_path: Path | None = None) -> TaskBoardService:
+    """Get a TaskBoardService instance wired with the SQLite repository."""
+    from src.application.services.task_board_service import TaskBoardService
+    from src.infrastructure.persistence.repositories.orchestration_task_repository import (
+        SqliteOrchestrationTaskRepository,
+    )
+
+    conn = get_database_connection(db_path)
+    repo = SqliteOrchestrationTaskRepository(connection=conn)
+    service: TaskBoardService = TaskBoardService(repo=repo)
+    return service
+
+
+def get_message_store(db_path: Path | None = None) -> MessageStore:
     """Get the MessageStore instance."""
-    return get_container(db_path).message_repository()
+    return cast("MessageStore", get_container(db_path).message_repository())
 
 
-def get_agent_messenger(db_path: Path | None = None):
+def get_agent_messenger(db_path: Path | None = None) -> AgentMessenger:
     """Get the AgentMessenger instance."""
-    return get_container(db_path).agent_messenger()
+    return cast("AgentMessenger", get_container(db_path).agent_messenger())
 
 
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
-    return get_container(db_path).database_connection()
+    return cast(DatabaseConnection, get_container(db_path).database_connection())
 
 
 # ---------------------------------------------------------------------------
@@ -323,3 +407,39 @@ def __getattr__(name: str) -> object:
 
         return getattr(_container_di, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def get_agent_polling_service(db_path: Path | None = None) -> AgentPollingService:
+    """Get an AgentPollingService wired with SQLite repo and filesystem."""
+    from src.application.services.agent_polling_service import AgentPollingService
+    from src.infrastructure.persistence.repositories.poll_run_repository import (
+        SqlitePollRunRepository,
+    )
+    from src.infrastructure.polling.poll_run_directory import PollRunDirectory
+
+    task_svc = get_task_board_service(db_path)
+    db = get_database_connection(db_path)
+    repo = SqlitePollRunRepository(connection=db)
+    run_dir = PollRunDirectory()
+    return AgentPollingService(task_service=task_svc, poll_run_repo=repo, run_dir=run_dir)
+
+
+def get_template_service(db_path: Path | None = None) -> TemplateService:
+    """Get a TemplateService wired with SQLite repos and filesystem."""
+    from src.application.services.template_service import TemplateService
+    from src.infrastructure.persistence.repositories.agent_template_repository import (
+        SqliteAgentTemplateRepository,
+        SqliteTeamRepository,
+    )
+    from src.infrastructure.agent_templates.template_directory import TemplateDirectory
+
+    path = db_path or get_default_db_path()
+    conn = get_database_connection(path)
+    template_repo = SqliteAgentTemplateRepository(connection=conn)
+    team_repo = SqliteTeamRepository(connection=conn)
+    template_dir = TemplateDirectory()
+    return TemplateService(
+        template_repo=template_repo,
+        team_repo=team_repo,
+        template_dir=template_dir,
+    )

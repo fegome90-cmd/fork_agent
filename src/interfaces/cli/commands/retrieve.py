@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -40,10 +41,18 @@ def retrieve(
         typer.echo("Error: limit must be a positive integer", err=True)
         raise typer.Exit(1)
 
-    db_path = _get_db_path_from_context(ctx)
-    repository = get_repository(db_path)
-    service = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
-    results = service.search(query=query, limit=limit, project=project, type=type)
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(ctx.obj)
+        results, _receipt = dispatcher.dispatch_retrieve(
+            query=query, limit=limit, project=project, type=type
+        )
+    else:
+        db_path = _get_db_path_from_context(ctx)
+        repository = get_repository(db_path)
+        service = EnhancedRetrievalSearchService(repository)  # type: ignore[arg-type]
+        results = service.search(query=query, limit=limit, project=project, type=type)
 
     if not results:
         typer.echo("No results found")

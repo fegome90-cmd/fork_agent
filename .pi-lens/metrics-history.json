@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "files": {
+    "../../.pi/agent/extensions/trifecta-context-loader.ts": {
+      "latest": {
+        "commit": "80e300e0",
+        "timestamp": "2026-04-23T01:48:18.884Z",
+        "mi": 3.1,
+        "cognitive": 533,
+        "nesting": 6,
+        "lines": 1209,
+        "maxCyclomatic": 184,
+        "entropy": 7.05
+      },
+      "history": [
+        {
+          "commit": "9f6280f3",
+          "timestamp": "2026-04-22T19:24:22.505Z",
+          "mi": 18.2,
+          "cognitive": 195,
+          "nesting": 8,
+          "lines": 424,
+          "maxCyclomatic": 79,
+          "entropy": 5.7
+        },
+        {
+          "commit": "9f6280f3",
+          "timestamp": "2026-04-22T19:31:55.169Z",
+          "mi": 18.4,
+          "cognitive": 195,
+          "nesting": 8,
+          "lines": 424,
+          "maxCyclomatic": 76,
+          "entropy": 5.67
+        },
+        {
+          "commit": "5a1c6343",
+          "timestamp": "2026-04-22T20:18:55.819Z",
+          "mi": 18.3,
+          "cognitive": 195,
+          "nesting": 8,
+          "lines": 423,
+          "maxCyclomatic": 80,
+          "entropy": 5.75
+        },
+        {
+          "commit": "80e300e0",
+          "timestamp": "2026-04-22T22:01:53.724Z",
+          "mi": 11.2,
+          "cognitive": 406,
+          "nesting": 10,
+          "lines": 773,
+          "maxCyclomatic": 105,
+          "entropy": 6.76
+        },
+        {
+          "commit": "80e300e0",
+          "timestamp": "2026-04-23T01:48:18.884Z",
+          "mi": 3.1,
+          "cognitive": 533,
+          "nesting": 6,
+          "lines": 1209,
+          "maxCyclomatic": 184,
+          "entropy": 7.05
+        }
+      ],
+      "trend": "regressing"
+    },
+    "../../.pi/agent/extensions/compact-memory-bridge.ts": {
+      "latest": {
+        "commit": "f362303f",
+        "timestamp": "2026-04-23T13:56:04.057Z",
+        "mi": 23.3,
+        "cognitive": 179,
+        "nesting": 7,
+        "lines": 243,
+        "maxCyclomatic": 70,
+        "entropy": 5.51
+      },
+      "history": [
+        {
+          "commit": "f362303f",
+          "timestamp": "2026-04-23T13:56:04.057Z",
+          "mi": 23.3,
+          "cognitive": 179,
+          "nesting": 7,
+          "lines": 243,
+          "maxCyclomatic": 70,
+          "entropy": 5.51
+        }
+      ],
+      "trend": "stable"
+    },
+    "../../.pi/agent/extensions/n8n-mcp-bridge.ts": {
+      "latest": {
+        "commit": "f362303f",
+        "timestamp": "2026-04-23T13:57:09.050Z",
+        "mi": 18.7,
+        "cognitive": 135,
+        "nesting": 5,
+        "lines": 306,
+        "maxCyclomatic": 22,
+        "entropy": 6.51
+      },
+      "history": [
+        {
+          "commit": "f362303f",
+          "timestamp": "2026-04-23T13:57:09.050Z",
+          "mi": 18.7,
+          "cognitive": 135,
+          "nesting": 5,
+          "lines": 306,
+          "maxCyclomatic": 22,
+          "entropy": 6.51
+        }
+      ],
+      "trend": "stable"
+    },
+    "../../.pi/agent/git/github.com/davebcn87/pi-autoresearch/extensions/pi-autoresearch/typebox-shim.ts": {
+      "latest": {
+        "commit": "f362303f",
+        "timestamp": "2026-04-23T14:11:16.113Z",
+        "mi": 60.5,
+        "cognitive": 0,
+        "nesting": 1,
+        "lines": 27,
+        "maxCyclomatic": 1,
+        "entropy": 4.25
+      },
+      "history": [
+        {
+          "commit": "f362303f",
+          "timestamp": "2026-04-23T14:11:16.113Z",
+          "mi": 60.5,
+          "cognitive": 0,
+          "nesting": 1,
+          "lines": 27,
+          "maxCyclomatic": 1,
+          "entropy": 4.25
+        }
+      ],
+      "trend": "stable"
+    }
+  },
+  "capturedAt": "2026-04-23T14:11:21.114Z"
+}

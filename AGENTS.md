@@ -1,284 +1,122 @@
-# fork_agent - AGENTS.md
-> Guía para agentes de codificación autónomos. **Generated:** 2026-02-23 | **Project:** tmux_fork | **Scale:** 5892 files, 425k lines
-
-> Guía para agentes de codificación autónomos.
-
----
-
-## OVERVIEW
-
-CLI de gestión de memoria para agentes AI. Python 3.11+ con arquitectura DDD (Puertos y Adaptadores), Typer para CLI, SQLite para persistencia.
-
-**Commit:** 2026-02-22 | **Stack:** Python 3.11, Typer, SQLite, Pydantic
+# fork_agent - AGENTS.md (Quick Reference)
+> Referencia rápida para orquestación de agentes autónomos y sub-agentes.
+> **Última actualización**: 2026-04-25 | **Versión**: 2.7 (Test Coverage)
+> **Fuente canónica**: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`
 
 ---
 
-## STRUCTURE
+## Source of Truth
+Este repositorio opera bajo la **Constitucion de Codigo Agentico v1.1**.  
+Source of Truth: `https://github.com/fegome90-cmd/constitucion-ai`
 
-```
-src/
-├── domain/           # Entidades inmutables, Protocol (ports)
-├── application/      # Services, Use Cases, excepciones
-├── infrastructure/   # DB, DI Container, platform-specific
-└── interfaces/       # CLI (Typer), adaptadores
-
-tests/
-├── unit/             # Mirror de src/
-├── integration/      # Tests de integración
-└── e2e/              # End-to-end (sufijo _e2e.py)
-```
+| Seccion | Fuente |
+|---------|--------|
+| Agent Rules | [AGENTS.md](AGENTS.md) |
+| System Architecture | `src/infrastructure/` |
+| Orquestación | `src/application/services/orchestration/` |
 
 ---
 
-## WHERE TO LOOK
+## 🏗 Arquitectura de Orquestación
 
-| Task | Location |
-|------|----------|
-| Añadir comando CLI | `src/interfaces/cli/commands/` |
-| Modificar entidad | `src/domain/entities/` |
-| Añadir servicio | `src/application/services/` |
-| Cambiar DB schema | `src/infrastructure/persistence/` |
-| Nuevo repository | `src/domain/ports/` + implementación en infrastructure |
-| Tests unitarios | `tests/unit/` (mirror de src/) |
+`tmux_fork` es un orquestador multi-agente diseñado para manejar tareas de alta complejidad mediante la paralelización y el uso de un grafo de conocimiento (Trifecta).
 
----
-
-## ENTRY POINTS
-
-- **CLI:** `memory` → `src.interfaces.cli.main:app` (pyproject.toml console_scripts)
-- **Comandos:** save, search, list, get, delete (en `src/interfaces/cli/commands/`)
-- **Workflow:** outline, execute, verify, ship, status (en `src/interfaces/cli/commands/workflow.py`)
-- **Schedule:** add, list, show, cancel (en `src/interfaces/cli/commands/schedule.py`)
-- **Workspace:** create, list, enter, detect (en `src/interfaces/cli/workspace_commands.py`)
+### Componentes Clave:
+- **Orquestador (Tú)**: Planifica, delega y monitorea.
+- **Trifecta (v2.0)**: Motor de contexto semántico con latencia <1ms.
+- **tmux-live**: Infraestructura de visualización de agentes en tiempo real.
+- **Hybrid Mode (`FORK_HYBRID=1`)**: Despacho de herramientas vía MCP (21 tools disponibles).
 
 ---
 
-## CONVENTIONS
+## 🚦 Protocolo de 10 Fases (MANDATORIO)
 
-### Imports (orden obligatorio)
-1. `from __future__ import annotations`
-2. Standard library
-3. Third-party
-4. Local (`from src.*`)
+Cualquier cambio sustancial DEBE seguir este flujo para garantizar la integridad del sistema:
 
-### Entidades
-```python
-@dataclass(frozen=True)  # SIEMPRE frozen=True
-class Observation:
-    id: str
-    content: str
-```
-
-### Config (Pydantic)
-```python
-class DatabaseConfig(BaseModel):
-    db_path: Path
-    model_config = {"frozen": True}  # Inmutable
-```
-
-### Type Hints
-- OBLIGATORIOS en todas las funciones
-- Usar `X | None` en lugar de `Optional[X]`
-
-### Nombrado
-- Archivos: `snake_case.py`
-- Clases: `PascalCase`
-- Funciones: `snake_case`
-- Constantes: `UPPER_SNAKE_CASE`
-
-### Scope Convention
-Observaciones tienen `scope`: `project` (default) o `personal`.
-Usar `scope: project` para notas específicas del proyecto.
-Usar `scope: personal` para notas que trascienden proyectos.
-Engram-compatible: ver docs/engram-vs-ours-memory-diff-2026-04-17.md
+1.  **Clarify**: Resolver ambigüedades con el usuario.
+2.  **Plan**: Crear el plan de implementación (`memory workflow outline`).
+3.  **Plan Gate**: MANDATORY. Present plan to user and wait for approval. See protocol.md §1.5.
+4.  **Pre-flight**: Verificación de entorno (`trifecta-daemon-warmup` + `trifecta-auto-sync`).
+5.  **Save**: Persistir el estado inicial en memoria (`memory save`).
+6.  **Spawn**: Lanzar sub-agentes en tmux con contexto inyectado (`trifecta-context-inject`).
+7.  **Monitor**: Seguimiento en vivo vía `tmux-live progress`.
+8.  **Consolidate**: Unificar hallazgos y resolver conflictos (`conflict-detect`).
+9.  **Validate**: Verificación técnica (tests + `trifecta-verifier-check`).
+10. **Cleanup**: Limpieza de recursos y log de sesión (`trifecta-session-log`).
 
 ---
 
-## ANTI-PATTERNS (ESTE PROYECTO)
+## 🧠 Integración con Trifecta v2
 
-```python
-# ❌ NO usar
-as any, @ts-ignore, type: ignore
-value = get_value() as any
+Trifecta provee el contexto necesario para que los agentes no operen a ciegas.
 
-# ❌ NO mutar argumentos
-def process(items: list) -> None:
-    items.append("new")
-
-# ❌ NO catch vacíos
-try:
-    do_something()
-except:
-    pass
-
-# ❌ NO docstrings redundantes
-def add(a: int, b: int) -> int:
-    """Add two numbers."""  # Eliminar
-    return a + b
-```
+### Comandos Esenciales:
+- `trifecta ctx search "<query>"`: Búsqueda semántica en el grafo.
+- `trifecta ast symbols <file>`: Extracción de símbolos y tipos.
+- `trifecta-context-inject`: Script para ensamblar el prompt enriquecido.
+- `fork doctor status`: Verificación de salud del sistema de contexto.
 
 ---
 
-## COMMANDS
+## 🤖 Asignación de Modelos (Tier Pro)
 
+**Regla de Oro (P11)**: Los modelos gratuitos fallan un 30-70% en tareas paralelas. Usar el tier pagado para 2+ agentes concurrentes.
+
+| Rol | Modelo Recomendado | Propósito |
+| :--- | :--- | :--- |
+| **Explorer** | `zai/glm-5-turbo` | Investigación y mapeo. |
+| **Architect** | `zai/glm-5.1` | Diseño y toma de decisiones. |
+| **Implementer** | `zai/glm-5-turbo` | Escritura de código. |
+| **Verifier** | `zai/glm-5-turbo` | Validación y tests. |
+| **Analyst** | `zai/glm-5-turbo` | Investigación + propuesta de fix exacto. |
+
+---
+
+## 🛠 Configuración de Rutas
+
+- `PROJECT_DIR`: El repositorio que estás orquestando (Target).
+- `BACKEND_DIR`: El código fuente del orquestador (`~/Developer/tmux_fork`).
+- **Persistencia**: La base de datos de memoria reside por defecto en `~/.local/share/fork/memory.db`.
+
+---
+
+## 🛡 Governance Mode
+
+**Advisory-only:** `GOVERNANCE=1` activa guidelines para el orquestador. Sin code enforcement.
+
+Cuando está activo, las fases del protocolo se enriquecen con:
+- **CLOOP** (Clarify→Layout→Operate→Observe→Reflect)
+- **SDD** (propose→spec→design→tasks→gate→apply→verify→archive)
+- **Quality Check** (Phase 5.7)
+
+Sin `GOVERNANCE=1`, todo funciona idéntico.
+
+---
+
+## ⚡ Hybrid Mode
+
+`FORK_HYBRID=1` despacha herramientas vía MCP server (21 tools).
+Latencia: ~28ms por call (raw httpx JSON-RPC) vs ~234ms (MCP SDK).
+
+---
+
+## 📋 Comandos de Referencia Rápida
+
+### Gestión de Tareas (Fork CLI):
 ```bash
-# Setup
-uv sync --all-extras
-
-# Testing
-uv run pytest tests/ -v
-uv run pytest tests/unit/domain/ -v
-uv run pytest tests/ --cov=src --cov-report=term-missing
-
-# Calidad
-uv run ruff check src/ tests/
-uv run ruff format src/ tests/
-uv run mypy src/
-
-# Pre-commit
-uv run pre-commit run --all-files
+fork task create "Descripción"   # PENDING -> PLANNING
+fork task submit-plan <id>       # PLANNING -> APPROVED
+fork task start <id>             # APPROVED -> IN_PROGRESS
+fork task complete <id>          # IN_PROGRESS -> COMPLETED
 ```
 
----
-
-## TESTING CONVENTIONS
-
-- **Estructura:** `tests/unit/`, `tests/integration/`, `tests/e2e/`
-- **Naming:** `test_*.py`, funciones `test_*`
-- **E2E suffix:** `_e2e.py` para end-to-end
-- **Fixtures:** `tests/conftest.py` (comunes), `tests/e2e/conftest.py` (E2E)
-
----
-
-## TOOL CONFIG
-
-| Herramienta | Config | Valor |
-|-------------|--------|-------|
-| mypy | strict mode | 100% typed |
-| ruff | py311, line-length 100 | - |
-| coverage | fail_under | **72%** |
-| pytest | -v --tb=short | - |
-
-Ver `pyproject.toml` para configuración completa.
-
----
-
-## ARCHITECTURE NOTES
-
-- **DDD/Clean Architecture:** domain → application → infrastructure → interfaces
-- **Dependency Injection:** `src/infrastructure/persistence/container.py`
-- **MemoryService:** Fachada de lógica de negocio (`src/application/services/`)
-- **Repository Pattern:** Protocol en `domain/ports/`, implementación en `infrastructure/`
-- **Orchestration:** Eventos, acciones y hooks (`src/application/services/orchestration/`)
-- **Workflow:** Estado persistente (`src/application/services/workflow/`)
-- **Workflow Events:** `WorkflowOutlineStart/Complete`, `WorkflowExecuteStart/Complete`, `WorkflowVerifyStart/Complete`, `WorkflowShipStart/Complete`
-- **Worktree Events:** `WorktreeCreated`, `WorktreeMerged`, `WorktreeRemoved` (en `src/application/services/orchestration/events.py`)
-
----
-
-## Inter-Agent Messaging
-
-### CLI (`fork message`)
-
+### Orquestación en Vivo (tmux-live):
 ```bash
-fork message send <session:win> <payload> [--from-agent ID] [--type TYPE]
-fork message receive <agent_id> [--json] [--watch] [--mark-read] [--limit N]
-fork message broadcast <payload> [--from-agent ID]
-fork message history <agent_id> [--limit N]
-fork message cleanup [--max-age SECONDS]
-```
-
-### Message Types
-
-| Type | Use |
-|------|-----|
-| COMMAND | Task assignment |
-| REPLY | Response to command |
-| HANDOFF | Session handoff |
-| PROGRESS | Progress report |
-| FILE_TOUCHED | File claim for exclusive editing |
-| OBSERVATION | Discovery/finding share |
-
-### Architecture
-
-- SQLite is authoritative transport (persists even when tmux fails)
-- tmux pane option @last_fork_msg is notification side-channel
-- 24h TTL, 5000 message hard cap
-- MessageRepository Protocol in `src/domain/ports/`
-- MessageStore implementation in `src/infrastructure/persistence/`
-
-### Workflow Integration
-
-```bash
-memory workflow execute --messaging  # PROGRESS messages to orchestrator
-memory workflow verify --messaging   # REPLY with verification results
+tmux-live init                   # Inicializar panel de control
+tmux-live launch <role> <name>   # Lanzar sub-agente
+tmux-live wait <name> 600        # Esperar finalización
+tmux-live kill-all               # Limpieza total
 ```
 
 ---
-
-## SESSION CHECKPOINT PROCEDURE
-
-Al finalizar una sesión de trabajo, SIEMPRE ejecutar en PARALELO:
-
-```bash
-# 1. Guardar handoff en .claude/sessions/
-/fork-checkpoint
-
-# 2. Guardar context bundle (en paralelo)
-/cm-save <nombre-session>
-```
-
-**IMPORTANTE:** Ambos comandos deben ejecutarse. El handoff es para continuidad humana, cm-save es para contexto machine-readable.
-
----
-
-## SUBAGENTES OPENCODE
-
-**TODOS los subagentes de OpenCode deben invocarse con modelos "free".**
-
-Esto es un REQUISITO OBLIGATORIO para minimizar costos. OpenCode permite especificar el modelo al invocar subagentes.
-
-```python
-# ✅ CORRECTO - usar modelo free
-task(category="explore", model="free", ...)
-
-# ❌ INCORRECTO - NO usar modelos paid
-task(category="explore", model="sonnet", ...)
-```
-
-## fork_agent - Orquestación Multi-Modelo
-
-Este proyecto usa fork_agent para orquestar múltiples sesiones de AI.
-
-### Comandos Disponibles
-
-| Comando | Descripción |
-|---------|-------------|
-| `/fork-init` | Inicializar sesión con tmux, memoria y hooks |
-| `/fork-checkpoint` | Guardar handoff compacto |
-| `/fork-resume` | Continuar desde último handoff |
-| `memory save "texto"` | Guardar observación |
-| `memory workflow outline "tarea"` | Crear plan de trabajo |
-
-### Estrategia de Modelos
-
-| Modelo | Uso | Cuándo |
-|--------|-----|--------|
-| OpenCode (glm-5-free) | Orquestación | Planning, coordinación |
-| Claude Code (sonnet) | Plan y código | Writing, refactoring |
-| Codex (GPT-5.3-Codex) | Deep work | Análisis profundo, agentic coding |
-| Gemini Flash 2.5 | Fast task | Tareas rápidas |
-
-Consulta `.claude/skills/fork_terminal/cookbook/modelos.md` para guía completa.
-
-### Session Checkpoint
-
-Al finalizar, SIEMPRE ejecutar en PARALELO:
-
-```bash
-# 1. Guardar handoff humano
-/fork-checkpoint
-
-# 2. Guardar contexto machine-readable
-cm-save <nombre>
-```
+*Nota: Referencia rápida — fuente canónica: `~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md`. Si hay discrepancias, SKILL.md tiene prioridad.*
