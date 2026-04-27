@@ -3,65 +3,72 @@
     {
       "type": "TODO",
       "message": "migrate all callers to cas_update_status",
-      "file": "../src/infrastructure/persistence/repositories/poll_run_repository.py",
-      "line": 115,
+      "file": "src/infrastructure/persistence/repositories/poll_run_repository.py",
+      "line": 121,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
-      "file": "../src/interfaces/api/routes/agents.py",
-      "line": 85,
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 86,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
-      "file": "../src/interfaces/api/routes/agents.py",
-      "line": 114,
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 116,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
-      "file": "../src/interfaces/api/routes/agents.py",
-      "line": 143,
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 146,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Track persistence status",
-      "file": "../src/interfaces/api/routes/agents.py",
-      "line": 178,
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 181,
       "column": 32
     },
     {
       "type": "BUG",
       "message": "FIX: Track deletion status",
-      "file": "../src/interfaces/api/routes/agents.py",
-      "line": 185,
+      "file": "src/interfaces/api/routes/agents.py",
+      "line": 188,
       "column": 33
     },
     {
       "type": "BUG",
       "message": "FIX: Thread-safe counters",
-      "file": "../src/interfaces/api/routes/system.py",
+      "file": "src/interfaces/api/routes/system.py",
       "line": 22,
       "column": 37
     },
     {
       "type": "BUG",
       "message": "FIX: Thread-safe read",
-      "file": "../src/interfaces/api/routes/system.py",
+      "file": "src/interfaces/api/routes/system.py",
       "line": 84,
       "column": 28
     },
     {
       "type": "BUG",
       "message": "-8/BUG-9)",
-      "file": "../src/interfaces/cli/commands/save.py",
+      "file": "src/interfaces/cli/commands/save.py",
       "line": 109,
       "column": 48
+    },
+    {
+      "type": "TODO",
+      "message": "streamable-http does not support mount_path — requires upstream FastMCP change",
+      "file": "src/interfaces/mcp/server.py",
+      "line": 96,
+      "column": 53
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -19,7 +19,7 @@ class TestRetry:
         service = TaskBoardService(repo=repo)
         result = service.retry("t1")
         assert result.status == OrchestrationTaskStatus.APPROVED
-        repo.save.assert_called_once()
+        repo.cas_save.assert_called_once_with(ANY, OrchestrationTaskStatus.IN_PROGRESS)
 
     def test_retry_raises_for_completed_task(self) -> None:
         task = OrchestrationTask(id="t1", subject="s", status=OrchestrationTaskStatus.COMPLETED)

@@ -251,3 +251,11 @@ PATH=/usr/bin tmux-live launch explorer test-001 @/tmp/prompt.txt
 | MCP tool call | MCP protocol overhead. tmux-live is bash, not an MCP client. |
 | Move lifecycle to bash | Would lose CAS, tests, entity model. Massive regression. |
 | No integration (current state) | Spawns without dedup/lease/crash safety. Risk C5 remains. |
+
+### 4.4 Authority Split-Brain (Tactical vs Strategic)
+
+State for a running agent is tracked in two places:
+1. **Strategic Authority (SQLite)**: The `agent_launch_registry` table in the backend. This is the single source of truth for deduplication and global tracking across sessions.
+2. **Tactical Evidence (/tmp)**: The `.meta` and `.done` files in the skill's registry directory. These are used for low-latency UI updates in tmux-live and quick status polling.
+
+In case of conflict, the **Strategic Authority (SQLite)** wins. If a tmux pane is lost but the registry says the agent is still `ACTIVE`, the lease reconciliation must be triggered or the record manually updated before a new agent with the same canonical key can launch.

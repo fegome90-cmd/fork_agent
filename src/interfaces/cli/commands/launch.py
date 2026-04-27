@@ -10,12 +10,17 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 import signal
 import sys
 from collections.abc import Callable
 from typing import Any
 
 import typer
+
+# Configure logging to send all library warnings/errors to stderr
+logging.basicConfig(level=logging.WARNING, stream=sys.stderr, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 _VERSION = "1.0.0"
 
@@ -273,16 +278,23 @@ def list_active(
     """List all active (in-flight) launches."""
     svc = _get_service()
     launches = svc.list_active_launches()
-    items = [
-        {
-            "launch_id": l.launch_id,
-            "canonical_key": l.canonical_key,
-            "surface": l.surface,
-            "status": l.status.value,
-            "tmux_session": l.tmux_session,
-        }
-        for l in launches
-    ]
+    items = []
+    for l in launches:
+        try:
+            items.append(
+                {
+                    "launch_id": l.launch_id,
+                    "canonical_key": l.canonical_key,
+                    "surface": l.surface,
+                    "status": l.status.value,
+                    "tmux_session": l.tmux_session,
+                }
+            )
+        except Exception as e:
+            if not json_output:
+                print(f"Skipping malformed launch {l.launch_id}: {e}", file=sys.stderr)
+            continue
+
     if json_output:
         print(json.dumps(items, indent=2))
     else:

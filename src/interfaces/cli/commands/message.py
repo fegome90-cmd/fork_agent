@@ -193,19 +193,29 @@ def message_send_to_pane(
     messenger.send(msg)
 
     # Deliver to the pane via tmux
+    errors: list[str] = []
     try:
-        subprocess.run(
+        send_result = subprocess.run(
             ["tmux", "send-keys", "-t", pane_id, "-l", message],
             capture_output=True,
             text=True,
             timeout=5,
         )
-        subprocess.run(
+        enter_result = subprocess.run(
             ["tmux", "send-keys", "-t", pane_id, "Enter"],
             capture_output=True,
             text=True,
             timeout=5,
         )
+        if send_result.returncode != 0:
+            err = (send_result.stderr or send_result.stdout or "").strip()
+            errors.append(f"send-keys failed: {err!r}" if err else "send-keys failed (exit {send_result.returncode})")
+        if enter_result.returncode != 0:
+            err = (enter_result.stderr or enter_result.stdout or "").strip()
+            errors.append(f"Enter failed: {err!r}" if err else "Enter failed (exit {enter_result.returncode})")
+        if errors:
+            console.print(f"[yellow]{' -- '.join(errors)}[/yellow]")
+            raise typer.Exit(code=2)
         console.print(f"[green]Message sent to pane {pane_id}[/green]")
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
         console.print(f"[yellow]Message persisted but pane delivery failed: {exc}[/yellow]")

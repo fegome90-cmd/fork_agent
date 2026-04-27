@@ -82,7 +82,84 @@ class TestCasUpdate:
         assert result is True
 
 
-class TestCountByStatus:
+class TestStartedAtPreservation:
+    """Fix: cas_update_status must preserve existing started_at on terminal transitions.
+    Regression test for Copilot review finding: terminal UPDATE was overwriting started_at
+    with now_ms when caller passed started_at=None.
+    """
+
+    def test_terminal_preserves_existing_started_at(self, tmp_path: Path) -> None:
+        """RUNNING -> COMPLETED preserves started_at=1000 (not overwritten with transition time)."""
+        repo = _make_repo(tmp_path)
+        with repo._connection as conn:
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status, started_at) VALUES (?, ?, ?, ?, ?)",
+                ("r1", "t1", "poll-agent", "RUNNING", 1000),
+            )
+
+        repo.cas_update_status("r1", PollRunStatus.RUNNING, PollRunStatus.COMPLETED)
+        with repo._connection as conn:
+            row = conn.execute(
+                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
+            ).fetchone()
+        assert row is not None
+        assert row[0] == 1000, f"started_at was overwritten to {row[0]}, expected 1000"
+
+    def test_terminal_preserves_null_started_at(self, tmp_path: Path) -> None:
+        """RUNNING -> COMPLETED: when started_at was NULL, COALESCE sets it (edge case).
+        This is acceptable: runs that terminate without starting (QUEUED -> TERMINATING)
+        should get a timestamp. The key fix is preserving EXISTING started_at values."""
+        repo = _make_repo(tmp_path)
+        with repo._connection as conn:
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status, started_at) VALUES (?, ?, ?, ?, ?)",
+                ("r1", "t1", "poll-agent", "RUNNING", None),
+            )
+
+        before = int(time.time() * 1000)
+        repo.cas_update_status("r1", PollRunStatus.RUNNING, PollRunStatus.FAILED)
+        after = int(time.time() * 1000)
+        with repo._connection as conn:
+            row = conn.execute(
+                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
+            ).fetchone()
+        assert row is not None
+        assert row[0] is not None, "started_at should be set when NULL (edge case acceptable)"
+        assert before <= row[0] <= after, f"started_at {row[0]} should be near transition time ({before}-{after})"
+
+    def test_nonterminal_preserves_existing_started_at(self, tmp_path: Path) -> None:
+        """QUEUED -> RUNNING preserves started_at=500 on non-terminal transition."""
+        repo = _make_repo(tmp_path)
+        with repo._connection as conn:
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status, started_at) VALUES (?, ?, ?, ?, ?)",
+                ("r1", "t1", "poll-agent", "QUEUED", 500),
+            )
+
+        repo.cas_update_status("r1", PollRunStatus.QUEUED, PollRunStatus.RUNNING)
+        with repo._connection as conn:
+            row = conn.execute(
+                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
+            ).fetchone()
+        assert row is not None
+        assert row[0] == 500, f"started_at was changed to {row[0]}, expected 500"
+
+    def test_nonterminal_sets_started_at_when_null(self, tmp_path: Path) -> None:
+        """QUEUED -> RUNNING sets started_at when it was NULL (COALESCE fallback)."""
+        repo = _make_repo(tmp_path)
+        with repo._connection as conn:
+            conn.execute(
+                "INSERT INTO poll_runs (id, task_id, agent_name, status, started_at) VALUES (?, ?, ?, ?, ?)",
+                ("r1", "t1", "poll-agent", "QUEUED", None),
+            )
+
+        repo.cas_update_status("r1", PollRunStatus.QUEUED, PollRunStatus.RUNNING)
+        with repo._connection as conn:
+            row = conn.execute(
+                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
+            ).fetchone()
+        assert row is not None
+        assert row[0] is not None, "started_at should be set to transition time"
     """Q-H3: count_by_status returns grouped counts in a single query."""
 
     def test_count_by_status_basic(self, tmp_path: Path) -> None:

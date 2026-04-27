@@ -4,7 +4,7 @@
 # Run: bats scripts/test-fork-launch-cli.bats
 
 setup() {
-    FORK_CLI="uv run python -m src.interfaces.cli.main"
+    FORK_CLI="./.venv/bin/python -m src.interfaces.cli.main"
     PROJECT_DIR="/Users/felipe_gonzalez/Developer/tmux_fork"
     TEST_KEY="bats-$(date +%s)-$RANDOM"
 }
@@ -13,12 +13,12 @@ setup() {
 
 @test "request returns exit 0 and decision=claimed for new canonical key" {
     cd "$PROJECT_DIR"
-    run $FORK_CLI launch request \
-      --canonical-key "$TEST_KEY" \
+    run bash -c "$FORK_CLI launch request \
+      --canonical-key \"$TEST_KEY\" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats \
-      --json
+      --json 2>/dev/null"
     [ "$status" -eq 0 ]
     decision=$(echo "$output" | jq -r '.decision')
     [ "$decision" = "claimed" ]
@@ -29,7 +29,7 @@ setup() {
     run $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-fields" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats \
       --json
     [ "$status" -eq 0 ]
@@ -44,7 +44,7 @@ setup() {
     run $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-lid" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats \
       --json
     [ "$status" -eq 0 ]
@@ -61,7 +61,7 @@ setup() {
     $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-dup" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats1 \
       --json >/dev/null
 
@@ -69,7 +69,7 @@ setup() {
     run $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-dup" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats2 \
       --json
     [ "$status" -eq 1 ]
@@ -85,7 +85,7 @@ setup() {
     run $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-lifecycle" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats \
       --json
     [ "$status" -eq 0 ]
@@ -126,7 +126,7 @@ setup() {
     run $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-status" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats \
       --json
     LAUNCH_ID=$(echo "$output" | jq -r '.launch_id')
@@ -150,9 +150,8 @@ setup() {
 
 @test "list-active returns exit 0 and valid JSON array" {
     cd "$PROJECT_DIR"
-    run $FORK_CLI launch list-active --json
+    run bash -c "$FORK_CLI launch list-active --json 2>/dev/null"
     [ "$status" -eq 0 ]
-    # Must be valid JSON array
     echo "$output" | jq -e 'type == "array"' > /dev/null
 }
 
@@ -163,7 +162,7 @@ setup() {
     run $FORK_CLI launch request \
       --canonical-key "$TEST_KEY-fail" \
       --surface test \
-      --owner-type test \
+      --owner-type agent \
       --owner-id bats \
       --json
     LAUNCH_ID=$(echo "$output" | jq -r '.launch_id')

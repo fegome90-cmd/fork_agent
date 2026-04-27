@@ -180,21 +180,18 @@ class SqlitePollRunRepository:
                     PollRunStatus.FAILED,
                     PollRunStatus.CANCELLED,
                 ):
+                    # Terminal: preserve existing started_at, set only if currently NULL (COALESCE).
+                    # Matching agent_launch_repository pattern (lines 155-156).
                     cursor = conn.execute(
-                        """UPDATE poll_runs SET status = ?, ended_at = ?, error_message = ?, started_at = ?
+                        """UPDATE poll_runs SET status = ?, ended_at = ?, error_message = ?,
+                            started_at = COALESCE(started_at, ?)
                             WHERE id = ? AND status = ?""",
-                        (
-                            new_status.value,
-                            now_ms,
-                            error_message,
-                            started_at_val,
-                            run_id,
-                            expected_status.value,
-                        ),
+                        (new_status.value, now_ms, error_message, started_at_val, run_id, expected_status.value),
                     )
                 else:
+                    # Non-terminal: preserve existing started_at, set only if currently NULL.
                     cursor = conn.execute(
-                        "UPDATE poll_runs SET status = ?, started_at = ? WHERE id = ? AND status = ?",
+                        "UPDATE poll_runs SET status = ?, started_at = COALESCE(started_at, ?) WHERE id = ? AND status = ?",
                         (new_status.value, started_at_val, run_id, expected_status.value),
                     )
                 return cursor.rowcount > 0
