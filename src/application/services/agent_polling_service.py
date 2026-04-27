@@ -131,7 +131,9 @@ class AgentPollingService:
                 continue
             # Check canonical lifecycle registry if available
             if self._lifecycle_service is not None:
-                canonical_key = f"task:{task.id}"
+                from src.domain.services.canonical_key import build_task_key
+
+                canonical_key = build_task_key(task.id)
                 active = self._lifecycle_service.get_active_launch(canonical_key)
                 if active is not None:
                     logger.info(
@@ -274,14 +276,17 @@ class AgentPollingService:
 
     def _spawn_run(self, task_id: str, task_subject: str) -> PollRun:
         """Create, persist, and start a new poll run for a task."""
+        from src.domain.services.canonical_key import build_task_key
+
         now_ms = int(time.time() * 1000)
         run_id = uuid.uuid4().hex
         lifecycle_launch_id: str | None = None
 
         # Claim canonical launch slot via lifecycle service (if wired)
         if self._lifecycle_service is not None:
+            _task_key = build_task_key(task_id)
             attempt = self._lifecycle_service.request_launch(
-                canonical_key=f"task:{task_id}",
+                canonical_key=_task_key,
                 surface="polling",
                 owner_type="task",
                 owner_id=task_id,
@@ -307,6 +312,8 @@ class AgentPollingService:
         # Create directory
         run_dir = self._run_dir.create_run_dir(run_id)
 
+        _canonical_key = build_task_key(task_id)
+
         # Create entity
         run = PollRun(
             id=run_id,
@@ -314,7 +321,7 @@ class AgentPollingService:
             agent_name=POLL_AGENT_OWNER,
             status=PollRunStatus.QUEUED,
             poll_run_dir=str(run_dir),
-            canonical_key=f"task:{task_id}",
+            canonical_key=_canonical_key,
         )
         self._poll_run_repo.save(run)
 

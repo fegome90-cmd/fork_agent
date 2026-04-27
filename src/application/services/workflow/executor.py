@@ -146,8 +146,10 @@ class WorkflowExecutor:
             run_id = f"run-{uuid.uuid4().hex[:8]}"
 
         # Claim canonical launch slot via lifecycle service (if wired)
+        from src.domain.services.canonical_key import build_workflow_key
+
         lifecycle_launch_id: str | None = None
-        canonical_key = f"workflow:{task.id}"
+        canonical_key = build_workflow_key(task.id)
         if self._lifecycle is not None:
             attempt = self._lifecycle.request_launch(
                 canonical_key=canonical_key,

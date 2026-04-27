@@ -329,7 +329,9 @@ class AgentManager:
                 return None
 
             # Claim canonical launch slot via lifecycle service (if wired)
-            canonical_key = f"manager:{config.name}"
+            from src.domain.services.canonical_key import build_manager_key
+
+            canonical_key = build_manager_key(config.name)
             lifecycle_launch_id: str | None = None
             if self._lifecycle is not None:
                 attempt = self._lifecycle.request_launch(
@@ -402,7 +404,9 @@ class AgentManager:
 
             # Begin lifecycle termination
             if self._lifecycle is not None:
-                canonical_key = f"manager:{name}"
+                from src.domain.services.canonical_key import build_manager_key
+
+                canonical_key = build_manager_key(name)
                 active = self._lifecycle.get_active_launch(canonical_key)
                 if active is not None:
                     self._lifecycle.begin_termination(active.launch_id)
@@ -412,7 +416,9 @@ class AgentManager:
             if success:
                 # Confirm lifecycle termination
                 if self._lifecycle is not None:
-                    canonical_key = f"manager:{name}"
+                    from src.domain.services.canonical_key import build_manager_key as _bmk
+
+                    canonical_key = _bmk(name)
                     active = self._lifecycle.get_active_launch(canonical_key)
                     if active is not None:
                         self._lifecycle.confirm_terminated(active.launch_id)
