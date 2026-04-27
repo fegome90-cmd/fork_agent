@@ -189,3 +189,67 @@ setup() {
     run $FORK_CLI launch request --json 2>&1
     [ "$status" -ne 0 ]
 }
+
+# ─── 8. Authority-flow audit fixes (F1, F3, F5) ──────────────
+
+@test "mark-failed stores error message in DB" {
+    cd "$PROJECT_DIR"
+    # Request a launch
+    run $FORK_CLI launch request \
+      --canonical-key "$TEST_KEY-errmsg" \
+      --surface test --owner-type agent --owner-id bats --json
+    [ "$status" -eq 0 ]
+    LAUNCH_ID=$(echo "$output" | jq -r '.launch_id')
+
+    # Move to ACTIVE
+    $FORK_CLI launch confirm-spawning --launch-id "$LAUNCH_ID" --json >/dev/null
+    $FORK_CLI launch confirm-active \
+      --launch-id "$LAUNCH_ID" \
+      --backend test --termination-handle-type test \
+      --termination-handle-value test --json >/dev/null
+
+    # Mark failed with custom error
+    run $FORK_CLI launch mark-failed \
+      --launch-id "$LAUNCH_ID" --error "Killed by operator (SIGKILL)" --json
+    [ "$status" -eq 0 ]
+
+    # Verify error stored
+    run $FORK_CLI launch status --launch-id "$LAUNCH_ID" --json
+    [ "$status" -eq 0 ]
+    error_msg=$(echo "$output" | jq -r '.error // empty')
+    [ "$error_msg" = "Killed by operator (SIGKILL)" ]
+}
+
+@test "mark-failed preserves exit code in error message (F5)" {
+    cd "$PROJECT_DIR"
+    run $FORK_CLI launch request \
+      --canonical-key "$TEST_KEY-exitcode" \
+      --surface test --owner-type agent --owner-id bats --json
+    [ "$status" -eq 0 ]
+    LAUNCH_ID=$(echo "$output" | jq -r '.launch_id')
+
+    $FORK_CLI launch confirm-spawning --launch-id "$LAUNCH_ID" --json >/dev/null
+    $FORK_CLI launch confirm-active \
+      --launch-id "$LAUNCH_ID" \
+      --backend test --termination-handle-type test \
+      --termination-handle-value test --json >/dev/null
+
+    # Simulate agent exit code 137 (SIGKILL)
+    run $FORK_CLI launch mark-failed \
+      --launch-id "$LAUNCH_ID" --error "Agent exited with code 137" --json
+    [ "$status" -eq 0 ]
+
+    run $FORK_CLI launch status --launch-id "$LAUNCH_ID" --json
+    [ "$status" -eq 0 ]
+    error_msg=$(echo "$output" | jq -r '.error // empty')
+    [ "$error_msg" = "Agent exited with code 137" ]
+}
+
+@test "lifecycle helpers are defined (F1/F3)" {
+    source ~/.pi/agent/skills/tmux-fork-orchestrator/scripts/lib/core.sh
+    source ~/.pi/agent/skills/tmux-fork-orchestrator/scripts/lib/lifecycle.sh
+    # Verify functions exist
+    type lifecycle_get_launch_id &>/dev/null
+    type lifecycle_mark_failed &>/dev/null
+    type lifecycle_reconcile &>/dev/null
+}
