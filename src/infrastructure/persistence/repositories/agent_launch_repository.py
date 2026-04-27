@@ -149,37 +149,22 @@ class SqliteAgentLaunchRepository:
         )
 
         # Build SET clause — conditionally include lease_expires_at = NULL
+        set_clause = """
+                    status = ?,
+                    ended_at = COALESCE(?, ended_at),
+                    spawn_started_at = COALESCE(?, spawn_started_at),
+                    spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
+                    last_error = COALESCE(?, last_error),
+                    quarantine_reason = COALESCE(?, quarantine_reason),
+                    backend = COALESCE(?, backend),
+                    termination_handle_type = COALESCE(?, termination_handle_type),
+                    termination_handle_value = COALESCE(?, termination_handle_value),
+                    process_pid = COALESCE(?, process_pid),
+                    process_pgid = COALESCE(?, process_pgid),
+                    tmux_session = COALESCE(?, tmux_session),
+                    tmux_pane_id = COALESCE(?, tmux_pane_id)"""
         if clear_lease:
-            set_clause = """
-                        status = ?,
-                        ended_at = COALESCE(?, ended_at),
-                        spawn_started_at = COALESCE(?, spawn_started_at),
-                        spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
-                        last_error = COALESCE(?, last_error),
-                        quarantine_reason = COALESCE(?, quarantine_reason),
-                        backend = COALESCE(?, backend),
-                        termination_handle_type = COALESCE(?, termination_handle_type),
-                        termination_handle_value = COALESCE(?, termination_handle_value),
-                        process_pid = COALESCE(?, process_pid),
-                        process_pgid = COALESCE(?, process_pgid),
-                        tmux_session = COALESCE(?, tmux_session),
-                        tmux_pane_id = COALESCE(?, tmux_pane_id),
-                        lease_expires_at = NULL"""
-        else:
-            set_clause = """
-                        status = ?,
-                        ended_at = COALESCE(?, ended_at),
-                        spawn_started_at = COALESCE(?, spawn_started_at),
-                        spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
-                        last_error = COALESCE(?, last_error),
-                        quarantine_reason = COALESCE(?, quarantine_reason),
-                        backend = COALESCE(?, backend),
-                        termination_handle_type = COALESCE(?, termination_handle_type),
-                        termination_handle_value = COALESCE(?, termination_handle_value),
-                        process_pid = COALESCE(?, process_pid),
-                        process_pgid = COALESCE(?, process_pgid),
-                        tmux_session = COALESCE(?, tmux_session),
-                        tmux_pane_id = COALESCE(?, tmux_pane_id)"""
+            set_clause += ",\n                        lease_expires_at = NULL"
 
         try:
             with self._connection as conn:
