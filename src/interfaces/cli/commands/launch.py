@@ -47,7 +47,7 @@ signal.signal(signal.SIGINT, lambda _s, _f: (_ for _ in ()).throw(typer.Exit(130
 # ── Helpers ───────────────────────────────────────────────────
 
 
-def _get_service():  # type: ignore[no-untyped-def]
+def _get_service():
     """Lazy import to avoid cold-start overhead."""
     from src.infrastructure.persistence.container import get_lifecycle_service
 
@@ -280,20 +280,20 @@ def list_active(
     svc = _get_service()
     launches = svc.list_active_launches()
     items = []
-    for l in launches:
+    for launch in launches:
         try:
             items.append(
                 {
-                    "launch_id": l.launch_id,
-                    "canonical_key": l.canonical_key,
-                    "surface": l.surface,
-                    "status": l.status.value,
-                    "tmux_session": l.tmux_session,
+                    "launch_id": launch.launch_id,
+                    "canonical_key": launch.canonical_key,
+                    "surface": launch.surface,
+                    "status": launch.status.value,
+                    "tmux_session": launch.tmux_session,
                 }
             )
         except Exception as e:
             if not json_output:
-                print(f"Skipping malformed launch {l.launch_id}: {e}", file=sys.stderr)
+                print(f"Skipping malformed launch {launch.launch_id}: {e}", file=sys.stderr)
             continue
 
     if json_output:
@@ -333,21 +333,21 @@ def list_quarantined(
     svc = _get_service()
     launches = svc.list_quarantined_launches()
     items = []
-    for l in launches:
+    for launch in launches:
         try:
             items.append(
                 {
-                    "launch_id": l.launch_id,
-                    "canonical_key": l.canonical_key,
-                    "surface": l.surface,
-                    "status": l.status.value,
-                    "quarantine_reason": l.quarantine_reason,
-                    "created_at": l.created_at,
+                    "launch_id": launch.launch_id,
+                    "canonical_key": launch.canonical_key,
+                    "surface": launch.surface,
+                    "status": launch.status.value,
+                    "quarantine_reason": launch.quarantine_reason,
+                    "created_at": launch.created_at,
                 }
             )
         except Exception as e:
             if not json_output:
-                print(f"Skipping malformed launch {l.launch_id}: {e}", file=sys.stderr)
+                print(f"Skipping malformed launch {launch.launch_id}: {e}", file=sys.stderr)
             continue
 
     if json_output:

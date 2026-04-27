@@ -253,7 +253,7 @@ class PlanState:
                 json.dump(self.to_json(), f, indent=2)
             os.replace(tmp_path, str(path))
         except BaseException:
-            try:
+            try:  # noqa: SIM105
                 os.unlink(tmp_path)
             except OSError:
                 pass
@@ -388,7 +388,7 @@ class ExecuteState:
                 json.dump(self.to_json(), f, indent=2)
             os.replace(tmp_path, str(path))
         except BaseException:
-            try:
+            try:  # noqa: SIM105
                 os.unlink(tmp_path)
             except OSError:
                 pass
@@ -475,7 +475,7 @@ class VerifyState:
                 json.dump(self.to_json(), f, indent=2)
             os.replace(tmp_path, str(path))
         except BaseException:
-            try:
+            try:  # noqa: SIM105
                 os.unlink(tmp_path)
             except OSError:
                 pass

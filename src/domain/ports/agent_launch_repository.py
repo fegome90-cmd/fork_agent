@@ -58,11 +58,16 @@ class AgentLaunchRepository(Protocol):
         process_pgid: int | None = None,
         tmux_session: str | None = None,
         tmux_pane_id: str | None = None,
+        clear_lease: bool = False,
     ) -> bool:
         """CAS update — only succeeds if current status matches expected_status.
 
         Returns True if the row was updated, False if the CAS guard failed.
         Atomically updates status and any provided metadata fields.
+
+        When clear_lease is True, lease_expires_at is set to NULL (no lease).
+        This is used when transitioning to ACTIVE — managed launches should
+        never auto-expire.
         """
         ...
 

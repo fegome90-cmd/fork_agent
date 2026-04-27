@@ -185,6 +185,7 @@ class TestStatus:
         launch = MagicMock()
         launch.launch_id = "abc123"
         launch.status.value = "active"
+        launch.last_error = None
         mock_lifecycle.get_launch.return_value = launch
 
         with pytest.raises(SystemExit) as exc_info:

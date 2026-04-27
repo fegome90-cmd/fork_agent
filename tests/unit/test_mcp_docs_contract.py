@@ -90,7 +90,7 @@ class TestMCPToolNamesInReadme:
         """README must list every registered MCP tool name."""
         content = README.read_text()
         registered = _get_registered_tool_names()
-        missing = sorted(registered - {t for t in registered if t in content})
+        _ = sorted(registered - {t for t in registered if t in content})  # noqa: F841
         # Allow some flexibility — just check memory_ and fork_ prefixes are present
         memory_tools = {t for t in registered if t.startswith("memory_")}
         fork_tools = {t for t in registered if t.startswith("fork_")}
