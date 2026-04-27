@@ -203,14 +203,28 @@ class SqliteAgentLaunchRepository:
             raise RepositoryError(f"Failed to CAS update launch: {e}", e) from e
 
     def list_by_status(self, status: LaunchStatus) -> list[AgentLaunch]:
-        """List all launches in a given status."""
+        """List all launches in a given status.
+
+        Skips malformed rows (e.g. empty canonical_key) with a warning rather
+        than crashing the entire listing.
+        """
         try:
             with self._connection as conn:
                 cursor = conn.execute(
                     "SELECT * FROM agent_launch_registry WHERE status = ? ORDER BY created_at DESC",
                     (status.value,),
                 )
-                return [self._row_to_launch(row) for row in cursor.fetchall()]
+                results: list[AgentLaunch] = []
+                for row in cursor.fetchall():
+                    try:
+                        results.append(self._row_to_launch(row))
+                    except (ValueError, TypeError) as e:
+                        logger.warning(
+                            "Skipping malformed launch row %s: %s",
+                            row["launch_id"] if row else "<unknown>",
+                            e,
+                        )
+                return results
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to list launches by status: {e}", e) from e
 
@@ -226,7 +240,17 @@ class SqliteAgentLaunchRepository:
                        ORDER BY lease_expires_at ASC""",
                     (now_ms,),
                 )
-                return [self._row_to_launch(row) for row in cursor.fetchall()]
+                results: list[AgentLaunch] = []
+                for row in cursor.fetchall():
+                    try:
+                        results.append(self._row_to_launch(row))
+                    except (ValueError, TypeError) as e:
+                        logger.warning(
+                            "Skipping malformed expired-lease row %s: %s",
+                            row["launch_id"] if row else "<unknown>",
+                            e,
+                        )
+                return results
         except sqlite3.Error as e:
             raise RepositoryError(f"Failed to list expired leases: {e}", e) from e
 

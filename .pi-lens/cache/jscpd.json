@@ -306,6 +306,14 @@
       "tokens": 0
     },
     {
+      "fileA": "src/infrastructure/persistence/migrations/028_create_agent_launch_registry.sql",
+      "startA": 6,
+      "fileB": "src/infrastructure/persistence/migrations/030_harden_launch_registry_canonical_key.sql",
+      "startB": 12,
+      "lines": 25,
+      "tokens": 0
+    },
+    {
       "fileA": "src/application/services/workspace/workspace_detector.py",
       "startA": 74,
       "fileB": "src/application/services/workspace/workspace_manager.py",
@@ -506,7 +514,7 @@
       "tokens": 0
     }
   ],
-  "duplicatedLines": 994,
-  "totalLines": 39279,
-  "percentage": 2.53
+  "duplicatedLines": 1018,
+  "totalLines": 39374,
+  "percentage": 2.59
 }
