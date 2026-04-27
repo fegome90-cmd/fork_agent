@@ -13,6 +13,7 @@ from src.interfaces.mcp.tools._shared import (
     _get_session_service,
     _map_error,
     _resolve_project,
+    _validate_topic_key,
     logger,
 )
 
@@ -107,6 +108,8 @@ def memory_save(
     """
     if not content or not content.strip():
         raise _map_error(ValueError("content must not be empty"))
+    if topic_key:
+        _validate_topic_key(topic_key)
     effective_project = _resolve_project(project)
     try:
         service = _get_memory_service()
@@ -142,6 +145,8 @@ def memory_search(
     Returns:
         JSON array of matching observations.
     """
+    if not query or not query.strip():
+        raise _map_error(ValueError("query cannot be empty"))
     try:
         service = _get_memory_service()
         effective_project = _resolve_project(project)
@@ -172,6 +177,8 @@ def memory_retrieve(
     Returns:
         JSON array of matching observations ranked by multi-signal score.
     """
+    if not query or not query.strip():
+        raise _map_error(ValueError("query cannot be empty"))
     try:
         service = _get_enhanced_search_service()
         effective_project = _resolve_project(project)
@@ -235,17 +242,25 @@ def memory_list(
         raise _map_error(e) from e
 
 
-def memory_delete(id: str) -> str:
+def memory_delete(id: str, project: str | None = None) -> str:
     """Delete an observation by its ID.
 
     Args:
         id: The UUID of the observation to delete (required).
+        project: Optional project name for ownership check.
 
     Returns:
         JSON with the deleted observation's ID and status.
     """
     try:
         service = _get_memory_service()
+        if project:
+            effective_project = _resolve_project(project)
+            obs = service.get_by_id(id)
+            if obs and obs.project != effective_project:
+                raise ValueError(
+                    f"Observation {id} belongs to project '{obs.project}', not '{effective_project}'"
+                )
         service.delete(id)
         return json.dumps({"id": id, "status": "deleted"})
     except Exception as e:
@@ -313,6 +328,8 @@ def memory_update(
     Returns:
         JSON with the updated observation details.
     """
+    if topic_key:
+        _validate_topic_key(topic_key)
     try:
         service = _get_memory_service()
         observation = service.update(

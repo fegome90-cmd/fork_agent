@@ -108,7 +108,7 @@ def _get_db_path(ctx: typer.Context) -> Path:
 
 def _make_sync_service(ctx: typer.Context) -> SyncService:
     """Build a SyncService from CLI context."""
-    return get_sync_service(_get_db_path(ctx))
+    return get_sync_service(_get_db_path(ctx))  # type: ignore[no-any-return]
 
 
 @app.command(name="push")

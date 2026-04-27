@@ -59,8 +59,16 @@ def delete(
             )
             raise typer.Exit(1)  # noqa: B904
     try:
-        memory_service.delete(actual_id)
-        typer.echo(f"Deleted: {actual_id}")
+        # Hybrid dispatch: route through MCP when FORK_HYBRID=1 and server available
+        if os.environ.get("FORK_HYBRID") == "1":
+            from src.interfaces.cli.hybrid import HybridDispatcher
+
+            dispatcher = HybridDispatcher(memory_service)
+            deleted_id, _receipt = dispatcher.dispatch_delete(id=actual_id)
+            typer.echo(f"Deleted: {deleted_id}")
+        else:
+            memory_service.delete(actual_id)
+            typer.echo(f"Deleted: {actual_id}")
 
         # Flush telemetry to ensure events are persisted
         db_path = _get_db_path_from_context(ctx)

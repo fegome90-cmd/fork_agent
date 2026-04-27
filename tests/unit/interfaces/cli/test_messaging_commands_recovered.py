@@ -85,3 +85,64 @@ class TestMessageCommands:
         assert "Cleanup complete" in result.stdout
         assert "Database: 5" in result.stdout
         assert "Filesystem: 10" in result.stdout
+
+
+class TestSendToPane:
+    """Tests for send-to-pane command error handling.
+    Regression tests for Copilot review: subprocess.run returncode must be checked.
+    """
+
+    @patch("subprocess.run")
+    @patch("src.interfaces.cli.commands.message.get_agent_messenger")
+    def test_send_to_pane_success(
+        self, mock_get_messenger: MagicMock, mock_run: MagicMock, runner: CliRunner
+    ) -> None:
+        mock_get_messenger.return_value = MagicMock()
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+
+        result = runner.invoke(message_app, ["send-to-pane", "%0", "hello"])
+
+        assert result.exit_code == 0
+        assert "Message sent to pane" in result.stdout
+        assert mock_run.call_count == 2
+
+    @patch("subprocess.run")
+    @patch("src.interfaces.cli.commands.message.get_agent_messenger")
+    def test_send_to_pane_send_keys_fails(
+        self, mock_get_messenger: MagicMock, mock_run: MagicMock, runner: CliRunner
+    ) -> None:
+        mock_get_messenger.return_value = MagicMock()
+        mock_run.return_value = MagicMock(returncode=1, stderr="no such pane", stdout="")
+
+        result = runner.invoke(message_app, ["send-to-pane", "%0", "hello"])
+
+        assert result.exit_code == 2
+        assert "send-keys failed" in result.stdout
+
+    @patch("subprocess.run")
+    @patch("src.interfaces.cli.commands.message.get_agent_messenger")
+    def test_send_to_pane_enter_fails(
+        self, mock_get_messenger: MagicMock, mock_run: MagicMock, runner: CliRunner
+    ) -> None:
+        mock_get_messenger.return_value = MagicMock()
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stderr="", stdout=""),
+            MagicMock(returncode=1, stderr="pane gone", stdout=""),
+        ]
+
+        result = runner.invoke(message_app, ["send-to-pane", "%0", "hello"])
+
+        assert result.exit_code == 2
+        assert "Enter failed" in result.stdout
+
+    @patch("subprocess.run", side_effect=FileNotFoundError("tmux not found"))
+    @patch("src.interfaces.cli.commands.message.get_agent_messenger")
+    def test_send_to_pane_tmux_not_found(
+        self, mock_get_messenger: MagicMock, mock_run: MagicMock, runner: CliRunner
+    ) -> None:
+        mock_get_messenger.return_value = MagicMock()
+
+        result = runner.invoke(message_app, ["send-to-pane", "%0", "hello"])
+
+        assert result.exit_code == 2
+        assert "pane delivery failed" in result.stdout

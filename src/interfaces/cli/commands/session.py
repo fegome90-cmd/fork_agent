@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -14,7 +15,7 @@ app = typer.Typer()
 def _get_session_service(db_path: Path | None = None) -> SessionService:
     from src.infrastructure.persistence.container import get_session_service
 
-    return get_session_service(db_path)
+    return get_session_service(db_path)  # type: ignore[no-any-return]
 
 
 @app.command()
@@ -29,12 +30,27 @@ def start(
     ),
 ) -> None:
     """Start a new session."""
-    import os
-
-    service = _get_session_service()
     directory = os.getcwd()
     proj = project or Path(directory).name
 
+    if os.environ.get("FORK_HYBRID") == "1":
+        # Session start needs a dispatcher — use None since no ctx.obj
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_session_start(
+            project=proj, directory=directory, goal=goal, instructions=instructions
+        )
+        session_id = result.get("id", "unknown")
+        typer.echo(f"Session started: {session_id}")
+        typer.echo(f"  Project: {proj}")
+        typer.echo(f"  Directory: {directory}")
+        if goal:
+            typer.echo(f"  Goal: {goal}")
+        return
+
+    service = _get_session_service()
     session = service.start_session(
         project=proj,
         directory=directory,
@@ -58,17 +74,26 @@ def end(
     ),
 ) -> None:
     """End the active session."""
-    import os
-
     service = _get_session_service()
 
-    # Auto-detect project from CWD when not explicitly provided (same as list/context)
+    # Auto-detect project from CWD when not explicitly provided
     proj = project or Path(os.getcwd()).name
 
     active = service.get_active(proj)
     if active is None:
         typer.echo("No active session found" + (f" for project: {proj}" if proj else ""), err=True)
         raise typer.Exit(1)
+
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.infrastructure.persistence.container import get_memory_service_auto
+        from src.interfaces.cli.hybrid import HybridDispatcher
+
+        dispatcher = HybridDispatcher(get_memory_service_auto())
+        result, _receipt = dispatcher.dispatch_session_end(session_id=active.id, summary=summary)
+        typer.echo(f"Session ended: {active.id}")
+        if summary:
+            typer.echo(f"  Summary: {summary}")
+        return
 
     session = service.end_session(active.id, summary)
 

@@ -16,6 +16,13 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.application.services.agent_polling_service import AgentPollingService
+    from src.application.services.task_board_service import TaskBoardService
+    from src.application.services.template_service import TemplateService
+
 
 # Fast-path imports only — these are lightweight (~69ms total)
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
@@ -257,11 +264,13 @@ def get_workflow_executor():
     if _workflow_executor is None:
         from src.application.services.workflow.executor import WorkflowExecutor
 
+        lifecycle_svc = get_lifecycle_service()
         _workflow_executor = WorkflowExecutor(
             tmux_orchestrator=get_tmux_orchestrator(),
             memory_service=get_memory_service(),
             workspace_manager=get_workspace_manager(),
             hook_service=get_hook_service(),
+            lifecycle_service=lifecycle_svc,
         )
     return _workflow_executor
 
@@ -276,16 +285,50 @@ def get_scheduler_service(db_path: Path | None = None):
     return get_container(db_path).scheduler_service()
 
 
+def _detect_workspace_fast() -> Path | None:
+    """Fast workspace detection — bypasses DI container to avoid dependency_injector import.
+
+    The full WorkspaceManager via get_workspace_manager() triggers the DI container
+    (~160ms overhead from dependency_injector). This fast path does the same git
+    worktree detection using only GitCommandExecutor (~18ms total).
+    """
+    try:
+        from pathlib import Path as _Path
+
+        from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor as _Git
+
+        git = _Git()
+        cwd = _Path.cwd()
+        try:
+            repo_root = git.get_repo_root(cwd)
+        except Exception:
+            return None
+
+        # In main repo (not worktree) → no workspace DB
+        if cwd.resolve() == repo_root.resolve():
+            return None
+
+        # In a worktree → check for .memory/ dir
+        worktrees = git.worktree_list()
+        cwd_resolved = cwd.resolve()
+        for wt in worktrees:
+            wt_path = _Path(wt["path"]).resolve()
+            if wt_path == cwd_resolved or cwd.is_relative_to(wt_path):
+                worktree_db_dir = wt_path / ".memory"
+                worktree_db_dir.mkdir(parents=True, exist_ok=True)
+                return worktree_db_dir / "observations.db"
+    except (OSError, ValueError, Exception):
+        pass
+    return None
+
+
 def detect_memory_db_path() -> Path:
     """Detect the appropriate memory DB path based on current workspace."""
     try:
-        workspace_manager = get_workspace_manager()
-        workspace = workspace_manager.detect_workspace()
-        if workspace is not None:
-            worktree_db_dir = workspace.path / ".memory"
-            worktree_db_dir.mkdir(parents=True, exist_ok=True)
-            return worktree_db_dir / "observations.db"
-    except (OSError, ValueError):
+        result = _detect_workspace_fast()
+        if result is not None:
+            return result
+    except (OSError, ValueError, Exception):
         pass
     return DEFAULT_DB_PATH
 
@@ -294,6 +337,19 @@ def get_memory_service_auto():
     """Get MemoryService with automatic workspace-aware DB path detection."""
     db_path = detect_memory_db_path()
     return get_memory_service(db_path)
+
+
+def get_task_board_service(db_path: Path | None = None) -> TaskBoardService:
+    """Get a TaskBoardService instance wired with the SQLite repository."""
+    from src.application.services.task_board_service import TaskBoardService
+    from src.infrastructure.persistence.repositories.orchestration_task_repository import (
+        SqliteOrchestrationTaskRepository,
+    )
+
+    conn = get_database_connection(db_path)
+    repo = SqliteOrchestrationTaskRepository(connection=conn)
+    service: TaskBoardService = TaskBoardService(repo=repo)
+    return service
 
 
 def get_message_store(db_path: Path | None = None):
@@ -308,7 +364,7 @@ def get_agent_messenger(db_path: Path | None = None):
 
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
-    return get_container(db_path).database_connection()
+    return get_container(db_path).database_connection()  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -323,3 +379,71 @@ def __getattr__(name: str) -> object:
 
         return getattr(_container_di, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def get_agent_polling_service(db_path: Path | None = None) -> AgentPollingService:
+    """Get an AgentPollingService wired with SQLite repo, filesystem, and lifecycle service."""
+    from src.application.services.agent_polling_service import AgentPollingService
+    from src.infrastructure.persistence.repositories.poll_run_repository import (
+        SqlitePollRunRepository,
+    )
+    from src.infrastructure.polling.poll_run_directory import PollRunDirectory
+
+    task_svc = get_task_board_service(db_path)
+    db = get_database_connection(db_path)
+    repo = SqlitePollRunRepository(connection=db)
+    lifecycle_svc = get_lifecycle_service(db_path)
+    run_dir = PollRunDirectory()
+    return AgentPollingService(
+        task_service=task_svc,
+        poll_run_repo=repo,
+        run_dir=run_dir,
+        lifecycle_service=lifecycle_svc,
+    )
+
+
+_lifecycle_service_cache: dict[str, Any] = {}
+_lifecycle_service_lock = Lock()
+
+
+def get_lifecycle_service(db_path: Path | None = None):
+    """Get or create the AgentLaunchLifecycleService, cached per resolved db_path."""
+    resolved = str(db_path or "default")
+    if resolved in _lifecycle_service_cache:
+        return _lifecycle_service_cache[resolved]
+    with _lifecycle_service_lock:
+        if resolved in _lifecycle_service_cache:
+            return _lifecycle_service_cache[resolved]
+        from src.application.services.agent_launch_lifecycle_service import (
+            AgentLaunchLifecycleService,
+        )
+        from src.infrastructure.persistence.repositories.agent_launch_repository import (
+            SqliteAgentLaunchRepository,
+        )
+
+        db = get_database_connection(db_path)
+        launch_repo = SqliteAgentLaunchRepository(connection=db)
+        svc = AgentLaunchLifecycleService(registry=launch_repo)
+        _lifecycle_service_cache[resolved] = svc
+    return svc
+
+
+def get_template_service(db_path: Path | None = None) -> TemplateService:
+    """Get a TemplateService wired with SQLite repos and filesystem."""
+    from src.application.services.template_service import TemplateService
+    from src.infrastructure.agent_templates.template_directory import TemplateDirectory
+    from src.infrastructure.persistence.repositories.agent_template_repository import (
+        SqliteAgentTemplateRepository,
+        SqliteTeamRepository,
+    )
+
+    path = db_path or get_default_db_path()
+    conn = get_database_connection(path)
+    template_repo = SqliteAgentTemplateRepository(connection=conn)
+    team_repo = SqliteTeamRepository(connection=conn)
+    template_dir = TemplateDirectory()
+    return TemplateService(
+        template_repo=template_repo,
+        team_repo=team_repo,
+        template_dir=template_dir,
+    )

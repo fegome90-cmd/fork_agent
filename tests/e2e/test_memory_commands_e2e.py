@@ -7,7 +7,10 @@ from pathlib import Path
 from click.testing import Result
 from typer.testing import CliRunner
 
-from src.interfaces.cli.main import app
+from src.interfaces.cli.main import _register_commands, app
+
+# Ensure commands are registered before any invocation (lazy-loading).
+_register_commands()
 
 runner = CliRunner()
 

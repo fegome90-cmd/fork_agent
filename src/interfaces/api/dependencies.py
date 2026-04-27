@@ -72,14 +72,14 @@ def get_memory_service(db_path: str = "") -> MemoryService:
 
         db_path = str(get_default_db_path())
     path = Path(db_path) if db_path else None
-    return _get_memory_service(path)
+    return _get_memory_service(path)  # type: ignore[no-any-return]
 
 
 def get_hook_service() -> HookService:
     """Get HookService singleton — delegates to canonical container."""
-    return _get_hook_service()
+    return _get_hook_service()  # type: ignore[no-any-return]
 
 
 def get_promise_repository() -> PromiseContractRepository:
     """Get PromiseContractRepository singleton — delegates to canonical container."""
-    return _get_promise_repository()
+    return _get_promise_repository()  # type: ignore[no-any-return]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -59,4 +59,43 @@ class IActionRunner(Protocol):
         Args:
             action: The action to execute.
         """
+        ...
+
+
+class IMessageBroker(Protocol):
+    """Port for async pub/sub message broker.
+
+    Decouples publishers from subscribers. Implementations can use
+    asyncio queues, Redis pub/sub, or in-memory event buses.
+    """
+
+    async def publish(self, topic: str, message: Event) -> None:
+        """Publish a message to a topic.
+
+        Args:
+            topic: The topic/channel to publish to.
+            message: The event or message to publish.
+        """
+        ...
+
+    async def subscribe(self, topic: str, handler: Any) -> None:
+        """Subscribe a handler to a topic.
+
+        Args:
+            topic: The topic/channel to subscribe to.
+            handler: A callable that accepts the published message.
+        """
+        ...
+
+    async def unsubscribe(self, topic: str, handler: Any) -> None:
+        """Remove a handler subscription.
+
+        Args:
+            topic: The topic/channel to unsubscribe from.
+            handler: The handler to remove.
+        """
+        ...
+
+    async def close(self) -> None:
+        """Gracefully shut down the broker, draining pending messages."""
         ...

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -63,14 +64,28 @@ def update(
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)  # noqa: B904
     try:
-        observation = memory_service.update(
-            observation_id=actual_id,
-            content=content,
-            metadata=meta_dict,
-            type=obs_type,
-            topic_key=topic_key,
-            project=project,
-        )
+        # Hybrid dispatch: route through MCP when FORK_HYBRID=1 and server available
+        if os.environ.get("FORK_HYBRID") == "1":
+            from src.interfaces.cli.hybrid import HybridDispatcher
+
+            dispatcher = HybridDispatcher(memory_service)
+            observation, _receipt = dispatcher.dispatch_update(
+                id=actual_id,
+                content=content,
+                metadata=meta_dict,
+                type=obs_type,
+                topic_key=topic_key,
+                project=project,
+            )
+        else:
+            observation = memory_service.update(
+                observation_id=actual_id,
+                content=content,
+                metadata=meta_dict,
+                type=obs_type,
+                topic_key=topic_key,
+                project=project,
+            )
         typer.echo(f"Updated: {observation.id} (Revision: {observation.revision_count})")
 
         # Flush telemetry

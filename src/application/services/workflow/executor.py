@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.application.services.memory.event_metadata import (
     EventType,
@@ -34,6 +34,11 @@ from src.application.services.workflow.state import (
 from src.application.services.workspace.workspace_manager import WorkspaceManager
 from src.infrastructure.agent_backends import get_default_backend
 from src.infrastructure.tmux_orchestrator import TmuxOrchestrator
+
+if TYPE_CHECKING:
+    from src.application.services.agent_launch_lifecycle_service import (
+        AgentLaunchLifecycleService,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +94,7 @@ class WorkflowExecutor:
         memory_service: MemoryService,
         workspace_manager: WorkspaceManager,
         hook_service: HookService,
+        lifecycle_service: AgentLaunchLifecycleService | None = None,
     ) -> None:
         """Initialize WorkflowExecutor with dependencies.
 
@@ -97,11 +103,13 @@ class WorkflowExecutor:
             memory_service: Service for observation persistence.
             workspace_manager: Service for worktree management.
             hook_service: Service for event dispatching.
+            lifecycle_service: Optional lifecycle service for launch deduplication.
         """
         self._tmux = tmux_orchestrator
         self._memory = memory_service
         self._workspace = workspace_manager
         self._hooks = hook_service
+        self._lifecycle = lifecycle_service
 
     def execute_task(
         self,
@@ -137,6 +145,46 @@ class WorkflowExecutor:
         if run_id is None:
             run_id = f"run-{uuid.uuid4().hex[:8]}"
 
+        # Claim canonical launch slot via lifecycle service (if wired)
+        lifecycle_launch_id: str | None = None
+        canonical_key = f"workflow:{task.id}"
+        if self._lifecycle is not None:
+            attempt = self._lifecycle.request_launch(
+                canonical_key=canonical_key,
+                surface="workflow",
+                owner_type="task",
+                owner_id=task.id,
+            )
+            if attempt.decision == "suppressed":
+                logger.info(
+                    "Workflow launch suppressed for task %s: %s",
+                    task.id,
+                    attempt.reason or "already active",
+                )
+                # Return a result indicating the task is already being handled
+                existing = attempt.existing_launch
+                return TaskExecutionResult(
+                    task=task,
+                    session_name=existing.tmux_session if existing else None,
+                    worktree_path=None,
+                    worktree_name=None,
+                    error=f"Launch suppressed: {attempt.reason or 'already active'}",
+                )
+            if attempt.decision == "error":
+                errors.append(f"Lifecycle registry error: {attempt.reason}")
+                logger.error(
+                    "Lifecycle registry error for workflow task %s: %s",
+                    task.id,
+                    attempt.reason,
+                )
+                # Fail closed — do not proceed without registry confirmation
+                return TaskExecutionResult(
+                    task=task,
+                    error=f"Launch blocked by registry error: {attempt.reason}",
+                )
+            if attempt.launch is not None:
+                lifecycle_launch_id = attempt.launch.launch_id
+
         # Emit task_started event
         self._emit_event(
             EventType.TASK_STARTED,
@@ -148,6 +196,15 @@ class WorkflowExecutor:
             mode=ExecutionMode.WORKTREE,
             branch=None,
         )
+
+        # Notify lifecycle that spawn is starting
+        if lifecycle_launch_id is not None and self._lifecycle is not None:
+            ok = self._lifecycle.confirm_spawning(lifecycle_launch_id)
+            if not ok:
+                logger.warning(
+                    "CAS failed for launch %s during spawning — split-brain risk",
+                    lifecycle_launch_id,
+                )
 
         # Step 1: Create tmux session
         try:
@@ -174,6 +231,21 @@ class WorkflowExecutor:
                         errors.append(f"Failed to launch agent in tmux session: {session_name}")
                         logger.warning("Failed to launch agent in tmux session: %s", session_name)
                     else:
+                        # Confirm active in lifecycle registry
+                        if lifecycle_launch_id is not None and self._lifecycle is not None:
+                            ok = self._lifecycle.confirm_active(
+                                lifecycle_launch_id,
+                                backend="tmux",
+                                termination_handle_type="tmux-session",
+                                termination_handle_value=session_name,
+                                tmux_session=session_name,
+                            )
+                            if not ok:
+                                logger.warning(
+                                    "CAS failed for launch %s during confirm_active — split-brain risk",
+                                    lifecycle_launch_id,
+                                )
+
                         # Emit agent_spawned event after successful launch
                         self._emit_event(
                             EventType.AGENT_SPAWNED,
@@ -190,6 +262,10 @@ class WorkflowExecutor:
         except Exception as e:
             errors.append(f"Error creating tmux session: {e}")
             logger.error("Error creating tmux session for task %s: %s", task.id, e)
+
+        # Mark lifecycle as failed if errors occurred during spawn
+        if errors and lifecycle_launch_id is not None and self._lifecycle is not None:
+            self._lifecycle.mark_failed(lifecycle_launch_id, "; ".join(errors))
 
         # Step 2: Create worktree
         base_worktree_name = f"task-{task.slug[:30]}"

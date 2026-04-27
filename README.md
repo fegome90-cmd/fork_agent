@@ -2,7 +2,7 @@
 
 Persistent memory, MCP server, and orchestration tools for AI coding agents.
 
-SQLite-backed observation store with FTS5 search, 16-tool MCP server,
+SQLite-backed observation store with FTS5 search, 21-tool MCP server,
 interactive TUI, Obsidian export/import, and git-based sync.
 Python 3.11+ | MIT License
 
@@ -11,7 +11,7 @@ Python 3.11+ | MIT License
 ## Features
 
 - **Memory Store** -- SQLite with FTS5 full-text search, short-ID prefix matching
-- **MCP Server** -- 16 tools over stdio, SSE, and streamable-http
+- **MCP Server** -- 21 tools (17 memory + 4 messaging) over stdio, SSE, and streamable-http
 - **CLI** -- save, search, retrieve, list, get, update, delete, compact, sync, export, import, sessions, workflow, scheduling
 - **TUI** -- Textual-based browser with list, search, detail, save, and stats screens
 - **Obsidian** -- export/import with YAML frontmatter, dedup, path traversal protection
@@ -200,7 +200,8 @@ memory workflow verify --messaging     # sends REPLY with verification results
 
 ## MCP Server
 
-Expose memory as 16 MCP tools to any compatible client.
+Expose memory as **21 MCP tools** (17 memory + 4 messaging) to any compatible client.
+The canonical interface is `memory_*` MCP tools via `memory-mcp`. CLI commands are fallback/debug only.
 
 ### Configuration
 
@@ -247,11 +248,13 @@ memory-mcp --transport streamable-http --port 8080  # Streamable HTTP
 
 ### Available tools
 
-`memory_save`, `memory_search`, `memory_get`, `memory_list`, `memory_update`,
-`memory_delete`, `memory_context`, `memory_stats`, `memory_timeline`,
-`memory_session_start`, `memory_session_end`, `memory_session_summary`,
-`memory_suggest_topic_key`, `memory_save_prompt`, `memory_capture_passive`,
-`memory_merge_projects`. See [docs/mcp-setup.md](docs/mcp-setup.md).
+`memory_save`, `memory_search`, `memory_retrieve`, `memory_get`, `memory_list`,
+`memory_update`, `memory_delete`, `memory_context`, `memory_stats`,
+`memory_timeline`, `memory_session_start`, `memory_session_end`,
+`memory_session_summary`, `memory_suggest_topic_key`, `memory_save_prompt`,
+`memory_capture_passive`, `memory_merge_projects`,
+`fork_message_send`, `fork_message_receive`, `fork_message_broadcast`,
+`fork_message_history`. See [docs/guides/mcp-setup.md](docs/guides/mcp-setup.md).
 
 ---
 
@@ -285,7 +288,7 @@ src/
     cli/commands/   Typer CLI
     tui/screens/    Textual TUI (5 screens)
     api/            FastAPI REST
-    mcp/            MCP server (16 tools, 3 transports)
+    mcp/            MCP server (21 tools: 17 memory + 4 messaging, 3 transports)
 ```
 
 ```
@@ -334,7 +337,7 @@ uv run pre-commit run --all-files
 
 ## Documentation
 
-- [docs/mcp-setup.md](docs/mcp-setup.md) -- MCP server setup for all clients
+- [docs/guides/mcp-setup.md](docs/guides/mcp-setup.md) -- MCP server setup for all clients
 - [docs/engram-parity-roadmap.md](docs/engram-parity-roadmap.md) -- Feature parity roadmap
 - [AGENTS.md](AGENTS.md) -- Agent development guide
 

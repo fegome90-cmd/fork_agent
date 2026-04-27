@@ -192,14 +192,26 @@ class TmuxOrchestrator:
             print(f"SAFETY: Would send to {session}:{window}: {sanitized[:50]}...")
             return True
         try:
-            result = subprocess.run(
+            send_result = subprocess.run(
                 ["tmux", "send-keys", "-t", f"{session}:{window}", sanitized],
                 capture_output=True,
                 timeout=5,
             )
-            if result.returncode != 0:
+            if send_result.returncode != 0:
                 return False
-            subprocess.run(["tmux", "send-keys", "-t", f"{session}:{window}", "Enter"], timeout=5)
+            enter_result = subprocess.run(
+                ["tmux", "send-keys", "-t", f"{session}:{window}", "Enter"],
+                capture_output=True,
+                timeout=5,
+            )
+            if enter_result.returncode != 0:
+                logger.warning(
+                    "send-keys Enter failed for %s:%s (exit %s)",
+                    session,
+                    window,
+                    enter_result.returncode,
+                )
+                return False
             return True
         except subprocess.TimeoutExpired:
             logger.error(f"Timeout sending to {session}:{window}")

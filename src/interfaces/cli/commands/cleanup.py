@@ -31,7 +31,7 @@ def _get_cleanup_service_from_context(ctx: typer.Context) -> CleanupService:
     if ctx.parent and ctx.parent.params:
         db_path = Path(ctx.parent.params.get("db_path", str(get_default_db_path())))
 
-    return get_cleanup_service(db_path)
+    return get_cleanup_service(db_path)  # type: ignore[no-any-return]
 
 
 @app.command()

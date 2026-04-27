@@ -10,11 +10,17 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from src.infrastructure.tmux_orchestrator.circuit_breaker import (
     CircuitState,
     TmuxCircuitBreaker,
 )
+
+if TYPE_CHECKING:
+    from src.application.services.agent_launch_lifecycle_service import (
+        AgentLaunchLifecycleService,
+    )
 
 # Alias for backward compatibility
 CircuitBreaker = TmuxCircuitBreaker
@@ -305,12 +311,16 @@ class TmuxAgent(Agent):
 
 
 class AgentManager:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lifecycle_service: AgentLaunchLifecycleService | None = None,
+    ) -> None:
         self._agents: dict[str, Agent] = {}
         self._lock = threading.RLock()
         self._health_check_interval = 30
         self._running = False
         self._health_thread: threading.Thread | None = None
+        self._lifecycle = lifecycle_service
 
     def spawn_agent(self, config: AgentConfig) -> Agent | None:
         with self._lock:
@@ -318,13 +328,67 @@ class AgentManager:
                 logger.warning(f"Agent {config.name} already exists")
                 return None
 
+            # Claim canonical launch slot via lifecycle service (if wired)
+            canonical_key = f"manager:{config.name}"
+            lifecycle_launch_id: str | None = None
+            if self._lifecycle is not None:
+                attempt = self._lifecycle.request_launch(
+                    canonical_key=canonical_key,
+                    surface="manager",
+                    owner_type="agent",
+                    owner_id=config.name,
+                )
+                if attempt.decision == "suppressed":
+                    logger.info(
+                        "Manager spawn suppressed for agent %s: %s",
+                        config.name,
+                        attempt.reason or "already active",
+                    )
+                    return None
+                if attempt.decision == "error":
+                    logger.error(
+                        "Lifecycle registry error for agent %s: %s",
+                        config.name,
+                        attempt.reason,
+                    )
+                    return None
+                if attempt.launch is not None:
+                    lifecycle_launch_id = attempt.launch.launch_id
+
             # Currently only TmuxAgent is supported
-            agent: Agent = TmuxAgent(config)
+            agent = TmuxAgent(config)
+
+            # Notify lifecycle that spawn is starting
+            if lifecycle_launch_id is not None and self._lifecycle is not None:
+                ok = self._lifecycle.confirm_spawning(lifecycle_launch_id)
+                if not ok:
+                    logger.warning(
+                        "CAS failed for launch %s during spawning — split-brain risk",
+                        lifecycle_launch_id,
+                    )
 
             if agent.spawn():
                 self._agents[config.name] = agent
+
+                # Confirm active in lifecycle registry
+                if lifecycle_launch_id is not None and self._lifecycle is not None:
+                    ok = self._lifecycle.confirm_active(
+                        lifecycle_launch_id,
+                        backend="tmux",
+                        termination_handle_type="tmux-session",
+                        termination_handle_value=agent.tmux_session,
+                        tmux_session=agent.tmux_session,
+                    )
+                    if not ok:
+                        logger.warning(
+                            "CAS failed for launch %s during confirm_active — split-brain risk",
+                            lifecycle_launch_id,
+                        )
                 return agent
 
+            # Spawn failed — mark lifecycle record as failed
+            if lifecycle_launch_id is not None and self._lifecycle is not None:
+                self._lifecycle.mark_failed(lifecycle_launch_id, "tmux spawn failed")
             return None
 
     def get_agent(self, name: str) -> Agent | None:
@@ -336,8 +400,22 @@ class AgentManager:
             if agent is None:
                 return False
 
+            # Begin lifecycle termination
+            if self._lifecycle is not None:
+                canonical_key = f"manager:{name}"
+                active = self._lifecycle.get_active_launch(canonical_key)
+                if active is not None:
+                    self._lifecycle.begin_termination(active.launch_id)
+
             success = agent.terminate()
+
             if success:
+                # Confirm lifecycle termination
+                if self._lifecycle is not None:
+                    canonical_key = f"manager:{name}"
+                    active = self._lifecycle.get_active_launch(canonical_key)
+                    if active is not None:
+                        self._lifecycle.confirm_terminated(active.launch_id)
                 del self._agents[name]
             return success
 
@@ -537,8 +615,10 @@ class AgentManager:
 _agent_manager: AgentManager | None = None
 
 
-def get_agent_manager() -> AgentManager:
+def get_agent_manager(
+    lifecycle_service: AgentLaunchLifecycleService | None = None,
+) -> AgentManager:
     global _agent_manager
     if _agent_manager is None:
-        _agent_manager = AgentManager()
+        _agent_manager = AgentManager(lifecycle_service=lifecycle_service)
     return _agent_manager

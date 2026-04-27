@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -33,10 +32,15 @@ class TestCircuitBreaker:
         assert cb.state == CircuitState.OPEN
 
     def test_half_open_after_recovery_timeout(self) -> None:
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1)
+        fake_time = [100.0]
+
+        def clock() -> float:
+            return fake_time[0]
+
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=1, _clock=clock)
         cb.record_failure()
         assert cb.state == CircuitState.OPEN
-        time.sleep(1.1)
+        fake_time[0] += 1.1  # advance past recovery_timeout
         assert cb.state == CircuitState.HALF_OPEN
 
     def test_can_execute_closed(self) -> None:
@@ -132,8 +136,10 @@ class TestAgentManager:
 
     def test_health_check(self) -> None:
         manager = AgentManager()
+        manager._health_check_interval = 0  # fast loop for testing
         manager.start_health_monitoring()
-        time.sleep(1)
+        assert manager._health_thread is not None
+        assert manager._health_thread.is_alive()
         manager.stop_health_monitoring()
 
 

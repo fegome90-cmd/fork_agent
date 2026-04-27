@@ -71,6 +71,7 @@ def fork_message_send(
         return json.dumps({"status": "sent" if success else "stored", "target": target})
     except BaseException as _e:
         from mcp import McpError
+
         if isinstance(_e, McpError):
             raise
         raise _e
@@ -111,6 +112,7 @@ def fork_message_receive(
         return json.dumps(serialized)
     except BaseException as _e:
         from mcp import McpError
+
         if isinstance(_e, McpError):
             raise
         raise _e
@@ -144,6 +146,7 @@ def fork_message_broadcast(
         return json.dumps({"status": "broadcast", "recipients": count})
     except BaseException as _e:
         from mcp import McpError
+
         if isinstance(_e, McpError):
             raise
         raise _e
@@ -177,6 +180,7 @@ def fork_message_history(
         return json.dumps(serialized)
     except BaseException as _e:
         from mcp import McpError
+
         if isinstance(_e, McpError):
             raise
         raise _e

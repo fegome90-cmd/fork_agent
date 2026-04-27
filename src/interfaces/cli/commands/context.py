@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -33,12 +34,21 @@ def context(
     """Show recent context — session summaries and relevant observations."""
     memory_service = ctx.obj
 
-    # If type specified, filter by it; otherwise show recent
-    results = memory_service.get_recent(limit=limit, type=type)
+    # Hybrid dispatch: route through MCP when FORK_HYBRID=1 and server available
+    if os.environ.get("FORK_HYBRID") == "1":
+        from src.interfaces.cli.hybrid import HybridDispatcher
 
-    # If no results with type filter, fallback to unfiltered
-    if not results and type:
-        results = memory_service.get_recent(limit=limit)
+        dispatcher = HybridDispatcher(memory_service)
+        results, _receipt = dispatcher.dispatch_context(
+            limit=limit, type=type, project=Path(os.getcwd()).name
+        )
+    else:
+        # If type specified, filter by it; otherwise show recent
+        results = memory_service.get_recent(limit=limit, type=type)
+
+        # If no results with type filter, fallback to unfiltered
+        if not results and type:
+            results = memory_service.get_recent(limit=limit)
 
     if not results:
         typer.echo("No context found")
