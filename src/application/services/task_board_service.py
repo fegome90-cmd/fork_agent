@@ -239,7 +239,8 @@ class TaskBoardService:
                 f"Cannot retry task '{task_id}' in status {task.status.value}"
             )
         updated = dataclasses.replace(task, status=OrchestrationTaskStatus.APPROVED)
-        self._repo.save(updated)
+        if not self._repo.cas_save(updated, task.status):
+            raise ValueError("Task was modified concurrently during retry")
         return updated
 
     def delete(self, task_id: str, requested_by: str | None = None) -> OrchestrationTask:

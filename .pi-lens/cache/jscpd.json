@@ -149,7 +149,7 @@
       "fileA": "src/interfaces/cli/commands/poll.py",
       "startA": 161,
       "fileB": "src/interfaces/cli/commands/task.py",
-      "startB": 353,
+      "startB": 358,
       "lines": 9,
       "tokens": 0
     },
@@ -323,34 +323,34 @@
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 307,
+      "startA": 318,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 100,
+      "startB": 102,
       "lines": 19,
       "tokens": 0
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 345,
+      "startA": 356,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 179,
+      "startB": 181,
       "lines": 17,
       "tokens": 0
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 367,
+      "startA": 378,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 241,
-      "lines": 12,
+      "startB": 243,
+      "lines": 21,
       "tokens": 0
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 445,
+      "startA": 465,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 367,
-      "lines": 12,
+      "startB": 378,
+      "lines": 21,
       "tokens": 0
     },
     {
@@ -395,9 +395,9 @@
     },
     {
       "fileA": "src/interfaces/cli/hybrid.py",
-      "startA": 595,
+      "startA": 594,
       "fileB": "src/interfaces/cli/hybrid.py",
-      "startB": 549,
+      "startB": 548,
       "lines": 9,
       "tokens": 0
     },
@@ -437,7 +437,7 @@
       "fileA": "src/domain/ports/agent_launch_repository.py",
       "startA": 46,
       "fileB": "src/infrastructure/persistence/repositories/agent_launch_repository.py",
-      "startB": 106,
+      "startB": 113,
       "lines": 21,
       "tokens": 0
     },
@@ -506,7 +506,7 @@
       "tokens": 0
     }
   ],
-  "duplicatedLines": 976,
-  "totalLines": 38938,
-  "percentage": 2.51
+  "duplicatedLines": 994,
+  "totalLines": 39279,
+  "percentage": 2.53
 }

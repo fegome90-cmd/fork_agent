@@ -79,6 +79,7 @@ def _register_commands() -> None:
     from src.interfaces.cli.commands.export import app as export_app
     from src.interfaces.cli.commands.health import health
     from src.interfaces.cli.commands.import_ import app as import_app
+    from src.interfaces.cli.commands.launch import app as launch_app
     from src.interfaces.cli.commands.message import app as message_app
     from src.interfaces.cli.commands.project import app as project_app
     from src.interfaces.cli.commands.prompt import app as prompt_app
@@ -122,6 +123,7 @@ def _register_commands() -> None:
     app.add_typer(export_app, name="export")
     app.add_typer(import_app, name="import")
     app.add_typer(workflow_app, name="workflow")
+    app.add_typer(launch_app, name="launch")
     app.add_typer(message_app, name="message")
 
     # Mark registered only after all imports and registrations succeed.

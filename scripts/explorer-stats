@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Explorer usage stats — run from project root
+set -euo pipefail
+
+LOG=".pi/_ctx/explorer-usage.jsonl"
+
+if [[ ! -f "$LOG" ]]; then
+    echo "No explorer usage log found at $LOG"
+    exit 1
+fi
+
+echo "=== Explorer Usage Stats ==="
+echo ""
+
+# Total by depth
+echo "By depth:"
+jq -r '.depth' "$LOG" | sort | uniq -c | sort -rn
+echo ""
+
+# Total by model
+echo "By model:"
+jq -r '.model' "$LOG" | sort | uniq -c | sort -rn
+echo ""
+
+# Totals
+TOTAL=$(wc -l < "$LOG" | tr -d ' ')
+LOCATE=$(jq -r 'select(.depth=="locate")' "$LOG" | wc -l | tr -d ' ')
+ANALYZE=$(jq -r 'select(.depth=="analyze")' "$LOG" | wc -l | tr -d ' ')
+echo "Total: $TOTAL | locate: $LOCATE | analyze: $ANALYZE"
+echo ""
+
+# Last 5
+echo "Last 5 invocations:"
+tail -5 "$LOG" | jq -r '[.ts[:10], .depth, .model, .task[:60]] | @tsv'

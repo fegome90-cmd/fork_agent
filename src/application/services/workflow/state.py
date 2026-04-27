@@ -10,6 +10,8 @@ State Schema Versioning:
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -245,8 +247,17 @@ class PlanState:
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(self.to_json(), f, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(self.to_json(), f, indent=2)
+            os.replace(tmp_path, str(path))
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     @classmethod
     def load(cls, path: Path) -> PlanState | None:
@@ -371,8 +382,17 @@ class ExecuteState:
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(self.to_json(), f, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(self.to_json(), f, indent=2)
+            os.replace(tmp_path, str(path))
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     @classmethod
     def load(cls, path: Path) -> ExecuteState | None:
@@ -449,8 +469,17 @@ class VerifyState:
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(self.to_json(), f, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(self.to_json(), f, indent=2)
+            os.replace(tmp_path, str(path))
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     @classmethod
     def load(cls, path: Path) -> VerifyState | None:
