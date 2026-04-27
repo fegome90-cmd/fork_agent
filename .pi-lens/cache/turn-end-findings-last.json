@@ -1,3 +1,3 @@
 {
-  "signature": "/Users/felipe_gonzalez/.pi/agent/skills/tmux-fork-orchestrator/scripts/lib/lifecycle.sh::📐 Cascade errors in 1 other file(s) — fix before finishing turn:\n<diagnostics file=\"/Users/felipe_gonzalez/Developer/subagent-statusline/extensions/index.ts\">\n  line 628, col 8 code=2769: No overload matches this call.\n  line 628, col 33 code=7006: Parameter '_event' implicitly has an 'any' type.\n</diagnostics>"
+  "signature": "/Users/felipe_gonzalez/Developer/subagent-statusline/extensions/render.ts::📐 Cascade errors in 1 other file(s) — fix before finishing turn:\n<diagnostics file=\"/Users/felipe_gonzalez/Developer/subagent-statusline/extensions/index.ts\">\n  line 629, col 8 code=2769: No overload matches this call.\n</diagnostics>"
 }

@@ -295,7 +295,32 @@
         }
       ],
       "trend": "stable"
+    },
+    "../subagent-statusline/extensions/render.ts": {
+      "latest": {
+        "commit": "7979dd0e",
+        "timestamp": "2026-04-27T11:21:06.091Z",
+        "mi": 28.1,
+        "cognitive": 127,
+        "nesting": 5,
+        "lines": 252,
+        "maxCyclomatic": 33,
+        "entropy": 6.16
+      },
+      "history": [
+        {
+          "commit": "7979dd0e",
+          "timestamp": "2026-04-27T11:21:06.091Z",
+          "mi": 28.1,
+          "cognitive": 127,
+          "nesting": 5,
+          "lines": 252,
+          "maxCyclomatic": 33,
+          "entropy": 6.16
+        }
+      ],
+      "trend": "stable"
     }
   },
-  "capturedAt": "2026-04-27T11:12:04.463Z"
+  "capturedAt": "2026-04-27T11:21:13.034Z"
 }
