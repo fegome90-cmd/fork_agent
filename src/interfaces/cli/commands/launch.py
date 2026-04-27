@@ -303,3 +303,58 @@ def list_active(
         for item in items:
             print(f"  {item['launch_id'][:12]}... {item['status']} {item['canonical_key']}")
     raise typer.Exit(0)
+
+
+@app.command()
+@_lifecycle_command
+def summary(
+    json_output: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """Show launch counts by status (operator dashboard)."""
+    svc = _get_service()
+    counts = svc.get_status_summary()
+    if json_output:
+        print(json.dumps(counts, indent=2))
+    else:
+        if not counts:
+            print("No launches recorded.")
+        for status_val, count in sorted(counts.items()):
+            print(f"  {status_val:<24} {count}")
+    raise typer.Exit(0)
+
+
+@app.command("list-quarantined")
+@_lifecycle_command
+def list_quarantined(
+    json_output: bool = typer.Option(False, "--json", help="Output JSON"),
+) -> None:
+    """List quarantined launches (operator triage)."""
+    svc = _get_service()
+    launches = svc.list_quarantined_launches()
+    items = []
+    for l in launches:
+        try:
+            items.append(
+                {
+                    "launch_id": l.launch_id,
+                    "canonical_key": l.canonical_key,
+                    "surface": l.surface,
+                    "status": l.status.value,
+                    "quarantine_reason": l.quarantine_reason,
+                    "created_at": l.created_at,
+                }
+            )
+        except Exception as e:
+            if not json_output:
+                print(f"Skipping malformed launch {l.launch_id}: {e}", file=sys.stderr)
+            continue
+
+    if json_output:
+        print(json.dumps(items, indent=2))
+    else:
+        if not items:
+            print("No quarantined launches.")
+        for item in items:
+            reason = item.get("quarantine_reason") or "unknown"
+            print(f"  {item['launch_id'][:12]}... {item['canonical_key']} ({reason})")
+    raise typer.Exit(0)
