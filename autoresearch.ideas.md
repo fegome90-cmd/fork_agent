@@ -30,3 +30,11 @@
 - **DB integrity monitoring** — Auto-detect corruption before it causes fallbacks
 - **pytest-xdist** — TRIED. 37 failures, high variance. Tests share SQLite state. Dead without test isolation refactoring.
 - **Production code: Event-based stop** — Replace time.sleep(30) in health_monitor_loop with threading.Event.wait(30) for instant shutdown
+
+## CLI Lifecycle Latency (Converged ✅)
+- **Baseline: 250ms** per fork launch call (subprocess)
+- Breakdown: Python 15ms + typer/rich 43ms + container 36ms + other 156ms
+- Previous optimization already reduced from ~350ms (lazy DI, fast workspace detection)
+- 250ms is irreducible: subprocess boundary inherent to ADR-002 (bash→Python CLI)
+- Acceptable: tmux spawn + pi startup takes 5-10s, so 250ms is noise
+- **Not pursuing**: Unix socket shared session, httpx pooling, HTTP/2 keep-alive
