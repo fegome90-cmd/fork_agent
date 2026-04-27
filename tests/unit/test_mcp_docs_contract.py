@@ -48,8 +48,7 @@ class TestMCPToolCount:
         """README features line must say '21 tools'."""
         content = README.read_text()
         assert "21 tools" in content, (
-            "README must state '21 tools' in features section. "
-            "Check the MCP Server bullet."
+            "README must state '21 tools' in features section. Check the MCP Server bullet."
         )
 
     def test_readme_subtitle_says_21(self) -> None:
@@ -65,22 +64,17 @@ class TestMCPToolCount:
         content = README.read_text()
         stale_refs = re.findall(r"\b16[- ]tools?\b", content, re.IGNORECASE)
         assert not stale_refs, (
-            f"README contains stale '16 tool(s)' references: {stale_refs}. "
-            f"Update to 21."
+            f"README contains stale '16 tool(s)' references: {stale_refs}. Update to 21."
         )
 
     def test_readme_mcp_section_says_21(self) -> None:
         """README MCP section header must say 21 tools."""
         content = README.read_text()
         # Match the MCP Server section
-        mcp_section_match = re.search(
-            r"## MCP Server.*?(?=\n## |\Z)", content, re.DOTALL
-        )
+        mcp_section_match = re.search(r"## MCP Server.*?(?=\n## |\Z)", content, re.DOTALL)
         assert mcp_section_match, "README missing '## MCP Server' section"
         mcp_section = mcp_section_match.group()
-        assert "21 MCP tools" in mcp_section, (
-            "MCP Server section must say '21 MCP tools'."
-        )
+        assert "21 MCP tools" in mcp_section, "MCP Server section must say '21 MCP tools'."
 
 
 class TestMCPToolNamesInReadme:
@@ -119,8 +113,7 @@ class TestReadmeLinks:
         assert match, "README missing link to mcp-setup doc"
         link_path = REPO_ROOT / match.group(1)
         assert link_path.exists(), (
-            f"README links to {match.group(1)} but file does not exist. "
-            f"Expected at: {link_path}"
+            f"README links to {match.group(1)} but file does not exist. Expected at: {link_path}"
         )
 
 
@@ -131,15 +124,11 @@ class TestTransportProjectResolution:
         """README must mention all 3 transport modes."""
         content = README.read_text()
         for transport in ["stdio", "sse", "streamable-http"]:
-            assert transport in content.lower(), (
-                f"README must mention '{transport}' transport."
-            )
+            assert transport in content.lower(), f"README must mention '{transport}' transport."
 
     def test_skill_md_mentions_stdio_auto_detect(self) -> None:
         """SKILL.md must document stdio auto-detection caveat."""
-        skill_path = Path(
-            "~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md"
-        ).expanduser()
+        skill_path = Path("~/.pi/agent/skills/tmux-fork-orchestrator/SKILL.md").expanduser()
         if not skill_path.exists():
             pytest.skip("Skill file not installed at expected path")
 

@@ -186,7 +186,14 @@ class SqlitePollRunRepository:
                         """UPDATE poll_runs SET status = ?, ended_at = ?, error_message = ?,
                             started_at = COALESCE(started_at, ?)
                             WHERE id = ? AND status = ?""",
-                        (new_status.value, now_ms, error_message, started_at_val, run_id, expected_status.value),
+                        (
+                            new_status.value,
+                            now_ms,
+                            error_message,
+                            started_at_val,
+                            run_id,
+                            expected_status.value,
+                        ),
                     )
                 else:
                     # Non-terminal: preserve existing started_at, set only if currently NULL.

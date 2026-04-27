@@ -100,9 +100,7 @@ class TestStartedAtPreservation:
 
         repo.cas_update_status("r1", PollRunStatus.RUNNING, PollRunStatus.COMPLETED)
         with repo._connection as conn:
-            row = conn.execute(
-                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
-            ).fetchone()
+            row = conn.execute("SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)).fetchone()
         assert row is not None
         assert row[0] == 1000, f"started_at was overwritten to {row[0]}, expected 1000"
 
@@ -121,12 +119,12 @@ class TestStartedAtPreservation:
         repo.cas_update_status("r1", PollRunStatus.RUNNING, PollRunStatus.FAILED)
         after = int(time.time() * 1000)
         with repo._connection as conn:
-            row = conn.execute(
-                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
-            ).fetchone()
+            row = conn.execute("SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)).fetchone()
         assert row is not None
         assert row[0] is not None, "started_at should be set when NULL (edge case acceptable)"
-        assert before <= row[0] <= after, f"started_at {row[0]} should be near transition time ({before}-{after})"
+        assert before <= row[0] <= after, (
+            f"started_at {row[0]} should be near transition time ({before}-{after})"
+        )
 
     def test_nonterminal_preserves_existing_started_at(self, tmp_path: Path) -> None:
         """QUEUED -> RUNNING preserves started_at=500 on non-terminal transition."""
@@ -139,9 +137,7 @@ class TestStartedAtPreservation:
 
         repo.cas_update_status("r1", PollRunStatus.QUEUED, PollRunStatus.RUNNING)
         with repo._connection as conn:
-            row = conn.execute(
-                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
-            ).fetchone()
+            row = conn.execute("SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)).fetchone()
         assert row is not None
         assert row[0] == 500, f"started_at was changed to {row[0]}, expected 500"
 
@@ -156,11 +152,10 @@ class TestStartedAtPreservation:
 
         repo.cas_update_status("r1", PollRunStatus.QUEUED, PollRunStatus.RUNNING)
         with repo._connection as conn:
-            row = conn.execute(
-                "SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)
-            ).fetchone()
+            row = conn.execute("SELECT started_at FROM poll_runs WHERE id = ?", ("r1",)).fetchone()
         assert row is not None
         assert row[0] is not None, "started_at should be set to transition time"
+
     """Q-H3: count_by_status returns grouped counts in a single query."""
 
     def test_count_by_status_basic(self, tmp_path: Path) -> None:

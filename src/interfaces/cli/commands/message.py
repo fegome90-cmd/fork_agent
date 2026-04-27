@@ -209,10 +209,16 @@ def message_send_to_pane(
         )
         if send_result.returncode != 0:
             err = (send_result.stderr or send_result.stdout or "").strip()
-            errors.append(f"send-keys failed: {err!r}" if err else "send-keys failed (exit {send_result.returncode})")
+            errors.append(
+                f"send-keys failed: {err!r}"
+                if err
+                else "send-keys failed (exit {send_result.returncode})"
+            )
         if enter_result.returncode != 0:
             err = (enter_result.stderr or enter_result.stdout or "").strip()
-            errors.append(f"Enter failed: {err!r}" if err else "Enter failed (exit {enter_result.returncode})")
+            errors.append(
+                f"Enter failed: {err!r}" if err else "Enter failed (exit {enter_result.returncode})"
+            )
         if errors:
             console.print(f"[yellow]{' -- '.join(errors)}[/yellow]")
             raise typer.Exit(code=2)

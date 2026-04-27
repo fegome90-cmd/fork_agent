@@ -207,7 +207,9 @@ class TmuxOrchestrator:
             if enter_result.returncode != 0:
                 logger.warning(
                     "send-keys Enter failed for %s:%s (exit %s)",
-                    session, window, enter_result.returncode,
+                    session,
+                    window,
+                    enter_result.returncode,
                 )
                 return False
             return True
