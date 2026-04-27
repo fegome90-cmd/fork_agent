@@ -264,6 +264,7 @@ def status(
             "launch_id": launch.launch_id,
             "status": launch.status.value,
             "reason": None,
+            "error": launch.last_error,
         },
         json_output,
     )
