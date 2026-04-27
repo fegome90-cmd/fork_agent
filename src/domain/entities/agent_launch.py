@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Final
+
+# Canonical key must be alphanumeric, dots, hyphens, underscores, colons, slashes.
+# Max 256 chars. Rejects control chars, null bytes, newlines.
+_CANONICAL_KEY_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z0-9._:/-]{1,256}$")
+_MAX_OWNER_ID_LENGTH: Final[int] = 1024
+_VALID_OWNER_TYPES: Final[frozenset[str]] = frozenset({"agent", "session", "task", "run", "batch"})
 
 
 class LaunchStatus(StrEnum):
@@ -131,8 +139,22 @@ class AgentLaunch:
             raise ValueError("launch_id must be a non-empty string")
         if not isinstance(self.canonical_key, str) or not self.canonical_key:
             raise ValueError("canonical_key must be a non-empty string")
+        if not _CANONICAL_KEY_RE.match(self.canonical_key):
+            raise ValueError(
+                f"canonical_key must match {_CANONICAL_KEY_RE.pattern} (got {self.canonical_key!r})"
+            )
         if not isinstance(self.status, LaunchStatus):
             raise TypeError("status must be a LaunchStatus")
+        if not isinstance(self.owner_id, str) or not self.owner_id:
+            raise ValueError("owner_id must be a non-empty string")
+        if len(self.owner_id) > _MAX_OWNER_ID_LENGTH:
+            raise ValueError(
+                f"owner_id must be <= {_MAX_OWNER_ID_LENGTH} chars (got {len(self.owner_id)})"
+            )
+        if self.owner_type not in _VALID_OWNER_TYPES:
+            raise ValueError(
+                f"owner_type must be one of {sorted(_VALID_OWNER_TYPES)} (got {self.owner_type!r})"
+            )
 
     def can_transition_to(self, target: LaunchStatus) -> bool:
         """Check if transitioning to target status is allowed."""
