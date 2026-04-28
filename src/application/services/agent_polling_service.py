@@ -322,6 +322,7 @@ class AgentPollingService:
             status=PollRunStatus.QUEUED,
             poll_run_dir=str(run_dir),
             canonical_key=_canonical_key,
+            launch_id=lifecycle_launch_id,
         )
         self._poll_run_repo.save(run)
 
@@ -382,6 +383,7 @@ class AgentPollingService:
             pane_id=handle.pane_id,
             pid=handle.pid,
             pgid=handle.pgid,
+            launch_id=lifecycle_launch_id,
         )
         if not metadata_saved:
             self._terminate_launch_handle(handle, run_id)

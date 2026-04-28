@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
@@ -20,8 +21,10 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.application.services.agent_polling_service import AgentPollingService
+    from src.application.services.orchestration.hook_service import HookService
     from src.application.services.task_board_service import TaskBoardService
     from src.application.services.template_service import TemplateService
+    from src.infrastructure.persistence._container_di import Container
 
 
 # Fast-path imports only — these are lightweight (~69ms total)
@@ -82,8 +85,6 @@ def _auto_backup(db_path: Path) -> None:
     if not db_path.exists():
         return
     try:
-        import sqlite3
-
         conn = sqlite3.connect(str(db_path))
         count = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
         conn.close()
@@ -143,12 +144,12 @@ def _get_or_create_fast(
 # Convenience Factory Functions (Canonical SSOT)
 # ---------------------------------------------------------------------------
 
-_container_cache: dict[str, object] = {}
+_container_cache: dict[str, Any] = {}
 _container_lock = Lock()
 
 # Global singleton instances for non-container services
-_hook_service: object | None = None
-_workflow_executor: object | None = None
+_hook_service: HookService | None = None
+_workflow_executor: Any | None = None
 
 
 # Reference to create_container — can be patched in tests.
@@ -169,19 +170,19 @@ def _get_create_container():
 # Alias for backward-compat patching: tests do
 #   patch("src.infrastructure.persistence.container.create_container", ...)
 # This works because __getattr__ resolves it.
-def create_container(db_path=None, export_dir=None):
+def create_container(db_path=None, export_dir=None) -> Container:
     """Create a DI container (lazy-loaded, patchable for tests)."""
     return _get_create_container()(db_path, export_dir)
 
 
-def get_container(db_path: Path | None = None):
+def get_container(db_path: Path | None = None) -> Container:
     """Get or create cached DI container (lazy-loads dependency_injector)."""
     cache_key = str(db_path or "default")
     if cache_key not in _container_cache:
         with _container_lock:
             if cache_key not in _container_cache:
                 _container_cache[cache_key] = create_container(db_path)
-    return _container_cache[cache_key]
+    return _container_cache[cache_key]  # type: ignore
 
 
 def get_repository(db_path: Path | None = None) -> ObservationRepository:
@@ -208,14 +209,14 @@ def get_telemetry_service(db_path: Path | None = None):
     return TelemetryService(repository=telemetry_repo)
 
 
-def get_hook_service():
+def get_hook_service() -> HookService:
     """Get the singleton HookService instance (no DI container needed)."""
     global _hook_service
     if _hook_service is None:
         from src.application.services.orchestration.hook_service import HookService
 
         _hook_service = HookService()
-    return _hook_service
+    return _hook_service  # type: ignore
 
 
 # ---------------------------------------------------------------------------

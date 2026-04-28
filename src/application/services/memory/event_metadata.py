@@ -81,7 +81,12 @@ class MemoryEventMetadata(BaseModel):
     event_type: str = Field(..., description="Event type from EventType enum")
     run_id: str = Field(..., description="UUID of the current run/session")
     task_id: str = Field(..., description="Task identifier (e.g., WO-XXXX or task-uuid)")
-    agent_id: str = Field(..., description="Agent identifier in session:window format")
+    agent_id: str = Field(
+        ..., description="Legacy agent identifier in session:window format (for visuals/logs)"
+    )
+    launch_id: str | None = Field(
+        None, description="Canonical agent launch UUID (the identity authority)"
+    )
     session_name: str = Field(..., description="Tmux session name")
     timestamp_ms: int = Field(..., description="Unix timestamp in milliseconds", ge=0)
     mode: str = Field(..., description="Execution mode from ExecutionMode enum")
@@ -129,6 +134,14 @@ class MemoryEventMetadata(BaseModel):
             raise ValueError("idempotency_key cannot be empty")
         return v
 
+    @field_validator("launch_id")
+    @classmethod
+    def validate_launch_id(cls, v: str | None) -> str | None:
+        """Ensure launch_id is a valid hex string if provided."""
+        if v is not None and not all(c in "0123456789abcdef" for c in v.lower()):
+            raise ValueError(f"launch_id must be a hex string, got {v!r}")
+        return v
+
     @staticmethod
     def generate_idempotency_key(
         run_id: str,
@@ -159,6 +172,7 @@ def create_event_metadata(
     agent_id: str,
     session_name: str,
     mode: ExecutionMode | str,
+    launch_id: str | None = None,
     **extra: Any,
 ) -> MemoryEventMetadata:
     """Factory function to create MemoryEventMetadata with defaults.
@@ -169,9 +183,10 @@ def create_event_metadata(
         event_type: Type of event
         run_id: Run/session UUID
         task_id: Task identifier
-        agent_id: Agent identifier
+        agent_id: Legacy agent identifier
         session_name: Tmux session name
         mode: Execution mode
+        launch_id: Canonical agent launch UUID
         **extra: Additional metadata fields
 
     Returns:
@@ -194,6 +209,7 @@ def create_event_metadata(
         run_id=run_id,
         task_id=task_id,
         agent_id=agent_id,
+        launch_id=launch_id,
         session_name=session_name,
         timestamp_ms=timestamp_ms,
         mode=mode_str,

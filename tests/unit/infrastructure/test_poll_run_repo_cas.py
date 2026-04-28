@@ -33,7 +33,8 @@ def _make_repo(tmp_path: Path) -> SqlitePollRunRepository:
                 launch_pid INTEGER,
                 launch_pgid INTEGER,
                 launch_recorded_at INTEGER,
-                canonical_key TEXT
+                canonical_key TEXT,
+                launch_id TEXT
             );
         """)
     return SqlitePollRunRepository(connection=conn)

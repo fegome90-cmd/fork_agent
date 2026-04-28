@@ -12,6 +12,7 @@ to this service before spawning any process.
 from __future__ import annotations
 
 import logging
+import subprocess
 import time
 import uuid
 from dataclasses import dataclass
@@ -27,6 +28,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_LEASE_DURATION_MS: int = 300_000  # 5 minutes
+MAX_LINEAGE_DEPTH: int = 16
+DEFAULT_ROLE: str = "agent"
+
+SURFACE_ROLE_DEFAULTS: dict[str, str] = {
+    "polling": "poll-agent",
+    "workflow": "workflow-agent",
+    "api": "api-agent",
+    "manager": "manager-agent",
+    "bug_hunt": "hunter-agent",
+}
 
 
 @dataclass(frozen=True)
@@ -62,6 +73,10 @@ class AgentLaunchLifecycleService:
         surface: str,
         owner_type: str,
         owner_id: str,
+        *,
+        role: str | None = None,
+        parent_launch_id: str | None = None,
+        model: str | None = None,
     ) -> LaunchAttempt:
         """Request permission to launch an agent for a canonical work item.
 
@@ -95,8 +110,34 @@ class AgentLaunchLifecycleService:
                 if existing.status in (LaunchStatus.RESERVED, LaunchStatus.SPAWNING):
                     self._quarantine_expired(existing)
 
+            # Role resolution: mandatory for new, fallback for legacy
+            effective_role = role
+            if effective_role is None:
+                effective_role = SURFACE_ROLE_DEFAULTS.get(surface, DEFAULT_ROLE)
+                logger.warning(
+                    "LEGACY_ROUTE request_launch without role for canonical_key=%s"
+                    " surface=%s — defaulting to '%s'",
+                    canonical_key,
+                    surface,
+                    effective_role,
+                )
+
+            # Cycle detection for delegation tree
+            if parent_launch_id is not None:
+                # We need a tentative launch_id for the self-reference check
+                tentative_id = uuid.uuid4().hex
+                valid, reason = self._validate_parent_launch_id(parent_launch_id, tentative_id)
+                if not valid:
+                    return LaunchAttempt(
+                        launch=None,
+                        decision="error",
+                        reason=reason,
+                    )
+                launch_id = tentative_id
+            else:
+                launch_id = uuid.uuid4().hex
+
             # Attempt atomic claim
-            launch_id = uuid.uuid4().hex
             now_ms = int(time.time() * 1000)
             lease_expires_at = now_ms + self._lease_duration_ms
 
@@ -107,6 +148,9 @@ class AgentLaunchLifecycleService:
                 owner_type=owner_type,
                 owner_id=owner_id,
                 lease_expires_at=lease_expires_at,
+                role=effective_role,
+                parent_launch_id=parent_launch_id,
+                model=model,
             )
 
             if claimed is None:
@@ -265,6 +309,50 @@ class AgentLaunchLifecycleService:
             quarantine_reason=reason,
         )
 
+    def reconcile_lost_panes(self) -> list[AgentLaunch]:
+        """Find ACTIVE launches with tmux_pane_id where the pane no longer exists.
+
+        Transitions matching launches to QUARANTINED with reason="pane_lost".
+        Returns list of launches that were quarantined.
+
+        Safe to call when tmux is not installed — returns empty list.
+        """
+        active_launches = self._registry.list_by_status(LaunchStatus.ACTIVE)
+        candidates = [launch for launch in active_launches if launch.tmux_pane_id is not None]
+
+        if not candidates:
+            return []
+
+        alive_panes = self._get_alive_tmux_panes()
+        if alive_panes is None:
+            # tmux not available — cannot reconcile, skip
+            logger.warning("tmux not available; skipping pane reconciliation")
+            return []
+
+        quarantined: list[AgentLaunch] = []
+        for launch in candidates:
+            if launch.tmux_pane_id not in alive_panes:
+                ok = self.quarantine(
+                    launch.launch_id,
+                    reason="pane_lost",
+                )
+                if ok:
+                    quarantined.append(launch)
+                    logger.warning(
+                        "Pane reconciled: launch %s pane %s missing — quarantined",
+                        launch.launch_id,
+                        launch.tmux_pane_id,
+                    )
+                else:
+                    logger.info(
+                        "Pane reconciled: launch %s pane %s missing but CAS failed"
+                        " — already transitioned",
+                        launch.launch_id,
+                        launch.tmux_pane_id,
+                    )
+
+        return quarantined
+
     def get_launch(self, launch_id: str) -> AgentLaunch | None:
         """Retrieve a launch record by ID."""
         return self._registry.get_by_launch_id(launch_id)
@@ -326,6 +414,62 @@ class AgentLaunchLifecycleService:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _validate_parent_launch_id(
+        self,
+        parent_launch_id: str,
+        proposed_launch_id: str,
+    ) -> tuple[bool, str]:
+        """Cycle-detect and depth-validate a proposed parent_launch_id."""
+        if parent_launch_id == proposed_launch_id:
+            return (False, f"Self-referential parent_launch_id: {parent_launch_id}")
+
+        parent = self._registry.get_by_launch_id(parent_launch_id)
+        if parent is None:
+            return (False, f"parent_launch_id not found: {parent_launch_id}")
+
+        # Walk the ancestor chain — detect cycles and enforce depth
+        visited: set[str] = {proposed_launch_id, parent_launch_id}
+        current_id: str | None = parent.parent_launch_id
+        depth = 1
+
+        while current_id is not None:
+            depth += 1
+            if depth >= MAX_LINEAGE_DEPTH:
+                return (False, f"Lineage exceeds max depth {MAX_LINEAGE_DEPTH}")
+            if current_id in visited:
+                return (False, f"Cycle detected: {current_id} revisited in ancestry chain")
+            visited.add(current_id)
+            ancestor = self._registry.get_by_launch_id(current_id)
+            if ancestor is None:
+                break
+            current_id = ancestor.parent_launch_id
+
+        return (True, "")
+
+    @staticmethod
+    def _get_alive_tmux_panes() -> set[str] | None:
+        """Query tmux for all alive pane IDs.
+
+        Returns:
+            set of pane IDs (e.g. {"%0", "%1"}) or None if tmux unavailable.
+        """
+        try:
+            result = subprocess.run(
+                ["tmux", "list-panes", "-a", "-F", "#{pane_id}"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                # tmux server not running — no panes exist anywhere
+                return set()
+            return {line.strip() for line in result.stdout.strip().splitlines() if line.strip()}
+        except FileNotFoundError:
+            return None  # tmux not installed
+        except subprocess.TimeoutExpired:
+            logger.warning("tmux list-panes timed out")
+            return None
 
     def _quarantine_expired(self, launch: AgentLaunch) -> bool:
         """Move an expired-lease launch to QUARANTINED."""

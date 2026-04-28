@@ -112,6 +112,7 @@ class MockRepo:
         pane_id: str | None = None,
         pid: int | None = None,
         pgid: int | None = None,
+        launch_id: str | None = None,
     ) -> bool:
         run = self._runs.get(run_id)
         if run is None:

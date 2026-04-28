@@ -26,8 +26,8 @@ class SqlitePollRunRepository:
                     """INSERT OR REPLACE INTO poll_runs
                        (id, task_id, agent_name, status, started_at, ended_at, poll_run_dir, error_message,
                         launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
-                        canonical_key)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        canonical_key, launch_id)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         run.id,
                         run.task_id,
@@ -43,6 +43,7 @@ class SqlitePollRunRepository:
                         run.launch_pgid,
                         run.launch_recorded_at,
                         run.canonical_key,
+                        run.launch_id,
                     ),
                 )
         except sqlite3.Error as e:
@@ -56,7 +57,7 @@ class SqlitePollRunRepository:
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
                               launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
-                              canonical_key
+                              canonical_key, launch_id
                        FROM poll_runs WHERE id = ?""",
                     (run_id,),
                 )
@@ -75,7 +76,7 @@ class SqlitePollRunRepository:
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
                               launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
-                              canonical_key
+                              canonical_key, launch_id
                        FROM poll_runs WHERE status = ?
                        ORDER BY started_at DESC""",
                     (status.value,),
@@ -92,7 +93,7 @@ class SqlitePollRunRepository:
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
                               launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
-                              canonical_key
+                              canonical_key, launch_id
                        FROM poll_runs
                        WHERE status IN ('QUEUED', 'SPAWNING', 'RUNNING', 'TERMINATING')
                        ORDER BY started_at DESC""",
@@ -109,7 +110,7 @@ class SqlitePollRunRepository:
                     """SELECT id, task_id, agent_name, status, started_at,
                               ended_at, poll_run_dir, error_message,
                               launch_method, launch_pane_id, launch_pid, launch_pgid, launch_recorded_at,
-                              canonical_key
+                              canonical_key, launch_id
                        FROM poll_runs
                        WHERE status IN ('QUEUED', 'SPAWNING', 'RUNNING', 'TERMINATING', 'QUARANTINED')
                        ORDER BY started_at DESC""",
@@ -224,6 +225,7 @@ class SqlitePollRunRepository:
         pane_id: str | None = None,
         pid: int | None = None,
         pgid: int | None = None,
+        launch_id: str | None = None,
     ) -> bool:
         """Persist launch metadata used for authoritative cleanup."""
         now_ms = int(time.time() * 1000)
@@ -231,9 +233,10 @@ class SqlitePollRunRepository:
             with self._connection as conn:
                 cursor = conn.execute(
                     """UPDATE poll_runs
-                       SET launch_method = ?, launch_pane_id = ?, launch_pid = ?, launch_pgid = ?, launch_recorded_at = ?
+                       SET launch_method = ?, launch_pane_id = ?, launch_pid = ?, launch_pgid = ?,
+                           launch_recorded_at = ?, launch_id = ?
                        WHERE id = ?""",
-                    (launch_method, pane_id, pid, pgid, now_ms, run_id),
+                    (launch_method, pane_id, pid, pgid, now_ms, launch_id, run_id),
                 )
                 return cursor.rowcount > 0
         except sqlite3.Error as e:
@@ -271,4 +274,5 @@ class SqlitePollRunRepository:
             launch_pgid=row["launch_pgid"],
             launch_recorded_at=row["launch_recorded_at"],
             canonical_key=row["canonical_key"],
+            launch_id=row["launch_id"],
         )

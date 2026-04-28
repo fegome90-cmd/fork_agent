@@ -31,6 +31,7 @@ def _make_claimed_launch(launch_id: str = "launch-001") -> AgentLaunch:
         owner_type="task",
         owner_id="task-abc",
         status=LaunchStatus.RESERVED,
+        role="workflow-agent",
     )
 
 
@@ -45,6 +46,7 @@ def _make_active_launch(
         owner_id="task-abc",
         status=LaunchStatus.ACTIVE,
         tmux_session=tmux_session,
+        role="workflow-agent",
     )
 
 
