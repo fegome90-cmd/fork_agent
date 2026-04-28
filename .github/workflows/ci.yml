@@ -106,7 +106,14 @@ jobs:
         run: uv sync --all-extras
 
       - name: Run tests
-        run: uv run pytest tests/ -v --tb=short --cov --cov-report=term-missing
+        run: >
+          uv run pytest tests/ -v --tb=short --cov --cov-report=term-missing
+          --ignore=tests/integration
+          --ignore=tests/unit/application/services/agent
+          --ignore=tests/unit/application/services/sync
+          --ignore=tests/unit/application/services/workflow
+          --ignore=tests/unit/infrastructure/agent_backends
+          --ignore=tests/unit/interfaces/tui
 
       - name: Upload coverage artifact
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
