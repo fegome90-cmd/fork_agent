@@ -34,11 +34,11 @@ Source of Truth: `https://github.com/fegome90-cmd/constitucion-ai`
 
 ## Clasificación de Tamaño
 
-| Tamaño | Umbral | Workflow |
-|--------|--------|----------|
-| Small | <50 líneas, 1 archivo | Directo — sin protocolo |
-| Medium | 50-300 líneas, pocos archivos | Sequential — sin sub-agentes |
-| Large | >300 líneas o "usa fork" | Full orchestration — 10 fases |
+| Tamaño | Umbral                        | Workflow                      |
+| ------ | ----------------------------- | ----------------------------- |
+| Small  | <50 líneas, 1 archivo         | Directo — sin protocolo       |
+| Medium | 50-300 líneas, pocos archivos | Sequential — sin sub-agentes  |
+| Large  | >300 líneas o "usa fork"      | Full orchestration — 10 fases |
 
 ## Protocolo de 10 Fases (MANDATORIO para Large)
 
@@ -116,18 +116,19 @@ Latencia: ~28ms por call (raw httpx JSON-RPC) vs ~234ms (MCP SDK).
 
 ## 📋 Comandos de Referencia Rápida
 
-### Gestión de Tareas (Fork CLI):
+### Gestión de Tareas (fork task):
 
 ```bash
 fork task create "Descripción"        # Crear tarea en estado PENDING
 fork task submit-plan <id>            # Enviar plan para aprobación
 fork task approve <id>                # Aprobar plan
+fork task reject <id>                 # Rechazar plan (vuelve a PENDING)
 fork task start <id>                  # Iniciar tarea aprobada
 fork task complete <id>               # Marcar como completada
 fork task list                        # Listar tareas
-fork task update <id>                  # Actualizar tarea
-fork task delete <id>                  # Eliminar tarea
-fork task assign <id>                  # Asignar tarea
+fork task update <id>                 # Actualizar tarea
+fork task delete <id>                 # Eliminar tarea (soft delete)
+fork task assign <id>                 # Asignar tarea a agente
 ```
 
 ### Orquestación en Vivo (tmux-live):
@@ -136,10 +137,11 @@ fork task assign <id>                  # Asignar tarea
 tmux-live init                   # Inicializar panel de control
 tmux-live launch <role> <name>   # Lanzar sub-agente
 tmux-live wait <name> 600        # Esperar finalización
+tmux-live wait-all               # Esperar todos los agentes
 tmux-live kill-all               # Limpieza total
 ```
 
-### Fork CLI (comandos adicionales):
+### Fork CLI:
 
 ```bash
 fork run "<command>"                  # Forkear un terminal
@@ -151,17 +153,36 @@ fork adapter detect                   # Detectar adapter de terminal
 fork template list                    # Listar templates de agente
 ```
 
-### Memory CLI (comandos clave):
+### Memory CLI:
 
 ```bash
-memory launch request                 # Solicitar spawn de agente
-memory launch status                  # Estado de launches activos
-memory launch summary                 # Conteo de launches por estado
-memory mcp start                      # Iniciar MCP HTTP server
+# Launch lifecycle (10 subcommands)
+memory launch request                 # Solicitar permiso para lanzar agente
+memory launch confirm-spawning <id>   # Confirmar spawn iniciado
+memory launch confirm-active <id>     # Confirmar agente activo
+memory launch mark-failed <id>        # Marcar lanzamiento como fallido
+memory launch begin-termination <id>  # Iniciar terminación
+memory launch confirm-terminated <id> # Confirmar terminación completa
+memory launch status <id>             # Estado de un lanzamiento
+memory launch list-active             # Listar lanzamientos activos
+memory launch summary                 # Conteo por estado
+memory launch list-quarantined        # Listar lanzamientos en cuarentena
+
+# MCP server
+memory mcp serve                      # Iniciar MCP stdio server
+memory mcp start                      # Iniciar MCP HTTP server (background)
 memory mcp stop                       # Detener MCP server
 memory mcp status                     # Estado del MCP server
-memory workspace create <name>        # Crear workspace (git worktree)
+
+# Workspace (git worktree)
+memory workspace create <name>        # Crear workspace
 memory workspace list                 # Listar workspaces
+memory workspace remove <name>        # Eliminar workspace
+
+# Workflow
+memory workflow outline               # Crear plan de workflow
+memory workflow execute               # Ejecutar tareas del plan
+memory workflow verify                # Verificar ejecución
 ```
 
 ---
