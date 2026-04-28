@@ -37,8 +37,13 @@ class FPELAuthorizationService:
     # FPELAuthorizationPort.check_sealed
     # ------------------------------------------------------------------
 
-    def check_sealed(self, target_id: str) -> AuthorizationDecision:
-        """Check whether target has valid sealed PASS for current frozen hash."""
+    def check_sealed(self, target_id: str, current_hash: str | None = None) -> AuthorizationDecision:
+        """Check whether target has valid sealed PASS for current frozen hash.
+
+        When current_hash is provided by the caller, uses it directly for
+        post-seal drift comparison (avoids self-referential repository read).
+        When None, falls back to repository query.
+        """
         frozen = self._repo.get_active_frozen_proposal(target_id)
         if frozen is None:
             return AuthorizationDecision(
@@ -67,8 +72,8 @@ class FPELAuthorizationService:
             )
 
         # Sealed verdict exists — check for post-seal drift
-        current_hash = self._repo.get_current_content_hash(target_id)
-        if current_hash is not None and detect_scope_change(sealed.content_hash, current_hash):
+        effective_hash = current_hash if current_hash is not None else self._repo.get_current_content_hash(target_id)
+        if effective_hash is not None and detect_scope_change(sealed.content_hash, effective_hash):
             return AuthorizationDecision(
                 allowed=False,
                 status=FPELStatus.SEALED_PASS,

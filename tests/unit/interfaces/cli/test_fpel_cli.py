@@ -69,6 +69,29 @@ def _patch_service(service: FPELAuthorizationService):
 
 
 # ---------------------------------------------------------------------------
+# Phase 1 RED: fpel subcommand registered in main.py
+# ---------------------------------------------------------------------------
+
+
+class TestFpelSubcommandRegistration:
+    """Test that 'fpel' is registered as a subcommand in main.py."""
+
+    def test_fpel_subcommand_registered(self) -> None:
+        """'fpel' MUST be in registered typer groups after _register_commands()."""
+        from src.interfaces.cli.main import _register_commands, app
+
+        _register_commands()
+
+        registered_names = []
+        for group_info in app.registered_groups:
+            registered_names.append(group_info.name)
+
+        assert "fpel" in registered_names, (
+            f"'fpel' not found in registered commands: {registered_names}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # freeze
 # ---------------------------------------------------------------------------
 

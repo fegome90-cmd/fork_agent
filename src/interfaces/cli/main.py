@@ -77,6 +77,7 @@ def _register_commands() -> None:
     from src.interfaces.cli.commands.cleanup import cleanup
     from src.interfaces.cli.commands.compact import app as compact_app
     from src.interfaces.cli.commands.export import app as export_app
+    from src.interfaces.cli.commands.fpel import app as fpel_app
     from src.interfaces.cli.commands.health import health
     from src.interfaces.cli.commands.import_ import app as import_app
     from src.interfaces.cli.commands.launch import app as launch_app
@@ -125,6 +126,7 @@ def _register_commands() -> None:
     app.add_typer(workflow_app, name="workflow")
     app.add_typer(launch_app, name="launch")
     app.add_typer(message_app, name="message")
+    app.add_typer(fpel_app, name="fpel")
 
     # Mark registered only after all imports and registrations succeed.
     # If any import fails, the guard stays False and retry is possible.

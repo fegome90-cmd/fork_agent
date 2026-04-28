@@ -51,21 +51,16 @@ from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook
 logger = logging.getLogger(__name__)
 
 
-def get_fpel_authorization_port():  # -> FPELAuthorizationPort | None
+def get_fpel_authorization_port():
     """Get the FPELAuthorizationPort instance.
 
-    Returns None if FPEL is not wired in the current container.
-    Uses lazy import to avoid importing the port protocol at module level.
+    Returns FPELAuthorizationService when FPEL_ENABLED=1.
+    Returns None when FPEL is disabled.
+    Raises RuntimeError on container init failure (never silently returns None when enabled).
     """
-    from src.domain.ports.fpel_authorization_port import FPELAuthorizationPort
+    from src.infrastructure.persistence.container import get_fpel_service
 
-    try:
-        from src.infrastructure.persistence.container import Container
-
-        container = Container()
-        return cast(FPELAuthorizationPort, container.fpel_authorization_service())
-    except Exception:
-        return None
+    return get_fpel_service()
 
 
 class ShipPreflightError(Exception):
@@ -480,7 +475,8 @@ def execute(
     # FPEL gate: sealed PASS required for workflow execute
     fpel_port = get_fpel_authorization_port()
     if fpel_port is not None:
-        decision = fpel_port.check_sealed(plan.session_id)
+        resolved_target_id = task_id if task_id else plan.session_id
+        decision = fpel_port.check_sealed(resolved_target_id)
         if not decision.allowed:
             reason_str = decision.reason.value if decision.reason else "unknown"
             typer.echo(

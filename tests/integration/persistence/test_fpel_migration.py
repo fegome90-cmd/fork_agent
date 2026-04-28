@@ -149,8 +149,8 @@ class TestSealIdempotencyDBLevel:
         content_hash = "abc123hash"
 
         with fpel_db as conn:
-            _insert_frozen_proposal(conn, "fp-aaa")
-            _insert_frozen_proposal(conn, "fp-bbb")
+            _insert_frozen_proposal(conn, "fp-aaa", target_id="task-a")
+            _insert_frozen_proposal(conn, "fp-bbb", target_id="task-b")
             conn.execute(
                 "INSERT INTO sealed_verdicts (frozen_proposal_id, verdict, sealed_at, content_hash) "
                 "VALUES ('fp-aaa', 'SEALED_PASS', ?, ?)",

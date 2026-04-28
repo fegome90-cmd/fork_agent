@@ -146,7 +146,7 @@ class SqliteFPELRepository:
                 (frozen_proposal_id,),
             )
             return [
-                {"checker_id": row["checker_id"], "verdict": row["verdict"]}
+                {"checker_id": row["checker_id"], "verdict": row["verdict"], "report_content": row["report_content"]}
                 for row in cursor.fetchall()
             ]
 

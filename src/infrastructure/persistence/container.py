@@ -340,6 +340,17 @@ def get_memory_service_auto():
     return get_memory_service(db_path)
 
 
+def get_fpel_service(db_path: Path | None = None):
+    """Return wired FPELAuthorizationService when FPEL_ENABLED=1, None when disabled.
+
+    Raises:
+        RuntimeError: On container init failure when FPEL is enabled.
+    """
+    if os.environ.get("FPEL_ENABLED", "").strip() != "1":
+        return None
+    return get_container(db_path).fpel_authorization_service()
+
+
 def get_task_board_service(db_path: Path | None = None) -> TaskBoardService:
     """Get a TaskBoardService instance wired with the SQLite repository."""
     from src.application.services.task_board_service import TaskBoardService
@@ -349,7 +360,7 @@ def get_task_board_service(db_path: Path | None = None) -> TaskBoardService:
 
     conn = get_database_connection(db_path)
     repo = SqliteOrchestrationTaskRepository(connection=conn)
-    service: TaskBoardService = TaskBoardService(repo=repo)
+    service: TaskBoardService = TaskBoardService(repo=repo, fpel_port=get_fpel_service(db_path))
     return service
 
 

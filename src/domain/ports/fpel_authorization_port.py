@@ -15,11 +15,19 @@ from src.domain.entities.fpel import AuthorizationDecision
 class FPELAuthorizationPort(Protocol):
     """Thin port interface: check whether a target has sealed FPEL authorization."""
 
-    def check_sealed(self, target_id: str) -> AuthorizationDecision:
+    def check_sealed(
+        self,
+        target_id: str,
+        current_hash: str | None = None,
+    ) -> AuthorizationDecision:
         """Check if target_id has a valid sealed PASS for its current frozen hash.
 
         Args:
             target_id: Task or workflow identifier.
+            current_hash: Optional SHA-256 content hash provided by the caller.
+                When provided, used directly for post-seal drift comparison
+                instead of querying the repository (avoids self-referential read).
+                When None, falls back to repository query.
 
         Returns:
             AuthorizationDecision with allowed=True if sealed PASS exists,

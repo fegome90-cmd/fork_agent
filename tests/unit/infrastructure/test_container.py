@@ -1,6 +1,8 @@
 """Unit tests for dependency injection container."""
 
+import os
 from pathlib import Path
+from unittest.mock import patch
 
 from src.infrastructure.persistence.container import (
     Container,
@@ -148,3 +150,53 @@ class TestFPELDIWiring:
 
         # The service's _repo must be the same object as the container's repo
         assert service._repo is repo
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 RED: FPEL Runtime Wiring — factory + injection tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetFpelService:
+    """Tests for get_fpel_service() factory function."""
+
+    def test_get_fpel_service_returns_service(self, tmp_path: Path) -> None:
+        """FPEL_ENABLED=1 → get_fpel_service() returns wired FPELAuthorizationService."""
+        from src.application.services.fpel_authorization_service import FPELAuthorizationService
+        from src.infrastructure.persistence.container import get_fpel_service
+
+        db_path = tmp_path / "fpel_factory_test.db"
+
+        with patch.dict(os.environ, {"FPEL_ENABLED": "1"}):
+            service = get_fpel_service(db_path=db_path)
+
+        assert isinstance(service, FPELAuthorizationService)
+
+    def test_get_fpel_service_returns_none_when_disabled(self, tmp_path: Path) -> None:
+        """FPEL_ENABLED unset → get_fpel_service() returns None."""
+        from src.infrastructure.persistence.container import get_fpel_service
+
+        db_path = tmp_path / "fpel_disabled_test.db"
+
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_ENABLED", None)
+            service = get_fpel_service(db_path=db_path)
+
+        assert service is None
+
+
+class TestGetTaskBoardServiceFPELInjection:
+    """Tests for get_task_board_service() fpel_port injection."""
+
+    def test_get_task_board_service_has_fpel_port(self, tmp_path: Path) -> None:
+        """FPEL_ENABLED=1 → TaskBoardService receives fpel_port != None."""
+        from src.infrastructure.persistence.container import (
+            get_task_board_service,
+        )
+
+        db_path = tmp_path / "fpel_injection_test.db"
+
+        with patch.dict(os.environ, {"FPEL_ENABLED": "1"}):
+            service = get_task_board_service(db_path=db_path)
+
+        assert service._fpel_port is not None

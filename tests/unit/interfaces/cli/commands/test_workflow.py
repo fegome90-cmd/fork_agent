@@ -7,11 +7,13 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from src.application.services.workflow.state import (
     ExecuteState,
     PlanState,
+    Task,
     VerifyState,
     WorkflowPhase,
 )
@@ -646,3 +648,89 @@ class TestWorkflowExecuteFPELGate:
         mock_executor.execute_plan.assert_not_called()
         # The error output must mention the blocking reason
         assert "HASH_MISMATCH" in result.output or "sealed PASS" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 RED: FPEL Runtime Wiring — fail-closed + target_id namespace
+# ---------------------------------------------------------------------------
+
+
+class TestGetFpelAuthorizationPortFailClosed:
+    """Test that get_fpel_authorization_port() NEVER silently returns None."""
+
+    def test_get_fpel_authorization_port_raises_on_error(self) -> None:
+        """Container init failure → MUST raise, not return None."""
+        from src.interfaces.cli.commands.workflow import get_fpel_authorization_port
+
+        with patch(
+            "src.infrastructure.persistence.container.get_container",
+            side_effect=RuntimeError("DB connection failed"),
+        ), patch.dict("os.environ", {"FPEL_ENABLED": "1"}), pytest.raises(
+            (RuntimeError, Exception),
+        ):
+            get_fpel_authorization_port()
+
+
+class TestTargetIdUsesTaskIdNotSessionId:
+    """Verify that FPEL gate uses task_id, not plan.session_id."""
+
+    def test_target_id_uses_task_id_not_session_id(self, tmp_path: Path) -> None:
+        """check_sealed() MUST receive task_id, NOT plan.session_id."""
+        plan_state = PlanState(
+            session_id="plan-session-xyz",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[Task(id="task-real-001", slug="my-task", description="do thing")],
+        )
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        sealed_decision = AuthorizationDecision(
+            allowed=True,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-1",
+            content_hash="abc123",
+            reason=None,
+            seal_id="seal-1",
+            sealed_at=datetime.now(UTC),
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = sealed_decision
+
+        executor_result = MagicMock()
+        exec_state = ExecuteState(
+            session_id="fpel-test-exec",
+            phase=WorkflowPhase.EXECUTING,
+            tasks=plan_state.tasks,
+        )
+        executor_result.exec_state = exec_state
+        executor_result.spawned_sessions = []
+        executor_result.errors = []
+        mock_executor = MagicMock()
+        mock_executor.execute_plan.return_value = executor_result
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute", "task-real-001"])
+
+        assert result.exit_code == 0
+        called_target_id = mock_fpel_port.check_sealed.call_args[0][0]
+        assert called_target_id != "plan-session-xyz", (
+            f"target_id should NOT be plan.session_id, got: {called_target_id}"
+        )
+        assert "task" in called_target_id.lower() or called_target_id == "task-real-001"
