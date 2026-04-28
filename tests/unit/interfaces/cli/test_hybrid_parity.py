@@ -139,7 +139,9 @@ class TestFallbackReceipts:
     ) -> None:
         mock_mcp.call_tool_sync.side_effect = ConnectionError("refused")
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
-        _, receipt = d.dispatch_message_send(to_agent="session:main.a", payload="hi", from_agent="session:main.b")
+        _, receipt = d.dispatch_message_send(
+            to_agent="session:main.a", payload="hi", from_agent="session:main.b"
+        )
         assert receipt.mode == DispatchMode.FALLBACK
 
     def test_message_receive_fallback(
@@ -188,7 +190,9 @@ class TestMcpRequireFailsClosed:
         mock_mcp.call_tool_sync.side_effect = RuntimeError("MCP down")
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
         with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
-            d.dispatch_message_send(to_agent="session:main.a", payload="hi", from_agent="session:main.b")
+            d.dispatch_message_send(
+                to_agent="session:main.a", payload="hi", from_agent="session:main.b"
+            )
 
     def test_message_receive_require_fails(
         self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path, monkeypatch
@@ -198,3 +202,85 @@ class TestMcpRequireFailsClosed:
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
         with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
             d.dispatch_message_receive(agent_id="session:main.a", limit=10)
+
+
+class TestDataCorrectness:
+    """Verify returned data comes from the correct backend (MCP vs direct)."""
+
+    def test_save_returns_mcp_data_not_local(
+        self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path
+    ) -> None:
+        """When MCP succeeds, returned observation should have MCP's ID, not local DB's."""
+        mock_mcp.call_tool_sync.return_value = {
+            "id": "mcp-obs-999",
+            "timestamp": 1000000,
+            "content": "from mcp",
+        }
+        mock_service.get_by_id.return_value = _make_observation(id="local-obs-1")
+        d = _dispatcher_with_mcp(mock_service, mock_mcp)
+        obs, receipt = d.dispatch_save(content="test")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        # Observation should be from MCP result, not local DB fetch
+        assert obs.id == "mcp-obs-999"
+
+    def test_search_returns_mcp_data(
+        self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path
+    ) -> None:
+        mock_mcp.call_tool_sync.return_value = [{"id": "mcp-1", "timestamp": 1000, "content": "c"}]
+        d = _dispatcher_with_mcp(mock_service, mock_mcp)
+        results, receipt = d.dispatch_search(query="test")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        assert len(results) == 1
+        assert results[0].id == "mcp-1"
+
+
+class TestForkMcpRequireNoServer:
+    """Verify FORK_MCP_REQUIRE=1 raises when no server is discoverable.
+
+    This tests the _get_mcp_client() code path, not the _on_mcp_error path.
+    """
+
+    def test_no_server_raises_require(
+        self, mock_service: MagicMock, tmp_path: Path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("FORK_MCP_REQUIRE", "1")
+        monkeypatch.setenv("FORK_DATA_DIR", str(tmp_path))
+        d = HybridDispatcher(mock_service)
+        # No port file exists — discover_server returns None
+        with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
+            d._get_mcp_client()
+
+    def test_no_server_dispatch_save_raises(
+        self, mock_service: MagicMock, tmp_path: Path, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("FORK_MCP_REQUIRE", "1")
+        monkeypatch.setenv("FORK_DATA_DIR", str(tmp_path))
+        d = HybridDispatcher(mock_service)
+        with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
+            d.dispatch_save(content="test")
+
+
+class TestWriteReceiptResilience:
+    """Verify _write_receipt never crashes a dispatch."""
+
+    def test_receipt_write_failure_does_not_crash(
+        self, mock_service: MagicMock, mock_mcp: MagicMock, tmp_path: Path, monkeypatch
+    ) -> None:
+        # Point receipt to a read-only path
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        readonly_dir.chmod(0o444)
+        monkeypatch.setenv("FORK_DATA_DIR", str(readonly_dir))
+
+        mock_mcp.call_tool_sync.return_value = {
+            "id": "mcp-id",
+            "timestamp": 1000,
+            "content": "test",
+        }
+        d = _dispatcher_with_mcp(mock_service, mock_mcp)
+        # Should NOT raise even though receipt file is unwritable
+        obs, receipt = d.dispatch_save(content="test")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+
+        # Cleanup
+        readonly_dir.chmod(0o755)
