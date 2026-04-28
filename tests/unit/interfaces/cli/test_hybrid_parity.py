@@ -223,6 +223,21 @@ class TestDataCorrectness:
         # Observation should be from MCP result, not local DB fetch
         assert obs.id == "mcp-obs-999"
 
+    def test_save_fetches_local_when_mcp_returns_partial(
+        self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path
+    ) -> None:
+        """When MCP returns only {id, status}, _to_observation fails and dispatcher falls back to get_by_id."""
+        mock_mcp.call_tool_sync.return_value = {"id": "mcp-obs-999", "status": "ok"}
+        mock_service.get_by_id.return_value = _make_observation(
+            id="mcp-obs-999", content="from local"
+        )
+        d = _dispatcher_with_mcp(mock_service, mock_mcp)
+        obs, receipt = d.dispatch_save(content="test")
+        assert receipt.mode == DispatchMode.MCP_CLIENT
+        # Falls back to local fetch since MCP didn't return full Observation
+        mock_service.get_by_id.assert_called_once_with("mcp-obs-999")
+        assert obs.id == "mcp-obs-999"
+
     def test_search_returns_mcp_data(
         self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path
     ) -> None:

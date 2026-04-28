@@ -39,9 +39,9 @@ class TestNonTmuxApiLifecycle:
         )
 
         assert result is True
-        # Verify clear_lease=True was passed
-        call_kwargs = registry.cas_update_status.call_args
-        assert call_kwargs[1].get("clear_lease") is True or call_kwargs[0][6] is not None
+        # Verify clear_lease=True was passed as keyword argument
+        _, kwargs = registry.cas_update_status.call_args
+        assert kwargs.get("clear_lease") is True
 
     def test_active_launch_not_expired_by_reconcile(self) -> None:
         """reconcile_expired_leases must skip ACTIVE launches."""

@@ -12,7 +12,7 @@
 
 ## Dispatch Flow
 
-```
+```text
 CLI command
   ├─ FORK_HYBRID=1? → HybridDispatcher.dispatch_X()
   │    ├─ discover MCP server → found?
@@ -23,7 +23,7 @@ CLI command
   │    │              └─ default → direct service (mode=direct)
   │    └─ receipt written to ~/.local/share/fork/.hybrid-receipts.jsonl
   └─ default → direct service call (no hybrid)
-```
+```text
 
 ## Command Matrix
 
@@ -59,10 +59,10 @@ CLI command
 ## Receipt Format
 
 ```json
-{"mode":"mcp_client","command":"save","latency_ms":28,"reason":null,"server_pid":12345,"timestamp":"2026-04-27T20:00:00Z"}
-{"mode":"direct","command":"save","latency_ms":5,"reason":"no_server","server_pid":null,"timestamp":"2026-04-27T20:00:01Z"}
-{"mode":"direct_fallback","command":"save","latency_ms":35,"reason":"protocol_error","server_pid":12345,"timestamp":"2026-04-27T20:00:02Z"}
-```
+{"mode":"mcp_client","command":"save","latency_ms":28,"reason":null,"server_pid":12345,"timestamp":1714250400.0}
+{"mode":"direct","command":"save","latency_ms":5,"reason":"no_server","server_pid":null,"timestamp":1714250401.0}
+{"mode":"direct_fallback","command":"save","latency_ms":35,"reason":"protocol_error","server_pid":12345,"timestamp":1714250402.0}
+```text
 
 ## Known Gaps
 

@@ -117,20 +117,20 @@ class TestSanitize:
         assert _sanitize("  hello  ") == "hello"
 
     def test_replaces_newlines_with_space(self) -> None:
-        assert _sanitize("hello\nworld") == "hello world"
+        assert _sanitize("hello\nworld") == "hello-world"
 
     def test_replaces_carriage_return_with_space(self) -> None:
-        assert _sanitize("hello\rworld") == "hello world"
+        assert _sanitize("hello\rworld") == "hello-world"
 
     def test_replaces_tabs_with_space(self) -> None:
-        assert _sanitize("hello\tworld") == "hello world"
+        assert _sanitize("hello\tworld") == "hello-world"
 
     def test_handles_mixed_whitespace(self) -> None:
         result = _sanitize("  hello \t\n\r world  ")
         assert "\t" not in result
         assert "\n" not in result
         assert "\r" not in result
-        assert result == "hello world"
+        assert result == "hello-world"
 
     def test_truncates_to_max_length(self) -> None:
         long_input = "a" * 300

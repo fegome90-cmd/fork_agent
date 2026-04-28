@@ -129,8 +129,10 @@ class SqliteAgentLaunchRepository:
     ) -> bool:
         """CAS update — only succeeds if current status matches expected_status.
 
-        Uses a fully static SQL statement with COALESCE to preserve existing
-        column values when optional parameters are None. No dynamic SQL construction.
+        Builds a SET clause with COALESCE to preserve existing column values
+        when optional parameters are None. The clear_lease flag conditionally
+        appends ``lease_expires_at = NULL`` to the SET clause. No user input
+        reaches the SQL — all values are parameterized.
 
         Note: COALESCE(?, column) means passing NULL will NOT clear an existing
         value. Use clear_lease=True to explicitly set lease_expires_at = NULL.
