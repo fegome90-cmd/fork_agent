@@ -403,9 +403,9 @@
     },
     {
       "fileA": "src/interfaces/cli/hybrid.py",
-      "startA": 594,
+      "startA": 612,
       "fileB": "src/interfaces/cli/hybrid.py",
-      "startB": 548,
+      "startB": 566,
       "lines": 9,
       "tokens": 0
     },
@@ -515,6 +515,6 @@
     }
   ],
   "duplicatedLines": 1023,
-  "totalLines": 39979,
-  "percentage": 2.56
+  "totalLines": 40074,
+  "percentage": 2.55
 }

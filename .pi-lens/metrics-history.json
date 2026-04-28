@@ -430,7 +430,32 @@
         }
       ],
       "trend": "stable"
+    },
+    "../../.pi/agent/extensions/00-compact-memory-bridge.ts": {
+      "latest": {
+        "commit": "76bd8ca5e",
+        "timestamp": "2026-04-28T10:42:46.171Z",
+        "mi": 6.5,
+        "cognitive": 403,
+        "nesting": 8,
+        "lines": 1095,
+        "maxCyclomatic": 190,
+        "entropy": 6.35
+      },
+      "history": [
+        {
+          "commit": "76bd8ca5e",
+          "timestamp": "2026-04-28T10:42:46.171Z",
+          "mi": 6.5,
+          "cognitive": 403,
+          "nesting": 8,
+          "lines": 1095,
+          "maxCyclomatic": 190,
+          "entropy": 6.35
+        }
+      ],
+      "trend": "stable"
     }
   },
-  "capturedAt": "2026-04-27T20:10:12.124Z"
+  "capturedAt": "2026-04-28T10:42:51.171Z"
 }

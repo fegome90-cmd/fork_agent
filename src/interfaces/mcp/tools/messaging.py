@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from mcp import McpError
+
 from src.interfaces.mcp.tools._shared import (
     _get_agent_messenger,
     _map_error,
@@ -69,12 +71,8 @@ def fork_message_send(
         logger.info("fork_message_send: from=%s to=%s", effective_from, target)
 
         return json.dumps({"status": "sent" if success else "stored", "target": target})
-    except BaseException as _e:
-        from mcp import McpError
-
-        if isinstance(_e, McpError):
-            raise
-        raise _e
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_send failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -110,12 +108,8 @@ def fork_message_receive(
             messenger.mark_messages_read(ids)
 
         return json.dumps(serialized)
-    except BaseException as _e:
-        from mcp import McpError
-
-        if isinstance(_e, McpError):
-            raise
-        raise _e
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_receive failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -144,12 +138,8 @@ def fork_message_broadcast(
         logger.info("fork_message_broadcast: from=%s recipients=%d", effective_from, count)
 
         return json.dumps({"status": "broadcast", "recipients": count})
-    except BaseException as _e:
-        from mcp import McpError
-
-        if isinstance(_e, McpError):
-            raise
-        raise _e
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_broadcast failed: %s", e, exc_info=True)
         raise _map_error(e) from e
@@ -178,12 +168,8 @@ def fork_message_history(
         serialized = _serialize_messages(history)
 
         return json.dumps(serialized)
-    except BaseException as _e:
-        from mcp import McpError
-
-        if isinstance(_e, McpError):
-            raise
-        raise _e
+    except McpError:
+        raise
     except Exception as e:
         logger.error("fork_message_history failed: %s", e, exc_info=True)
         raise _map_error(e) from e

@@ -32,7 +32,15 @@ Source of Truth: `https://github.com/fegome90-cmd/constitucion-ai`
 
 ---
 
-## 🚦 Protocolo de 10 Fases (MANDATORIO)
+## Clasificación de Tamaño
+
+| Tamaño | Umbral | Workflow |
+|--------|--------|----------|
+| Small | <50 líneas, 1 archivo | Directo — sin protocolo |
+| Medium | 50-300 líneas, pocos archivos | Sequential — sin sub-agentes |
+| Large | >300 líneas o "usa fork" | Full orchestration — 10 fases |
+
+## Protocolo de 10 Fases (MANDATORIO para Large)
 
 Cualquier cambio sustancial DEBE seguir este flujo para garantizar la integridad del sistema:
 
@@ -111,10 +119,15 @@ Latencia: ~28ms por call (raw httpx JSON-RPC) vs ~234ms (MCP SDK).
 ### Gestión de Tareas (Fork CLI):
 
 ```bash
-fork task create "Descripción"   # PENDING -> PLANNING
-fork task submit-plan <id>       # PLANNING -> APPROVED
-fork task start <id>             # APPROVED -> IN_PROGRESS
-fork task complete <id>          # IN_PROGRESS -> COMPLETED
+fork task create "Descripción"        # Crear tarea en estado PENDING
+fork task submit-plan <id>            # Enviar plan para aprobación
+fork task approve <id>                # Aprobar plan
+fork task start <id>                  # Iniciar tarea aprobada
+fork task complete <id>               # Marcar como completada
+fork task list                        # Listar tareas
+fork task update <id>                  # Actualizar tarea
+fork task delete <id>                  # Eliminar tarea
+fork task assign <id>                  # Asignar tarea
 ```
 
 ### Orquestación en Vivo (tmux-live):
@@ -124,6 +137,31 @@ tmux-live init                   # Inicializar panel de control
 tmux-live launch <role> <name>   # Lanzar sub-agente
 tmux-live wait <name> 600        # Esperar finalización
 tmux-live kill-all               # Limpieza total
+```
+
+### Fork CLI (comandos adicionales):
+
+```bash
+fork run "<command>"                  # Forkear un terminal
+fork doctor status                    # Health check del sistema
+fork doctor reconcile                 # Reconciliar sesiones tmux
+fork doctor cleanup-orphans           # Limpiar sesiones huérfanas
+fork poll start                       # Iniciar polling autónomo
+fork adapter detect                   # Detectar adapter de terminal
+fork template list                    # Listar templates de agente
+```
+
+### Memory CLI (comandos clave):
+
+```bash
+memory launch request                 # Solicitar spawn de agente
+memory launch status                  # Estado de launches activos
+memory launch summary                 # Conteo de launches por estado
+memory mcp start                      # Iniciar MCP HTTP server
+memory mcp stop                       # Detener MCP server
+memory mcp status                     # Estado del MCP server
+memory workspace create <name>        # Crear workspace (git worktree)
+memory workspace list                 # Listar workspaces
 ```
 
 ---
