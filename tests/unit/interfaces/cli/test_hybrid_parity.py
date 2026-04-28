@@ -281,10 +281,10 @@ class TestWriteReceiptResilience:
     def test_receipt_write_failure_does_not_crash(
         self, mock_service: MagicMock, mock_mcp: MagicMock, tmp_path: Path, monkeypatch
     ) -> None:
-        # Point receipt to a read-only path
+        # Point receipt to a read-only path (0o555 = r-x — allows reading but not writing)
         readonly_dir = tmp_path / "readonly"
         readonly_dir.mkdir()
-        readonly_dir.chmod(0o444)
+        readonly_dir.chmod(0o555)
         monkeypatch.setenv("FORK_DATA_DIR", str(readonly_dir))
 
         mock_mcp.call_tool_sync.return_value = {
