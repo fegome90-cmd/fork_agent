@@ -110,11 +110,11 @@ class AgentLaunchLifecycleService:
                 if existing.status in (LaunchStatus.RESERVED, LaunchStatus.SPAWNING):
                     self._quarantine_expired(existing)
 
-            # Role resolution: mandatory for new, fallback for legacy
+            # Role resolution: required for new callers, safe default for legacy
             effective_role = role
             if effective_role is None:
                 effective_role = SURFACE_ROLE_DEFAULTS.get(surface, DEFAULT_ROLE)
-                logger.warning(
+                logger.info(
                     "LEGACY_ROUTE request_launch without role for canonical_key=%s"
                     " surface=%s — defaulting to '%s'",
                     canonical_key,

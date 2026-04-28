@@ -137,9 +137,13 @@ class MemoryEventMetadata(BaseModel):
     @field_validator("launch_id")
     @classmethod
     def validate_launch_id(cls, v: str | None) -> str | None:
-        """Ensure launch_id is a valid hex string if provided."""
-        if v is not None and not all(c in "0123456789abcdef" for c in v.lower()):
-            raise ValueError(f"launch_id must be a hex string, got {v!r}")
+        """Ensure launch_id is a canonical 32-char hex UUID if provided."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("launch_id cannot be empty")
+        if len(v) != 32 or not all(c in "0123456789abcdef" for c in v.lower()):
+            raise ValueError(f"launch_id must be a 32-character hex string, got {v!r}")
         return v
 
     @staticmethod

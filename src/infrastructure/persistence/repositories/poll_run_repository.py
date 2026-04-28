@@ -234,7 +234,7 @@ class SqlitePollRunRepository:
                 cursor = conn.execute(
                     """UPDATE poll_runs
                        SET launch_method = ?, launch_pane_id = ?, launch_pid = ?, launch_pgid = ?,
-                           launch_recorded_at = ?, launch_id = ?
+                           launch_recorded_at = ?, launch_id = COALESCE(?, launch_id)
                        WHERE id = ?""",
                     (launch_method, pane_id, pid, pgid, now_ms, launch_id, run_id),
                 )

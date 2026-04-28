@@ -573,11 +573,21 @@ class AgentPollingService:
     def _finalize_launch(
         self, run: PollRun, *, failed: bool = False, error: str | None = None
     ) -> None:
-        """Best-effort finalization of the AgentLaunch for a completed/failed run."""
-        if self._lifecycle_service is None or run.canonical_key is None:
+        """Best-effort finalization of the AgentLaunch for a completed/failed run.
+
+        Resolves the authoritative launch via ``run.launch_id`` first (if present),
+        falling back to ``canonical_key`` lookup for legacy runs without the FK.
+        """
+        if self._lifecycle_service is None:
             return
         try:
-            launch = self._lifecycle_service.get_active_launch(run.canonical_key)
+            # Prefer the direct FK link (RC-4+)
+            launch = None
+            if run.launch_id is not None:
+                launch = self._lifecycle_service.registry.get_by_launch_id(run.launch_id)
+            # Legacy fallback: resolve by canonical_key
+            if launch is None and run.canonical_key is not None:
+                launch = self._lifecycle_service.get_active_launch(run.canonical_key)
             if launch is None:
                 return
             if failed:

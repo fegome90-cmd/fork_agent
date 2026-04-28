@@ -99,6 +99,10 @@ class PollRun:
             raise ValueError("launch_pgid must be non-negative")
         if self.launch_recorded_at is not None and self.launch_recorded_at < 0:
             raise ValueError("launch_recorded_at must be non-negative")
+        if self.launch_id is not None and (
+            not isinstance(self.launch_id, str) or not self.launch_id.strip()
+        ):
+            raise ValueError("launch_id must be a non-empty string when provided")
 
     def can_transition_to(self, target: PollRunStatus) -> bool:
         """Check if transitioning to target status is allowed."""

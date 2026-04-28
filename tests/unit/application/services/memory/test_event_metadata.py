@@ -155,7 +155,7 @@ class TestMemoryEventMetadata:
 
     def test_invalid_launch_id_hex_rejected(self) -> None:
         """Test that invalid launch_id hex is rejected."""
-        with pytest.raises(ValidationError, match="must be a hex string"):
+        with pytest.raises(ValidationError, match="must be a 32-character hex string"):
             MemoryEventMetadata(
                 event_type="agent_spawned",
                 run_id="run-123",
