@@ -1,5 +1,5 @@
 """Hybrid dispatch: routes CLI commands through MCP server when available,
-falls back to direct service calls transparently. All 17 MCP-routable commands."""
+falls back to direct service calls transparently. All 18 MCP-routable commands."""
 
 from __future__ import annotations
 
@@ -43,22 +43,28 @@ class DispatchReceipt:
 
 
 def _write_receipt(receipt: DispatchReceipt) -> None:
-    receipt_dir = Path(os.environ.get("FORK_DATA_DIR", os.path.expanduser("~/.local/share/fork")))
-    receipt_dir.mkdir(parents=True, exist_ok=True)
-    with open(receipt_dir / ".hybrid-receipts.jsonl", "a") as f:
-        f.write(
-            json.dumps(
-                {
-                    "mode": receipt.mode.value,
-                    "command": receipt.command,
-                    "latency_ms": round(receipt.latency_ms, 1),
-                    "reason": receipt.reason,
-                    "server_pid": receipt.server_pid,
-                    "timestamp": time.time(),
-                }
-            )
-            + "\n"
+    """Write receipt to JSONL file. Best-effort — never fails the dispatch."""
+    try:
+        receipt_dir = Path(
+            os.environ.get("FORK_DATA_DIR", os.path.expanduser("~/.local/share/fork"))
         )
+        receipt_dir.mkdir(parents=True, exist_ok=True)
+        with open(receipt_dir / ".hybrid-receipts.jsonl", "a") as f:
+            f.write(
+                json.dumps(
+                    {
+                        "mode": receipt.mode.value,
+                        "command": receipt.command,
+                        "latency_ms": round(receipt.latency_ms, 1),
+                        "reason": receipt.reason,
+                        "server_pid": receipt.server_pid,
+                        "timestamp": time.time(),
+                    }
+                )
+                + "\n"
+            )
+    except OSError:
+        logger.debug("Failed to write receipt file", exc_info=True)
 
 
 def _get_port_file() -> Path:
@@ -81,6 +87,18 @@ def discover_server() -> dict[str, Any] | None:
     except (json.JSONDecodeError, ProcessLookupError, PermissionError, KeyError, OSError):
         with contextlib.suppress(OSError):
             port_file.unlink()
+        return None
+
+
+def _to_observation(result: Any) -> Observation | None:
+    """Construct Observation from MCP result, filtering unknown fields."""
+    if not isinstance(result, dict):
+        return None
+    try:
+        return Observation(
+            **{k: v for k, v in result.items() if k in Observation.__dataclass_fields__}
+        )
+    except (TypeError, KeyError):
         return None
 
 
@@ -195,7 +213,7 @@ class MCPClientSDK:
 
 
 class HybridDispatcher:
-    """Routes all 17 MCP-routable commands through MCP when available, direct otherwise."""
+    """Routes all 18 MCP-routable commands through MCP when available, direct otherwise."""
 
     @staticmethod
     def _validate_content(content: str) -> None:
@@ -304,7 +322,7 @@ class HybridDispatcher:
         if client is not None:
             try:
                 result = client.call_tool_sync("memory_save", kwargs)
-                obs = self._service.get_by_id(result["id"])
+                obs = _to_observation(result) or self._service.get_by_id(result["id"])
                 receipt = self._mcp_receipt(start, "save")
                 self._record(receipt)
                 return obs, receipt
@@ -357,7 +375,7 @@ class HybridDispatcher:
         if client is not None:
             try:
                 result = client.call_tool_sync("memory_get", kwargs)
-                obs = Observation(**result) if isinstance(result, dict) else result
+                obs = _to_observation(result) or self._service.get_by_id(kwargs["id"])
                 receipt = self._mcp_receipt(start, "get")
                 self._record(receipt)
                 return obs, receipt
@@ -392,7 +410,7 @@ class HybridDispatcher:
         if client is not None:
             try:
                 result = client.call_tool_sync("memory_update", kwargs)
-                obs = Observation(**result) if isinstance(result, dict) else result
+                obs = _to_observation(result) or self._service.update(**kwargs)
                 receipt = self._mcp_receipt(start, "update")
                 self._record(receipt)
                 return obs, receipt

@@ -11,35 +11,35 @@
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
       "file": "src/interfaces/api/routes/agents.py",
-      "line": 86,
+      "line": 85,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
       "file": "src/interfaces/api/routes/agents.py",
-      "line": 116,
+      "line": 115,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Validate session_id before constructing path",
       "file": "src/interfaces/api/routes/agents.py",
-      "line": 146,
+      "line": 145,
       "column": 6
     },
     {
       "type": "BUG",
       "message": "FIX: Track persistence status",
       "file": "src/interfaces/api/routes/agents.py",
-      "line": 181,
+      "line": 180,
       "column": 32
     },
     {
       "type": "BUG",
       "message": "FIX: Track deletion status",
       "file": "src/interfaces/api/routes/agents.py",
-      "line": 188,
+      "line": 187,
       "column": 33
     },
     {

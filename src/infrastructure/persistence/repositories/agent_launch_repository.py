@@ -129,8 +129,10 @@ class SqliteAgentLaunchRepository:
     ) -> bool:
         """CAS update — only succeeds if current status matches expected_status.
 
-        Uses a fully static SQL statement with COALESCE to preserve existing
-        column values when optional parameters are None. No dynamic SQL construction.
+        Builds a SET clause with COALESCE to preserve existing column values
+        when optional parameters are None. The clear_lease flag conditionally
+        appends ``lease_expires_at = NULL`` to the SET clause. No user input
+        reaches the SQL — all values are parameterized.
 
         Note: COALESCE(?, column) means passing NULL will NOT clear an existing
         value. Use clear_lease=True to explicitly set lease_expires_at = NULL.
@@ -149,37 +151,22 @@ class SqliteAgentLaunchRepository:
         )
 
         # Build SET clause — conditionally include lease_expires_at = NULL
+        set_clause = """
+                    status = ?,
+                    ended_at = COALESCE(?, ended_at),
+                    spawn_started_at = COALESCE(?, spawn_started_at),
+                    spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
+                    last_error = COALESCE(?, last_error),
+                    quarantine_reason = COALESCE(?, quarantine_reason),
+                    backend = COALESCE(?, backend),
+                    termination_handle_type = COALESCE(?, termination_handle_type),
+                    termination_handle_value = COALESCE(?, termination_handle_value),
+                    process_pid = COALESCE(?, process_pid),
+                    process_pgid = COALESCE(?, process_pgid),
+                    tmux_session = COALESCE(?, tmux_session),
+                    tmux_pane_id = COALESCE(?, tmux_pane_id)"""
         if clear_lease:
-            set_clause = """
-                        status = ?,
-                        ended_at = COALESCE(?, ended_at),
-                        spawn_started_at = COALESCE(?, spawn_started_at),
-                        spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
-                        last_error = COALESCE(?, last_error),
-                        quarantine_reason = COALESCE(?, quarantine_reason),
-                        backend = COALESCE(?, backend),
-                        termination_handle_type = COALESCE(?, termination_handle_type),
-                        termination_handle_value = COALESCE(?, termination_handle_value),
-                        process_pid = COALESCE(?, process_pid),
-                        process_pgid = COALESCE(?, process_pgid),
-                        tmux_session = COALESCE(?, tmux_session),
-                        tmux_pane_id = COALESCE(?, tmux_pane_id),
-                        lease_expires_at = NULL"""
-        else:
-            set_clause = """
-                        status = ?,
-                        ended_at = COALESCE(?, ended_at),
-                        spawn_started_at = COALESCE(?, spawn_started_at),
-                        spawn_confirmed_at = COALESCE(?, spawn_confirmed_at),
-                        last_error = COALESCE(?, last_error),
-                        quarantine_reason = COALESCE(?, quarantine_reason),
-                        backend = COALESCE(?, backend),
-                        termination_handle_type = COALESCE(?, termination_handle_type),
-                        termination_handle_value = COALESCE(?, termination_handle_value),
-                        process_pid = COALESCE(?, process_pid),
-                        process_pgid = COALESCE(?, process_pgid),
-                        tmux_session = COALESCE(?, tmux_session),
-                        tmux_pane_id = COALESCE(?, tmux_pane_id)"""
+            set_clause += ",\n                        lease_expires_at = NULL"
 
         try:
             with self._connection as conn:

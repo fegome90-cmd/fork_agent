@@ -1,6 +1,5 @@
 """Rutas para agentes."""
 
-import hashlib
 import json
 import logging
 import re
@@ -297,10 +296,9 @@ async def create_session(
         session_id = f"fork-{request.agent_type}-{uuid.uuid4().hex[:12]}"
 
         # Claim canonical launch slot via lifecycle service
-        task_prefix = (
-            hashlib.sha256(request.task.encode()).hexdigest()[:12] if request.task else "untitled"
-        )
-        canonical_key = f"api:{request.agent_type}:{task_prefix}"
+        from src.domain.services.canonical_key import build_api_key
+
+        canonical_key = build_api_key(request.agent_type, request.task)
         lifecycle_launch_id: str | None = None
         lifecycle = _get_lifecycle_service()
         attempt = lifecycle.request_launch(
