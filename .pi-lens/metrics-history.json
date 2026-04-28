@@ -228,14 +228,14 @@
     },
     "../subagent-statusline/extensions/index.ts": {
       "latest": {
-        "commit": "c9142e23",
-        "timestamp": "2026-04-27T11:11:57.182Z",
-        "mi": 14.1,
-        "cognitive": 469,
+        "commit": "40e69e555",
+        "timestamp": "2026-04-27T20:01:43.924Z",
+        "mi": 14.7,
+        "cognitive": 465,
         "nesting": 7,
-        "lines": 629,
-        "maxCyclomatic": 275,
-        "entropy": 7.1
+        "lines": 627,
+        "maxCyclomatic": 271,
+        "entropy": 6.51
       },
       "history": [
         {
@@ -267,6 +267,16 @@
           "lines": 629,
           "maxCyclomatic": 275,
           "entropy": 7.1
+        },
+        {
+          "commit": "40e69e555",
+          "timestamp": "2026-04-27T20:01:43.924Z",
+          "mi": 14.7,
+          "cognitive": 465,
+          "nesting": 7,
+          "lines": 627,
+          "maxCyclomatic": 271,
+          "entropy": 6.51
         }
       ],
       "trend": "regressing"
@@ -320,7 +330,107 @@
         }
       ],
       "trend": "stable"
+    },
+    "../../.pi/agent/extensions/node_modules/pi-subagent-statusline/extensions/index.ts": {
+      "latest": {
+        "commit": "40e69e555",
+        "timestamp": "2026-04-27T19:57:32.144Z",
+        "mi": 15.3,
+        "cognitive": 401,
+        "nesting": 7,
+        "lines": 566,
+        "maxCyclomatic": 229,
+        "entropy": 7.06
+      },
+      "history": [
+        {
+          "commit": "40e69e555",
+          "timestamp": "2026-04-27T19:57:32.144Z",
+          "mi": 15.3,
+          "cognitive": 401,
+          "nesting": 7,
+          "lines": 566,
+          "maxCyclomatic": 229,
+          "entropy": 7.06
+        }
+      ],
+      "trend": "stable"
+    },
+    "../../.pi/agent/extensions/node_modules/pi-subagent-statusline/extensions/render.ts": {
+      "latest": {
+        "commit": "40e69e555",
+        "timestamp": "2026-04-27T19:57:40.431Z",
+        "mi": 28.1,
+        "cognitive": 127,
+        "nesting": 5,
+        "lines": 252,
+        "maxCyclomatic": 33,
+        "entropy": 6.16
+      },
+      "history": [
+        {
+          "commit": "40e69e555",
+          "timestamp": "2026-04-27T19:57:40.431Z",
+          "mi": 28.1,
+          "cognitive": 127,
+          "nesting": 5,
+          "lines": 252,
+          "maxCyclomatic": 33,
+          "entropy": 6.16
+        }
+      ],
+      "trend": "stable"
+    },
+    "../../.pi/agent/extensions/node_modules/pi-subagent-statusline/extensions/state.ts": {
+      "latest": {
+        "commit": "40e69e555",
+        "timestamp": "2026-04-27T19:57:47.504Z",
+        "mi": 36.3,
+        "cognitive": 37,
+        "nesting": 5,
+        "lines": 116,
+        "maxCyclomatic": 12,
+        "entropy": 5.67
+      },
+      "history": [
+        {
+          "commit": "40e69e555",
+          "timestamp": "2026-04-27T19:57:47.504Z",
+          "mi": 36.3,
+          "cognitive": 37,
+          "nesting": 5,
+          "lines": 116,
+          "maxCyclomatic": 12,
+          "entropy": 5.67
+        }
+      ],
+      "trend": "stable"
+    },
+    "../subagent-statusline/extensions/test/rc-wiring.test.ts": {
+      "latest": {
+        "commit": "1ca10904f",
+        "timestamp": "2026-04-27T20:10:07.124Z",
+        "mi": 27.8,
+        "cognitive": 14,
+        "nesting": 3,
+        "lines": 206,
+        "maxCyclomatic": 30,
+        "entropy": 5.66
+      },
+      "history": [
+        {
+          "commit": "1ca10904f",
+          "timestamp": "2026-04-27T20:10:07.124Z",
+          "mi": 27.8,
+          "cognitive": 14,
+          "nesting": 3,
+          "lines": 206,
+          "maxCyclomatic": 30,
+          "entropy": 5.66
+        }
+      ],
+      "trend": "stable"
     }
   },
-  "capturedAt": "2026-04-27T11:21:13.034Z"
+  "capturedAt": "2026-04-27T20:10:12.124Z"
 }

@@ -446,7 +446,7 @@
       "startA": 46,
       "fileB": "src/infrastructure/persistence/repositories/agent_launch_repository.py",
       "startB": 113,
-      "lines": 21,
+      "lines": 26,
       "tokens": 0
     },
     {
@@ -467,9 +467,9 @@
     },
     {
       "fileA": "src/application/services/agent_polling_service.py",
-      "startA": 206,
+      "startA": 208,
       "fileB": "src/application/services/agent_polling_service.py",
-      "startB": 168,
+      "startB": 170,
       "lines": 14,
       "tokens": 0
     },
@@ -514,7 +514,7 @@
       "tokens": 0
     }
   ],
-  "duplicatedLines": 1018,
-  "totalLines": 39871,
-  "percentage": 2.55
+  "duplicatedLines": 1023,
+  "totalLines": 39979,
+  "percentage": 2.56
 }
