@@ -27,10 +27,7 @@ def build_api_key(agent_type: str, task: str | None) -> str:
     When task is empty/None: ``api:{agent_type}:untitled``
     """
     sanitized_type = _sanitize(agent_type, max_length=64)
-    if task:
-        task_hash = hashlib.sha256(task.encode()).hexdigest()[:12]
-    else:
-        task_hash = "untitled"
+    task_hash = hashlib.sha256(task.encode()).hexdigest()[:12] if task else "untitled"
     return f"api:{sanitized_type}:{task_hash}"
 
 
