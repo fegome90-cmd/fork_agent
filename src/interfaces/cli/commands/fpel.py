@@ -93,7 +93,9 @@ def status_proposal(
     decision = service.check_sealed(target_id=target_id)
 
     console.print(f"  status:             {decision.status.value}")
-    console.print(f"  content_hash:       {decision.content_hash[:8] + '...' if decision.content_hash else 'N/A'}")
+    console.print(
+        f"  content_hash:       {decision.content_hash[:8] + '...' if decision.content_hash else 'N/A'}"
+    )
     console.print(f"  frozen_proposal_id: {decision.frozen_proposal_id or 'N/A'}")
     console.print(f"  sealed:             {decision.allowed}")
     if decision.reason:

@@ -13,25 +13,22 @@ Tests the application service implementing FPELAuthorizationPort:
 
 from __future__ import annotations
 
-import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
 
 from src.application.services.fpel_authorization_service import FPELAuthorizationService
 from src.domain.entities.fpel import (
-    AuthorizationDecision,
     FPELStatus,
     FrozenProposal,
     FrozenProposalLifecycle,
-    SealFailureReason,
     SealedVerdict,
+    SealFailureReason,
     compute_content_hash,
 )
 from src.domain.ports.fpel_authorization_port import FPELAuthorizationPort
 from src.domain.ports.fpel_repository import FPELRepository
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -104,7 +101,7 @@ class TestSealedPassAllowed:
         sealed = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
-            sealed_at=datetime.now(tz=timezone.utc),
+            sealed_at=datetime.now(tz=UTC),
             content_hash=frozen.content_hash,
         )
         repo.get_sealed_verdict.return_value = sealed
@@ -129,9 +126,7 @@ class TestNonPassDenied:
             (FPELStatus.NOT_EVALUATED, SealFailureReason.MISSING_REPORTS),
         ],
     )
-    def test_non_sealed_status_denied(
-        self, status: FPELStatus, reason: SealFailureReason
-    ) -> None:
+    def test_non_sealed_status_denied(self, status: FPELStatus, reason: SealFailureReason) -> None:
         """Any non-SEALED_PASS status is denied."""
         service, repo = _make_service()
         repo.get_active_frozen_proposal.return_value = None  # no frozen
@@ -172,7 +167,7 @@ class TestSealInvariants:
     def test_seal_fails_on_terminal_fail(self) -> None:
         """Seal on TERMINAL_FAIL target returns TERMINAL_FAIL."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_fpel_status.return_value = FPELStatus.TERMINAL_FAIL
 
         result = service.seal(target_id=TASK_ID)
@@ -193,7 +188,7 @@ class TestSealIdempotency:
         existing = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
-            sealed_at=datetime.now(tz=timezone.utc),
+            sealed_at=datetime.now(tz=UTC),
             content_hash=frozen.content_hash,
         )
         repo.get_sealed_verdict.return_value = existing
@@ -239,7 +234,7 @@ class TestMixedCheckerVerdicts:
     def test_mixed_verdicts_produce_needs_human_decision(self) -> None:
         """When some checkers PASS and others FAIL → NEEDS_HUMAN_DECISION."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_checkers_for.return_value = ["checker-a", "checker-b"]
         repo.get_reports_for.return_value = [
             {"checker_id": "checker-a", "verdict": "PASS"},
@@ -259,7 +254,7 @@ class TestRequiredReports:
     def test_all_checkers_pass_enables_seal(self) -> None:
         """When ALL registered checkers PASS → seal is allowed."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_checkers_for.return_value = ["checker-a", "checker-b"]
         repo.get_reports_for.return_value = [
             {"checker_id": "checker-a", "verdict": "PASS"},
@@ -273,7 +268,7 @@ class TestRequiredReports:
     def test_missing_checker_report_blocks_seal(self) -> None:
         """If not all checkers have reported → MISSING_REPORTS."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_checkers_for.return_value = ["checker-a", "checker-b"]
         # Only checker-a reported
         repo.get_reports_for.return_value = [
@@ -295,7 +290,7 @@ class TestFailTerminalBlocksTransitions:
     def test_terminal_fail_blocks_seal(self) -> None:
         """TERMINAL_FAIL blocks all subsequent seal attempts."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_fpel_status.return_value = FPELStatus.TERMINAL_FAIL
 
         result = service.seal(target_id=TASK_ID)
@@ -305,7 +300,7 @@ class TestFailTerminalBlocksTransitions:
     def test_terminal_fail_blocks_check(self) -> None:
         """TERMINAL_FAIL blocks check — FAIL must remain."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_fpel_status.return_value = FPELStatus.TERMINAL_FAIL
 
         result = service.check(target_id=TASK_ID)
@@ -324,8 +319,8 @@ class TestParametrizedSealFailureReason:
             # NO_FROZEN_PROPOSAL
             (
                 lambda repo: (
-                    repo.get_active_frozen_proposal.return_value or
-                    setattr(repo, "get_active_frozen_proposal", MagicMock(return_value=None))
+                    repo.get_active_frozen_proposal.return_value
+                    or setattr(repo, "get_active_frozen_proposal", MagicMock(return_value=None))
                     or None
                 ),
                 SealFailureReason.NO_FROZEN_PROPOSAL,
@@ -345,7 +340,7 @@ class TestParametrizedSealFailureReason:
 
     def test_seal_fail_hash_mismatch(self) -> None:
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         # Current content differs from frozen
         repo.get_current_content_hash.return_value = compute_content_hash("tampered content")
         repo.get_fpel_status.return_value = FPELStatus.CHECK_PASSED
@@ -356,7 +351,7 @@ class TestParametrizedSealFailureReason:
 
     def test_seal_fail_missing_reports(self) -> None:
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_checkers_for.return_value = ["checker-a"]
         repo.get_reports_for.return_value = []  # no reports
         repo.get_fpel_status.return_value = FPELStatus.FROZEN
@@ -367,7 +362,7 @@ class TestParametrizedSealFailureReason:
 
     def test_seal_fail_terminal_fail(self) -> None:
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_fpel_status.return_value = FPELStatus.TERMINAL_FAIL
 
         result = service.seal(target_id=TASK_ID)
@@ -376,7 +371,7 @@ class TestParametrizedSealFailureReason:
 
     def test_seal_fail_post_freeze_change(self) -> None:
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_current_content_hash.return_value = compute_content_hash("changed after freeze")
         repo.get_fpel_status.return_value = FPELStatus.CHECK_PASSED
 
@@ -399,14 +394,12 @@ class TestCheckSealedHashDrift:
         sealed = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
-            sealed_at=datetime.now(tz=timezone.utc),
+            sealed_at=datetime.now(tz=UTC),
             content_hash=frozen.content_hash,
         )
         repo.get_sealed_verdict.return_value = sealed
         # Content changed AFTER seal
-        repo.get_current_content_hash.return_value = compute_content_hash(
-            "modified after seal"
-        )
+        repo.get_current_content_hash.return_value = compute_content_hash("modified after seal")
 
         decision = service.check_sealed(target_id=TASK_ID)
         assert decision.allowed is False
@@ -419,7 +412,7 @@ class TestCheckSealedHashDrift:
         sealed = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
-            sealed_at=datetime.now(tz=timezone.utc),
+            sealed_at=datetime.now(tz=UTC),
             content_hash=frozen.content_hash,
         )
         repo.get_sealed_verdict.return_value = sealed
@@ -441,7 +434,7 @@ class TestFailRemainsTerminal:
     def test_fail_remains_even_when_checker_emits_pass(self) -> None:
         """TERMINAL_FAIL is not overridden by a new PASS report."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_fpel_status.return_value = FPELStatus.TERMINAL_FAIL
         # A checker emits PASS (should not matter)
         repo.get_checkers_for.return_value = ["checker-a"]
@@ -457,7 +450,7 @@ class TestFailRemainsTerminal:
     def test_fail_blocks_seal_even_with_all_pass_reports(self) -> None:
         """Seal is denied when TERMINAL_FAIL even if all checkers report PASS."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_fpel_status.return_value = FPELStatus.TERMINAL_FAIL
         repo.get_checkers_for.return_value = ["checker-a", "checker-b"]
         repo.get_reports_for.return_value = [
@@ -479,7 +472,7 @@ class TestZeroCheckers:
     def test_seal_fails_when_no_checkers_registered(self) -> None:
         """If no checkers are registered → MISSING_REPORTS."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_checkers_for.return_value = []  # zero checkers
         repo.get_reports_for.return_value = []
         repo.get_fpel_status.return_value = FPELStatus.FROZEN
@@ -498,7 +491,7 @@ class TestCheckerFailBlocksSeal:
     def test_seal_fails_when_checker_returns_fail(self) -> None:
         """A checker with FAIL verdict blocks seal with MISSING_REPORTS."""
         service, repo = _make_service()
-        frozen = _setup_frozen(repo)
+        _setup_frozen(repo)
         repo.get_checkers_for.return_value = ["checker-a"]
         repo.get_reports_for.return_value = [
             {"checker_id": "checker-a", "verdict": "FAIL"},

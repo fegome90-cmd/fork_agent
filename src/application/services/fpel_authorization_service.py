@@ -267,9 +267,14 @@ class FPELAuthorizationService:
         - Unstarted + no approved hash (unverifiable) → NEEDS_HUMAN_DECISION
         - Running + retry/resume/next_phase/major_scope_change → NO_FROZEN_PROPOSAL (needs new freeze)
         """
-        _ACTIONS_REQUIRING_FREEZE = frozenset({
-            "retry", "resume", "next_phase", "major_scope_change",
-        })
+        _ACTIONS_REQUIRING_FREEZE = frozenset(
+            {
+                "retry",
+                "resume",
+                "next_phase",
+                "major_scope_change",
+            }
+        )
 
         # Already-running legacy with an action that requires freeze
         if is_running and action in _ACTIONS_REQUIRING_FREEZE:

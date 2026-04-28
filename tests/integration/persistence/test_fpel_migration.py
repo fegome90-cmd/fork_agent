@@ -15,7 +15,6 @@ import pytest
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.migrations import run_migrations
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -28,7 +27,13 @@ def fpel_db(tmp_path: Path) -> DatabaseConnection:
     """Create a fresh DB with all migrations applied, including FPEL tables."""
     db_path = tmp_path / "fpel_test.db"
     config = DatabaseConfig(db_path=db_path)
-    migrations_dir = Path(__file__).parent.parent.parent.parent / "src" / "infrastructure" / "persistence" / "migrations"
+    migrations_dir = (
+        Path(__file__).parent.parent.parent.parent
+        / "src"
+        / "infrastructure"
+        / "persistence"
+        / "migrations"
+    )
     run_migrations(config, migrations_dir)
     return DatabaseConnection(config=config)
 
@@ -111,7 +116,9 @@ def _insert_frozen_proposal(conn, fp_id: str, target_id: str = "task-test") -> N
 class TestSealIdempotencyDBLevel:
     """Verify UNIQUE constraint on sealed_verdicts prevents duplicate seals at DB level."""
 
-    def test_unique_constraint_rejects_duplicate_sealed_verdict(self, fpel_db: DatabaseConnection) -> None:
+    def test_unique_constraint_rejects_duplicate_sealed_verdict(
+        self, fpel_db: DatabaseConnection
+    ) -> None:
         """Inserting a second sealed verdict with same frozen_proposal_id MUST fail."""
         fp_id = "fp-test123abc"
         now = "2026-04-28T00:00:00Z"

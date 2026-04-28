@@ -15,25 +15,25 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from src.domain.entities.fpel import (
     AuthorizationDecision,
+    FPELStatus,
     FrozenProposal,
     FrozenProposalLifecycle,
-    FPELStatus,
-    SealFailureReason,
     SealedVerdict,
+    SealFailureReason,
     compute_content_hash,
     detect_scope_change,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _sha256(text: str) -> str:
     """Compute SHA-256 of text encoded as UTF-8."""
@@ -257,6 +257,7 @@ class TestCanonicalSerialization:
 class TestAuthorizationDecision:
     def test_has_exactly_7_fields(self) -> None:
         import dataclasses
+
         fields = {f.name for f in dataclasses.fields(AuthorizationDecision)}
         expected = {
             "allowed",
@@ -284,7 +285,7 @@ class TestAuthorizationDecision:
         assert decision.reason == SealFailureReason.NO_FROZEN_PROPOSAL
 
     def test_allowed_decision(self) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         decision = AuthorizationDecision(
             allowed=True,
             status=FPELStatus.SEALED_PASS,
@@ -307,6 +308,7 @@ class TestAuthorizationDecision:
 class TestSealedVerdict:
     def test_has_exactly_4_fields(self) -> None:
         import dataclasses
+
         fields = {f.name for f in dataclasses.fields(SealedVerdict)}
         expected = {
             "frozen_proposal_id",
@@ -317,7 +319,7 @@ class TestSealedVerdict:
         assert fields == expected
 
     def test_sealed_verdict_creation(self) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         verdict = SealedVerdict(
             frozen_proposal_id="fp-010",
             verdict="SEALED_PASS",

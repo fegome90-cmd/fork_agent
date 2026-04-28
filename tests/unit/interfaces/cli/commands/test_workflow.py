@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -483,7 +483,6 @@ class TestWorkflowExecuteFPELGate:
     @staticmethod
     def _make_executor_result():
         """Create a minimal ExecutionResult mock for successful execution."""
-        from src.application.services.workflow.state import Task
 
         plan = TestWorkflowExecuteFPELGate._make_plan_state()
         exec_state = ExecuteState(
@@ -513,7 +512,7 @@ class TestWorkflowExecuteFPELGate:
             content_hash="abc123",
             reason=None,
             seal_id="seal-1",
-            sealed_at=datetime.now(timezone.utc),
+            sealed_at=datetime.now(UTC),
         )
         mock_fpel_port = MagicMock()
         mock_fpel_port.check_sealed.return_value = sealed_decision

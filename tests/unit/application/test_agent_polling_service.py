@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -420,7 +420,7 @@ class TestFPELSharedGate:
             ts.start.return_value = None
         else:
 
-            def _start_denied(task_id: str, **kwargs):
+            def _start_denied(task_id: str, **_kwargs):
                 raise TaskTransitionError(
                     f"Task '{task_id}' requires sealed PASS to start. "
                     f"Status: {decision.status.value}"
@@ -442,7 +442,7 @@ class TestFPELSharedGate:
             content_hash="abc123",
             reason=None,
             seal_id="seal-1",
-            sealed_at=datetime.now(timezone.utc),
+            sealed_at=datetime.now(UTC),
         )
         task = _make_task("task-sealed")
         ts = self._make_task_service_with_fpel(task, sealed_decision)
@@ -503,7 +503,7 @@ class TestFPELSharedGate:
             content_hash="hash-shared",
             reason=None,
             seal_id="seal-shared",
-            sealed_at=datetime.now(timezone.utc),
+            sealed_at=datetime.now(UTC),
         )
         task = _make_task("task-shared")
         ts = self._make_task_service_with_fpel(task, sealed_decision)

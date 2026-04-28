@@ -11,13 +11,12 @@ Tests that start() gates via FPELAuthorizationPort.check_sealed():
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.application.exceptions import TaskTransitionError
-
 from src.application.services.task_board_service import TaskBoardService
 from src.domain.entities.fpel import (
     AuthorizationDecision,
@@ -74,7 +73,7 @@ def _sealed_pass_decision() -> AuthorizationDecision:
         content_hash=CONTENT_HASH,
         reason=None,
         seal_id="seal-001",
-        sealed_at=datetime.now(tz=timezone.utc),
+        sealed_at=datetime.now(tz=UTC),
     )
 
 

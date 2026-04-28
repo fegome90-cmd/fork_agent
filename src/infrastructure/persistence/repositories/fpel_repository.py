@@ -89,8 +89,7 @@ class SqliteFPELRepository:
         """Mark a frozen proposal as SUPERSEDED (terminal at proposal level)."""
         with self._connection as conn:
             conn.execute(
-                "UPDATE frozen_proposals SET lifecycle = 'SUPERSEDED' "
-                "WHERE frozen_proposal_id = ?",
+                "UPDATE frozen_proposals SET lifecycle = 'SUPERSEDED' WHERE frozen_proposal_id = ?",
                 (frozen_proposal_id,),
             )
 

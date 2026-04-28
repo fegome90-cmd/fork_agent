@@ -13,14 +13,12 @@ import pytest
 from src.application.services.fpel_authorization_service import FPELAuthorizationService
 from src.domain.entities.fpel import (
     FPELStatus,
-    SealFailureReason,
     SealedVerdict,
     compute_content_hash,
 )
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.migrations import run_migrations
 from src.infrastructure.persistence.repositories.fpel_repository import SqliteFPELRepository
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -36,7 +34,13 @@ def fpel_db(tmp_path: Path) -> DatabaseConnection:
     """Create a fresh DB with all migrations applied."""
     db_path = tmp_path / "fpel_compose.db"
     config = DatabaseConfig(db_path=db_path)
-    migrations_dir = Path(__file__).parent.parent.parent.parent / "src" / "infrastructure" / "persistence" / "migrations"
+    migrations_dir = (
+        Path(__file__).parent.parent.parent.parent
+        / "src"
+        / "infrastructure"
+        / "persistence"
+        / "migrations"
+    )
     run_migrations(config, migrations_dir)
     return DatabaseConnection(config=config)
 
@@ -65,7 +69,9 @@ def _seed_checker_report(conn, frozen_proposal_id: str, checker_id: str = CHECKE
 class TestIdempotencyComposition:
     """Seal → consume → re-seal → re-consume produces same outcome."""
 
-    def test_seal_consume_reseal_reconsume_same_outcome(self, service: FPELAuthorizationService, fpel_db: DatabaseConnection) -> None:
+    def test_seal_consume_reseal_reconsume_same_outcome(
+        self, service: FPELAuthorizationService, fpel_db: DatabaseConnection
+    ) -> None:
         """Full cycle: seal, consume, attempt re-seal, re-consume → same outcome.
 
         Steps:
@@ -117,7 +123,9 @@ class TestIdempotencyComposition:
             count = cursor.fetchone()[0]
         assert count == 1, "Idempotent re-seal must NOT create duplicate rows"
 
-    def test_consume_before_seal_is_denied(self, service: FPELAuthorizationService, fpel_db: DatabaseConnection) -> None:
+    def test_consume_before_seal_is_denied(
+        self, service: FPELAuthorizationService, fpel_db: DatabaseConnection
+    ) -> None:
         """Consuming before seal is denied — proves seal is required."""
         # Freeze only, no seal
         service.freeze(target_id=TASK_ID, content=CONTENT)

@@ -51,18 +51,20 @@ from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook
 logger = logging.getLogger(__name__)
 
 
-def get_fpel_authorization_port() -> object:
+def get_fpel_authorization_port():  # -> FPELAuthorizationPort | None
     """Get the FPELAuthorizationPort instance.
 
     Returns None if FPEL is not wired in the current container.
-    The return type is ``object`` to avoid importing the port protocol
-    at module level (keeps the lazy-import pattern consistent).
+    Uses lazy import to avoid importing the port protocol at module level.
     """
-    try:
-        from src.infrastructure.persistence.container import get_fpel_authorization_port as _get
+    from src.domain.ports.fpel_authorization_port import FPELAuthorizationPort
 
-        return _get()
-    except (ImportError, AttributeError):
+    try:
+        from src.infrastructure.persistence.container import Container
+
+        container = Container()
+        return cast(FPELAuthorizationPort, container.fpel_authorization_service())
+    except Exception:
         return None
 
 

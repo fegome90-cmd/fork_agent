@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -70,7 +70,7 @@ def _sealed_pass_decision(
         content_hash=content_hash,
         reason=None,
         seal_id=seal_id,
-        sealed_at=datetime(2026, 1, 15, 10, 30, 0, tzinfo=timezone.utc),
+        sealed_at=datetime(2026, 1, 15, 10, 30, 0, tzinfo=UTC),
     )
 
 

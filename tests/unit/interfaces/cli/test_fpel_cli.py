@@ -11,7 +11,7 @@ Tests fpel freeze/check/seal/status via Typer CLI runner:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,9 +21,8 @@ from src.application.services.fpel_authorization_service import FPELAuthorizatio
 from src.domain.entities.fpel import (
     FPELStatus,
     FrozenProposal,
-    FrozenProposalLifecycle,
-    SealFailureReason,
     SealedVerdict,
+    SealFailureReason,
     compute_content_hash,
 )
 from src.domain.ports.fpel_repository import FPELRepository
@@ -77,7 +76,7 @@ def _patch_service(service: FPELAuthorizationService):
 class TestFreezeCommand:
     def test_freeze_creates_snapshot(self) -> None:
         service, repo = _make_service()
-        frozen = _make_frozen()
+        _make_frozen()
         repo.get_all_frozen_proposals.return_value = []
 
         with _patch_service(service):
@@ -226,7 +225,7 @@ class TestStatusCommand:
         repo.get_sealed_verdict.return_value = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
-            sealed_at=datetime.now(tz=timezone.utc),
+            sealed_at=datetime.now(tz=UTC),
             content_hash=frozen.content_hash,
         )
 
@@ -240,7 +239,7 @@ class TestStatusCommand:
         """Status with sealed records MUST report hash, sealed verdict, sealed_at."""
         service, repo = _make_service()
         frozen = _make_frozen()
-        sealed_at = datetime.now(tz=timezone.utc)
+        sealed_at = datetime.now(tz=UTC)
         repo.get_active_frozen_proposal.return_value = frozen
         repo.get_sealed_verdict.return_value = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
@@ -265,7 +264,7 @@ class TestStatusCommand:
         repo.get_sealed_verdict.return_value = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
-            sealed_at=datetime.now(tz=timezone.utc),
+            sealed_at=datetime.now(tz=UTC),
             content_hash=frozen.content_hash,
         )
 
