@@ -443,10 +443,10 @@
     },
     {
       "fileA": "src/domain/ports/agent_launch_repository.py",
-      "startA": 46,
+      "startA": 50,
       "fileB": "src/infrastructure/persistence/repositories/agent_launch_repository.py",
       "startB": 113,
-      "lines": 26,
+      "lines": 16,
       "tokens": 0
     },
     {
@@ -514,7 +514,7 @@
       "tokens": 0
     }
   ],
-  "duplicatedLines": 1023,
-  "totalLines": 40074,
-  "percentage": 2.55
+  "duplicatedLines": 1013,
+  "totalLines": 40079,
+  "percentage": 2.53
 }

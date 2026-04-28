@@ -22,6 +22,10 @@ class AgentLaunchRepository(Protocol):
         owner_type: str,
         owner_id: str,
         lease_expires_at: int,
+        *,
+        role: str | None = None,
+        parent_launch_id: str | None = None,
+        model: str | None = None,
     ) -> AgentLaunch | None:
         """Atomically claim a RESERVED launch slot for a canonical key.
 
@@ -58,6 +62,7 @@ class AgentLaunchRepository(Protocol):
         process_pgid: int | None = None,
         tmux_session: str | None = None,
         tmux_pane_id: str | None = None,
+        output_artifact: str | None = None,
         clear_lease: bool = False,
     ) -> bool:
         """CAS update — only succeeds if current status matches expected_status.
