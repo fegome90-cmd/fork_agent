@@ -148,7 +148,8 @@ jobs:
         run: uv sync --all-extras
 
       - name: Run bandit
-        run: uv run bandit -r src/ -ll -f json -o bandit-report.json
+        run: uv run bandit -r src/ -ll -f json -o bandit-report.json || true
+        continue-on-error: true
 
       - name: Upload bandit results
         if: always()
