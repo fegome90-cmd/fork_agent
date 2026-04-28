@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.domain.services.canonical_key import (
+    _sanitize,
     build_api_key,
     build_manager_key,
     build_task_key,
@@ -56,6 +57,14 @@ class TestBuildTaskKey:
         key = build_task_key("")
         assert key == "task:"
 
+    def test_tab_stripped(self) -> None:
+        key = build_task_key("task\twith\ttabs")
+        assert "\t" not in key
+
+    def test_carriage_return_stripped(self) -> None:
+        key = build_task_key("hello\rworld")
+        assert "\r" not in key
+
 
 class TestBuildManagerKey:
     """Manager namespace: manager:{agent_name}"""
@@ -99,3 +108,39 @@ class TestNamespaceSeparation:
             build_workflow_key("x"),
         }
         assert len(keys) == 4
+
+
+class TestSanitize:
+    """_sanitize strips whitespace and control characters from key segments."""
+
+    def test_strips_leading_trailing_whitespace(self) -> None:
+        assert _sanitize("  hello  ") == "hello"
+
+    def test_replaces_newlines_with_space(self) -> None:
+        assert _sanitize("hello\nworld") == "hello world"
+
+    def test_replaces_carriage_return_with_space(self) -> None:
+        assert _sanitize("hello\rworld") == "hello world"
+
+    def test_replaces_tabs_with_space(self) -> None:
+        assert _sanitize("hello\tworld") == "hello world"
+
+    def test_handles_mixed_whitespace(self) -> None:
+        result = _sanitize("  hello \t\n\r world  ")
+        assert "\t" not in result
+        assert "\n" not in result
+        assert "\r" not in result
+        assert result == "hello world"
+
+    def test_truncates_to_max_length(self) -> None:
+        long_input = "a" * 300
+        assert len(_sanitize(long_input, max_length=64)) == 64
+
+    def test_empty_string(self) -> None:
+        assert _sanitize("") == ""
+
+    def test_whitespace_only(self) -> None:
+        assert _sanitize("  \t\n\r  ") == ""
+
+    def test_preserves_valid_chars(self) -> None:
+        assert _sanitize("task-123_abc.def") == "task-123_abc.def"

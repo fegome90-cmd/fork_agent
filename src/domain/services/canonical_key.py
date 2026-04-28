@@ -11,11 +11,12 @@ Validation: ``^[a-zA-Z0-9._:/-]{1,256}$``
 from __future__ import annotations
 
 import hashlib
+import re
 
 
 def _sanitize(value: str, max_length: int = 256) -> str:
-    """Sanitize a key segment: strip, truncate, replace whitespace."""
-    cleaned = value.strip().replace("\n", " ").replace("\r", "")
+    """Sanitize a key segment: strip, collapse whitespace, truncate."""
+    cleaned = re.sub(r"\s+", " ", value.strip())
     return cleaned[:max_length]
 
 

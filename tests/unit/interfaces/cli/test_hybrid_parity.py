@@ -94,14 +94,16 @@ class TestCriticalCommandReceipts:
         self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path
     ) -> None:
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
-        _, receipt = d.dispatch_message_send(sender="agent-1", recipient="agent-2", content="hello")
+        _, receipt = d.dispatch_message_send(
+            to_agent="session:main.agent", payload="hello", from_agent="session:main.orch"
+        )
         assert receipt.mode == DispatchMode.MCP_CLIENT
 
     def test_message_receive_mcp_receipt(
         self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path
     ) -> None:
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
-        _, receipt = d.dispatch_message_receive(recipient="agent-1")
+        _, receipt = d.dispatch_message_receive(agent_id="session:main.agent", limit=10)
         assert receipt.mode == DispatchMode.MCP_CLIENT
 
 
@@ -137,7 +139,7 @@ class TestFallbackReceipts:
     ) -> None:
         mock_mcp.call_tool_sync.side_effect = ConnectionError("refused")
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
-        _, receipt = d.dispatch_message_send(sender="a", recipient="b", content="hi")
+        _, receipt = d.dispatch_message_send(to_agent="session:main.a", payload="hi", from_agent="session:main.b")
         assert receipt.mode == DispatchMode.FALLBACK
 
     def test_message_receive_fallback(
@@ -145,7 +147,7 @@ class TestFallbackReceipts:
     ) -> None:
         mock_mcp.call_tool_sync.side_effect = ConnectionError("refused")
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
-        _, receipt = d.dispatch_message_receive(recipient="a")
+        _, receipt = d.dispatch_message_receive(agent_id="session:main.a", limit=10)
         assert receipt.mode == DispatchMode.FALLBACK
 
 
@@ -186,7 +188,7 @@ class TestMcpRequireFailsClosed:
         mock_mcp.call_tool_sync.side_effect = RuntimeError("MCP down")
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
         with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
-            d.dispatch_message_send(sender="a", recipient="b", content="hi")
+            d.dispatch_message_send(to_agent="session:main.a", payload="hi", from_agent="session:main.b")
 
     def test_message_receive_require_fails(
         self, mock_service: MagicMock, mock_mcp: MagicMock, receipt_file: Path, monkeypatch
@@ -195,4 +197,4 @@ class TestMcpRequireFailsClosed:
         mock_mcp.call_tool_sync.side_effect = RuntimeError("MCP down")
         d = _dispatcher_with_mcp(mock_service, mock_mcp)
         with pytest.raises(RuntimeError, match="FORK_MCP_REQUIRE"):
-            d.dispatch_message_receive(recipient="a")
+            d.dispatch_message_receive(agent_id="session:main.a", limit=10)

@@ -416,9 +416,9 @@ class AgentManager:
             if success:
                 # Confirm lifecycle termination
                 if self._lifecycle is not None:
-                    from src.domain.services.canonical_key import build_manager_key as _bmk
+                    from src.domain.services.canonical_key import build_manager_key
 
-                    canonical_key = _bmk(name)
+                    canonical_key = build_manager_key(name)
                     active = self._lifecycle.get_active_launch(canonical_key)
                     if active is not None:
                         self._lifecycle.confirm_terminated(active.launch_id)

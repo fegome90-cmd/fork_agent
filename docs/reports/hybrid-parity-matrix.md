@@ -59,9 +59,9 @@ CLI command
 ## Receipt Format
 
 ```json
-{"mode":"mcp","command":"save","latency_ms":28,"reason":null,"server_pid":12345,"timestamp":"2026-04-27T20:00:00Z"}
+{"mode":"mcp_client","command":"save","latency_ms":28,"reason":null,"server_pid":12345,"timestamp":"2026-04-27T20:00:00Z"}
 {"mode":"direct","command":"save","latency_ms":5,"reason":"no_server","server_pid":null,"timestamp":"2026-04-27T20:00:01Z"}
-{"mode":"direct_fallback","command":"save","latency_ms":35,"reason":"mcp_error","server_pid":12345,"timestamp":"2026-04-27T20:00:02Z"}
+{"mode":"direct_fallback","command":"save","latency_ms":35,"reason":"protocol_error","server_pid":12345,"timestamp":"2026-04-27T20:00:02Z"}
 ```
 
 ## Known Gaps
