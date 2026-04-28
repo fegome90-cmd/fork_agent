@@ -331,33 +331,33 @@
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 318,
+      "startA": 331,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 102,
+      "startB": 105,
       "lines": 19,
       "tokens": 0
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 356,
+      "startA": 369,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 181,
+      "startB": 190,
       "lines": 17,
       "tokens": 0
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 378,
+      "startA": 393,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 243,
-      "lines": 21,
+      "startB": 256,
+      "lines": 19,
       "tokens": 0
     },
     {
       "fileA": "src/application/services/workflow/state.py",
-      "startA": 465,
+      "startA": 478,
       "fileB": "src/application/services/workflow/state.py",
-      "startB": 378,
+      "startB": 391,
       "lines": 21,
       "tokens": 0
     },
@@ -442,11 +442,27 @@
       "tokens": 0
     },
     {
+      "fileA": "src/domain/ports/poll_run_repository.py",
+      "startA": 29,
+      "fileB": "src/infrastructure/persistence/repositories/poll_run_repository.py",
+      "startB": 220,
+      "lines": 10,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/domain/ports/agent_launch_repository.py",
+      "startA": 17,
+      "fileB": "src/infrastructure/persistence/repositories/agent_launch_repository.py",
+      "startB": 24,
+      "lines": 23,
+      "tokens": 0
+    },
+    {
       "fileA": "src/domain/ports/agent_launch_repository.py",
       "startA": 50,
       "fileB": "src/infrastructure/persistence/repositories/agent_launch_repository.py",
-      "startB": 113,
-      "lines": 16,
+      "startB": 121,
+      "lines": 27,
       "tokens": 0
     },
     {
@@ -463,6 +479,14 @@
       "fileB": "src/interfaces/cli/commands/query.py",
       "startB": 110,
       "lines": 16,
+      "tokens": 0
+    },
+    {
+      "fileA": "src/application/services/fpel_authorization_service.py",
+      "startA": 140,
+      "fileB": "src/application/services/fpel_authorization_service.py",
+      "startB": 42,
+      "lines": 13,
       "tokens": 0
     },
     {
@@ -514,7 +538,7 @@
       "tokens": 0
     }
   ],
-  "duplicatedLines": 1013,
-  "totalLines": 40079,
-  "percentage": 2.53
+  "duplicatedLines": 1065,
+  "totalLines": 41286,
+  "percentage": 2.58
 }
