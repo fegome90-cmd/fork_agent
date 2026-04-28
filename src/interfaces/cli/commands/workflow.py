@@ -51,6 +51,21 @@ from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook
 logger = logging.getLogger(__name__)
 
 
+def get_fpel_authorization_port() -> object:
+    """Get the FPELAuthorizationPort instance.
+
+    Returns None if FPEL is not wired in the current container.
+    The return type is ``object`` to avoid importing the port protocol
+    at module level (keeps the lazy-import pattern consistent).
+    """
+    try:
+        from src.infrastructure.persistence.container import get_fpel_authorization_port as _get
+
+        return _get()
+    except (ImportError, AttributeError):
+        return None
+
+
 class ShipPreflightError(Exception):
     """Raised when ship preflight checks fail."""
 
@@ -459,6 +474,19 @@ def execute(
             phase=WorkflowPhase.EXECUTING,
             tasks=plan.tasks,
         )
+
+    # FPEL gate: sealed PASS required for workflow execute
+    fpel_port = get_fpel_authorization_port()
+    if fpel_port is not None:
+        decision = fpel_port.check_sealed(plan.session_id)
+        if not decision.allowed:
+            reason_str = decision.reason.value if decision.reason else "unknown"
+            typer.echo(
+                f"Error: Workflow execute blocked — sealed PASS required. "
+                f"Status: {decision.status.value}, reason: {reason_str}",
+                err=True,
+            )
+            raise typer.Exit(1)  # noqa: B904
 
     # Delegate to WorkflowExecutor
     executor = get_workflow_executor()

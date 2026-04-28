@@ -329,10 +329,11 @@ class AgentPollingService:
         # Start the task on the Task Board
         try:
             self._task_service.start(task_id, owner=POLL_AGENT_OWNER)
-        except TaskTransitionError:
-            self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, "Task already started")
+        except TaskTransitionError as exc:
+            error_msg = str(exc)
+            self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, error_msg)
             if lifecycle_launch_id is not None and self._lifecycle_service is not None:
-                self._lifecycle_service.mark_failed(lifecycle_launch_id, "Task already started")
+                self._lifecycle_service.mark_failed(lifecycle_launch_id, error_msg)
             result = self._poll_run_repo.get_by_id(run_id)
             if result is None:
                 raise ValueError(f"Poll run '{run_id}' disappeared") from None

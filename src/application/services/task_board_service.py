@@ -13,6 +13,7 @@ from src.domain.entities.orchestration_task import (
     OrchestrationTask,
     OrchestrationTaskStatus,
 )
+from src.domain.ports.fpel_authorization_port import FPELAuthorizationPort
 from src.domain.ports.orchestration_task_repository import (
     OrchestrationTaskRepository,
 )
@@ -27,10 +28,15 @@ class TaskBoardService:
     and persist through the injected repository.
     """
 
-    __slots__ = ("_repo",)
+    __slots__ = ("_repo", "_fpel_port")
 
-    def __init__(self, repo: OrchestrationTaskRepository) -> None:
+    def __init__(
+        self,
+        repo: OrchestrationTaskRepository,
+        fpel_port: FPELAuthorizationPort | None = None,
+    ) -> None:
         self._repo = repo
+        self._fpel_port = fpel_port
 
     # ------------------------------------------------------------------
     # CRUD
@@ -184,13 +190,27 @@ class TaskBoardService:
     def start(self, task_id: str, owner: str, requested_by: str | None = None) -> OrchestrationTask:
         """Transition APPROVED -> IN_PROGRESS.
 
+        If an FPELAuthorizationPort is injected, the task must have a
+        sealed PASS for the current frozen hash before starting.
+
         Raises:
-            ValueError: If the task is blocked by other tasks.
+            ValueError: If the task is blocked by other tasks or lacks sealed PASS.
         """
         task = self._require_task(task_id)
         if task.is_blocked:
             raise ValueError(f"Task '{task_id}' is blocked by: {', '.join(task.blocked_by)}")
         self._validate_transition(task, OrchestrationTaskStatus.IN_PROGRESS)
+
+        # FPEL gate: sealed PASS required for implementation start
+        if self._fpel_port is not None:
+            decision = self._fpel_port.check_sealed(task_id)
+            if not decision.allowed:
+                from src.application.exceptions import TaskTransitionError
+
+                raise TaskTransitionError(
+                    f"Task '{task_id}' requires sealed PASS to start. "
+                    f"Status: {decision.status.value}"
+                )
 
         now_ms = int(time.time() * 1000)
         updated = replace(

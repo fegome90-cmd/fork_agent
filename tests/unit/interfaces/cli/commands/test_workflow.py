@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
@@ -14,6 +15,7 @@ from src.application.services.workflow.state import (
     VerifyState,
     WorkflowPhase,
 )
+from src.domain.entities.fpel import AuthorizationDecision, FPELStatus, SealFailureReason
 
 runner = CliRunner()
 
@@ -454,3 +456,194 @@ class TestWorkflowStatus:
 
         assert result.exit_code == 0
         assert "Plan:" in result.stdout
+
+
+class TestWorkflowExecuteFPELGate:
+    """Tests for FPEL sealed-PASS gate on workflow execute.
+
+    Spec references:
+      R6 Scenario 1: Execute with sealed pass → execution MAY start
+      R6 Scenario 2: Execute blocked without seal → execution MUST be denied
+      R3 Scenario 3: Post-seal content drift → gate MUST deny with HASH_MISMATCH
+
+    No ship-related gate tests per task 2.2 scope.
+    """
+
+    @staticmethod
+    def _make_plan_state() -> PlanState:
+        """Create a minimal PlanState with OUTLINED phase ready for execute."""
+        from src.application.services.workflow.state import Task
+
+        return PlanState(
+            session_id="fpel-test-plan",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[Task(id="task-1", slug="test-task", description="test")],
+        )
+
+    @staticmethod
+    def _make_executor_result():
+        """Create a minimal ExecutionResult mock for successful execution."""
+        from src.application.services.workflow.state import Task
+
+        plan = TestWorkflowExecuteFPELGate._make_plan_state()
+        exec_state = ExecuteState(
+            session_id="fpel-test-exec",
+            phase=WorkflowPhase.EXECUTING,
+            tasks=plan.tasks,
+        )
+        result = MagicMock()
+        result.exec_state = exec_state
+        result.spawned_sessions = []
+        result.errors = []
+        return result
+
+    def test_execute_with_sealed_pass_authorizes_before_executor(self, tmp_path: Path) -> None:
+        """Sealed PASS → FPELAuthorizationPort.check_sealed called BEFORE execute_plan.
+
+        Verifies the authorization gate fires and passes through to the executor.
+        """
+        plan_state = self._make_plan_state()
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        sealed_decision = AuthorizationDecision(
+            allowed=True,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-1",
+            content_hash="abc123",
+            reason=None,
+            seal_id="seal-1",
+            sealed_at=datetime.now(timezone.utc),
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = sealed_decision
+
+        executor_result = self._make_executor_result()
+        mock_executor = MagicMock()
+        mock_executor.execute_plan.return_value = executor_result
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code == 0
+        assert "Execution started" in result.stdout
+        # FPEL gate was checked
+        mock_fpel_port.check_sealed.assert_called_once()
+        # Executor was called after the gate
+        mock_executor.execute_plan.assert_called_once()
+
+    def test_execute_blocked_without_seal(self, tmp_path: Path) -> None:
+        """No sealed PASS → execution denied, executor never called.
+
+        Simulates candidate-only CHECK_PASSED (not sealed) being denied.
+        """
+        plan_state = self._make_plan_state()
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        denied_decision = AuthorizationDecision(
+            allowed=False,
+            status=FPELStatus.CHECK_PASSED,
+            frozen_proposal_id="fp-1",
+            content_hash="abc123",
+            reason=SealFailureReason.MISSING_REPORTS,
+            seal_id=None,
+            sealed_at=None,
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = denied_decision
+
+        mock_executor = MagicMock()
+        executor_result = self._make_executor_result()
+        mock_executor.execute_plan.return_value = executor_result
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code != 0
+        # Executor was never called — gate blocked it
+        mock_executor.execute_plan.assert_not_called()
+
+    def test_execute_blocked_on_post_seal_hash_drift(self, tmp_path: Path) -> None:
+        """Post-seal content drift → gate denies with HASH_MISMATCH.
+
+        Simulates a sealed PASS that existed for hash H1, but current
+        content hash has drifted to H2. The gate must deny authorization.
+        """
+        plan_state = self._make_plan_state()
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        hash_drift_decision = AuthorizationDecision(
+            allowed=False,
+            status=FPELStatus.FROZEN,
+            frozen_proposal_id="fp-1",
+            content_hash="old-hash-h1",
+            reason=SealFailureReason.HASH_MISMATCH,
+            seal_id=None,
+            sealed_at=None,
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = hash_drift_decision
+
+        mock_executor = MagicMock()
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code != 0
+        # Executor must not be called when hash drift is detected
+        mock_executor.execute_plan.assert_not_called()
+        # The error output must mention the blocking reason
+        assert "HASH_MISMATCH" in result.output or "sealed PASS" in result.output
