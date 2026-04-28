@@ -1,9 +1,12 @@
+from __future__ import annotations
+
+import pytest
+
 """Tests for git push/pull roundtrip operations.
 
 Uses real git subprocess calls with bare remote repos.
 """
 
-from __future__ import annotations
 
 import gzip
 import subprocess
@@ -20,6 +23,7 @@ def _write_chunk(path: Path, data: dict) -> None:
         f.write(json.dumps(data) + "\n")
 
 
+@pytest.mark.requires_git
 class TestGitPushPullRoundtrip:
     def test_push_then_pull_roundtrip(self, tmp_path: Path) -> None:
         """Push 2 chunks to bare remote, clone pulls them back."""

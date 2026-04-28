@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 """Integration tests for Agent + Memory workflow."""
 
-from __future__ import annotations
 
 from pathlib import Path
 
@@ -41,6 +42,7 @@ def orchestrator() -> TmuxOrchestrator:
     return TmuxOrchestrator(safety_mode=False)
 
 
+@pytest.mark.integration
 class TestAgentMemoryWorkflow:
     def test_agent_saves_observation(self, memory_service: MemoryService) -> None:
         obs = memory_service.save(
@@ -140,6 +142,7 @@ class TestAgentMemoryWorkflow:
             orchestrator.kill_session("agent_1_session")
 
 
+@pytest.mark.integration
 class TestAgentContextPreservation:
     def test_agent_resumes_work_from_memory(self, memory_service: MemoryService) -> None:
         memory_service.save(

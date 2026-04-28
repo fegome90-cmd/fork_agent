@@ -10,6 +10,41 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "bughunt: bug detection tests for integration issues")
     config.addinivalue_line("markers", "integration: integration tests")
     config.addinivalue_line("markers", "requires_tmux: tests that require tmux runtime")
+    config.addinivalue_line("markers", "requires_git: tests that require git init/fetch")
+    config.addinivalue_line(
+        "markers", "requires_agent_backend: tests that require opencode/pi binary"
+    )
+
+
+def _is_ci() -> bool:
+    """Check if running in CI."""
+    import os
+
+    return (
+        os.environ.get("CI", "").lower() in ("true", "1")
+        or os.environ.get("GITHUB_ACTIONS") == "true"
+    )
+
+
+def pytest_collection_modifyitems(items):  # noqa: ARG001 — pytest hook signature
+    """Skip infrastructure-dependent tests in CI."""
+    if not _is_ci():
+        return
+
+    skip_tmux = pytest.mark.skip(reason="tmux not available in CI")
+    skip_git = pytest.mark.skip(reason="git init not available in CI")
+    skip_backend = pytest.mark.skip(reason="agent backend not installed in CI")
+    skip_integration = pytest.mark.skip(reason="integration tests skipped in CI")
+
+    for item in items:
+        if "requires_tmux" in item.keywords:
+            item.add_marker(skip_tmux)
+        elif "requires_git" in item.keywords:
+            item.add_marker(skip_git)
+        elif "requires_agent_backend" in item.keywords:
+            item.add_marker(skip_backend)
+        elif "integration" in item.keywords:
+            item.add_marker(skip_integration)
 
 
 def tmux_available() -> bool:

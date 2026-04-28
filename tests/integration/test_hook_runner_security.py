@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Integration tests for HookRunner security features.
 
 These tests verify:
@@ -6,7 +8,6 @@ These tests verify:
 - Dangerous environment variables are blocked
 """
 
-from __future__ import annotations
 
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from src.application.services.workspace.exceptions import HookExecutionError, Se
 from src.application.services.workspace.hook_runner import HookRunner
 
 
+@pytest.mark.integration
 class TestHookRunnerSecurity:
     """Tests for HookRunner security features."""
 
@@ -35,6 +37,7 @@ class TestHookRunnerSecurity:
         return workspace_dir
 
 
+@pytest.mark.integration
 class TestPathTraversalBlocked(TestHookRunnerSecurity):
     """Tests for C-02: Path traversal blocking."""
 
@@ -90,6 +93,7 @@ class TestPathTraversalBlocked(TestHookRunnerSecurity):
         assert resolved.resolve() == test_file.resolve()
 
 
+@pytest.mark.integration
 class TestTimeoutWorks(TestHookRunnerSecurity):
     """Tests for M-01: Timeout functionality."""
 
@@ -131,6 +135,7 @@ class TestTimeoutWorks(TestHookRunnerSecurity):
         assert "setup complete" in result.stdout
 
 
+@pytest.mark.integration
 class TestDangerousEnvVarsBlocked(TestHookRunnerSecurity):
     """Tests for dangerous environment variable blocking."""
 

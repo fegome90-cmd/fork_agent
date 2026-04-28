@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 """Integration tests for Event Spine - FASE 2.
 
 Tests that WorkflowExecutor emits structured events with MemoryEventMetadata contract.
 """
 
-from __future__ import annotations
 
 import tempfile
 from pathlib import Path
@@ -89,6 +90,7 @@ def executor(
     )
 
 
+@pytest.mark.integration
 class TestEventSpineTaskExecution:
     """Test event emission during task execution."""
 
@@ -202,6 +204,7 @@ class TestEventSpineTaskExecution:
         assert obs.metadata.get("error_message") is not None
 
 
+@pytest.mark.integration
 class TestEventSpineShip:
     """Test event emission during ship (worktree cleanup)."""
 
@@ -297,6 +300,7 @@ class TestEventSpineShip:
         assert "Merge conflict" in (obs.metadata.get("error_message") or "")
 
 
+@pytest.mark.integration
 class TestEventIdempotency:
     """Test that events are idempotent."""
 
@@ -365,6 +369,7 @@ class TestEventIdempotency:
                 assert field in obs.metadata, f"Missing required field: {field}"
 
 
+@pytest.mark.integration
 class TestEventInvariants:
     """Test event invariants for data integrity."""
 
@@ -448,6 +453,7 @@ class TestEventInvariants:
         )
 
 
+@pytest.mark.integration
 class TestEventPrivacy:
     """Test that sensitive data is not leaked in events."""
 

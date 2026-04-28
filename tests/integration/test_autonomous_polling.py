@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 """Integration tests for autonomous agent polling.
 
 Uses temp-file SQLite + temp directories for full-stack testing.
 """
 
-from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import patch
@@ -92,6 +93,7 @@ def _create_approved_task(task_svc: TaskBoardService, subject: str = "Test task"
     return task.id
 
 
+@pytest.mark.integration
 class TestFullPollingCycle:
     """End-to-end: create task → submit → approve → poll → verify."""
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Integration tests for idempotency.
 
 These tests verify:
@@ -5,7 +7,6 @@ These tests verify:
 - worktree_is_valid returns existing workspace
 """
 
-from __future__ import annotations
 
 import subprocess
 from pathlib import Path
@@ -18,6 +19,7 @@ from src.application.services.workspace.workspace_manager import WorkspaceManage
 from src.infrastructure.platform.git.git_command_executor import GitCommandExecutor
 
 
+@pytest.mark.integration
 class TestIdempotency:
     """Integration tests for idempotent operations."""
 
@@ -95,6 +97,7 @@ class TestIdempotency:
         )
 
 
+@pytest.mark.integration
 class TestCreateWorkspaceIdempotency(TestIdempotency):
     """Tests for M-02: create_workspace idempotency."""
 
@@ -160,6 +163,7 @@ class TestCreateWorkspaceIdempotency(TestIdempotency):
             workspace_manager.create_workspace("layout-test-2", layout=LayoutType.SIBLING)
 
 
+@pytest.mark.integration
 class TestWorktreeIsValid(TestIdempotency):
     """Tests for worktree_is_valid functionality."""
 
@@ -203,6 +207,7 @@ class TestWorktreeIsValid(TestIdempotency):
         assert is_valid is False
 
 
+@pytest.mark.integration
 class TestWorkspaceStateAfterOperations(TestIdempotency):
     """Tests for workspace state consistency."""
 

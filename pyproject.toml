@@ -83,6 +83,12 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short -p no:warnings"
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+  "tmux: requires tmux binary installed (skipped in CI)",
+  "git: requires git init/fetch support (skipped in CI)",
+  "agent_backend: requires opencode/pi agent binary (skipped in CI)",
+  "integration: requires running services (skipped in CI)",
+]
 
 [tool.coverage.run]
 source = ["."]
@@ -155,7 +161,7 @@ select = ["E", "W", "F", "I", "UP", "B", "C4", "ARG", "SIM"]
 ignore = ["E501", "B008", "C901"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ARG002", "ARG005"]
+"tests/**" = ["ARG002", "ARG005", "E402"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
