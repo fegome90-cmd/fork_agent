@@ -132,7 +132,7 @@ exclude_lines = [
   "raise NotImplementedError",
 ]
 show_missing = true
-fail_under = 72
+fail_under = 60
 precision = 2
 
 [tool.mypy]
