@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+import pytest
+
 """Unit tests for agent backends."""
 
-from __future__ import annotations
 
 from unittest.mock import patch
 
@@ -14,6 +17,7 @@ from src.infrastructure.agent_backends import (
 )
 
 
+@pytest.mark.requires_agent_backend
 class TestOpencodeBackend:
     """Tests for OpencodeBackend."""
 
@@ -64,6 +68,7 @@ class TestOpencodeBackend:
         assert backend.get_default_model() == "opencode/minimax-m2.5-free"
 
 
+@pytest.mark.requires_agent_backend
 class TestPiBackend:
     """Tests for PiBackend."""
 
@@ -111,6 +116,7 @@ class TestPiBackend:
         assert backend.get_default_model() == "pi/default"
 
 
+@pytest.mark.requires_agent_backend
 class TestBackendRegistry:
     """Tests for backend registry functions."""
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Integration tests for LayoutResolver.
 
 These tests verify:
@@ -6,7 +8,6 @@ These tests verify:
 - SIBLING layout path resolution
 """
 
-from __future__ import annotations
 
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from src.application.services.workspace.entities import LayoutType, WorkspaceCon
 from src.application.services.workspace.workspace_manager import LayoutResolver
 
 
+@pytest.mark.integration
 class TestLayoutResolver:
     """Tests for LayoutResolver path resolution."""
 
@@ -47,6 +49,7 @@ class TestLayoutResolver:
         )
 
 
+@pytest.mark.integration
 class TestNestedLayoutResolution(TestLayoutResolver):
     """Tests for NESTED layout path resolution."""
 
@@ -84,6 +87,7 @@ class TestNestedLayoutResolution(TestLayoutResolver):
         assert path == Path("/var/repos/my-awesome-project/.worktrees/develop")
 
 
+@pytest.mark.integration
 class TestOuterNestedLayoutResolution(TestLayoutResolver):
     """Tests for OUTER_NESTED layout path resolution."""
 
@@ -127,6 +131,7 @@ class TestOuterNestedLayoutResolution(TestLayoutResolver):
         assert path == Path("/home/user/code/projects/main.worktrees/release-v1")
 
 
+@pytest.mark.integration
 class TestSiblingLayoutResolution(TestLayoutResolver):
     """Tests for SIBLING layout path resolution."""
 
@@ -165,6 +170,7 @@ class TestSiblingLayoutResolution(TestLayoutResolver):
         assert path == Path("/var/www/html/my-web-app-dev")
 
 
+@pytest.mark.integration
 class TestLayoutResolverEdgeCases:
     """Edge case tests for LayoutResolver."""
 

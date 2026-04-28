@@ -1,6 +1,8 @@
-"""Tests for HIGH issues #5 (idempotent spawn) and #6 (Agent RLock)."""
-
 from __future__ import annotations
+
+import pytest
+
+"""Tests for HIGH issues #5 (idempotent spawn) and #6 (Agent RLock)."""
 
 import threading
 from pathlib import Path
@@ -13,6 +15,7 @@ from src.application.services.agent.agent_manager import (
 )
 
 
+@pytest.mark.requires_tmux
 class TestTmuxAgentIdempotentSpawn:
     """HIGH #5: TmuxAgent.spawn() SHALL use -A flag for idempotent creation."""
 
@@ -67,6 +70,7 @@ class TestTmuxAgentIdempotentSpawn:
         assert a_idx < d_idx, f"-A (idx={a_idx}) should come before -d (idx={d_idx})"
 
 
+@pytest.mark.requires_tmux
 class TestAgentRLock:
     """HIGH #6: Agent SHALL use RLock for thread safety."""
 
@@ -92,6 +96,7 @@ class TestAgentRLock:
             pass  # Should not deadlock
 
 
+@pytest.mark.requires_tmux
 class TestAgentManagerThreadSafeReads:
     """HIGH #6: AgentManager read methods SHALL hold lock."""
 

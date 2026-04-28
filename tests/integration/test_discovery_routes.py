@@ -32,6 +32,7 @@ def client(test_app: FastAPI) -> Generator[TestClient, None, None]:
         yield test_client
 
 
+@pytest.mark.integration
 class TestDiscoveryOverviewEndpoint:
     """Tests for GET /api/v1/discovery endpoint."""
 
@@ -88,6 +89,7 @@ class TestDiscoveryOverviewEndpoint:
         assert data["cache_ttl"] > 0
 
 
+@pytest.mark.integration
 class TestDiscoveryWorkflowsEndpoint:
     """Tests for GET /api/v1/discovery/workflows endpoint."""
 
@@ -129,6 +131,7 @@ class TestDiscoveryWorkflowsEndpoint:
         assert "quick-agent-session" in workflow_ids
 
 
+@pytest.mark.integration
 class TestDiscoveryErrorGuidanceEndpoint:
     """Tests for GET /api/v1/discovery/errors/{status_code} endpoint."""
 
@@ -186,6 +189,7 @@ class TestDiscoveryErrorGuidanceEndpoint:
         assert data["data"]["title"] == "Bad Request"
 
 
+@pytest.mark.integration
 class TestDiscoveryAgentBackends:
     """Tests for agent backend info in discovery."""
 
@@ -214,6 +218,7 @@ class TestDiscoveryAgentBackends:
             assert isinstance(agent["available"], bool)
 
 
+@pytest.mark.integration
 class TestDiscoveryCommonErrors:
     """Tests for common errors list in discovery."""
 

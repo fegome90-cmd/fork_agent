@@ -1,11 +1,12 @@
+from __future__ import annotations
+
+import pytest
+
 """Tests for WorkflowExecutor service."""
 
-from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 from src.application.services.workflow.executor import (
     TASK_STATUS_EXECUTING,
@@ -116,6 +117,7 @@ def sample_plan(sample_task: Task) -> PlanState:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestTaskExecutionResult:
     """Tests for TaskExecutionResult dataclass."""
 
@@ -153,6 +155,7 @@ class TestTaskExecutionResult:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestExecutionResult:
     """Tests for ExecutionResult dataclass."""
 
@@ -184,6 +187,7 @@ class TestExecutionResult:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestCleanupResult:
     """Tests for CleanupResult dataclass."""
 
@@ -216,6 +220,7 @@ class TestCleanupResult:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestExecuteTask:
     """Tests for WorkflowExecutor.execute_task method."""
 
@@ -359,6 +364,7 @@ class TestExecuteTask:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestExecutePlan:
     """Tests for WorkflowExecutor.execute_plan method."""
 
@@ -537,6 +543,7 @@ class TestExecutePlan:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestCleanupWorktree:
     """Tests for WorkflowExecutor.cleanup_worktree method."""
 
@@ -741,6 +748,7 @@ class TestCleanupWorktree:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestCleanupAllWorktrees:
     """Tests for WorkflowExecutor.cleanup_all_worktrees method."""
 
@@ -837,6 +845,7 @@ class TestCleanupAllWorktrees:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestHelperMethods:
     """Tests for private helper methods."""
 
@@ -968,6 +977,7 @@ class TestHelperMethods:
 # =============================================================================
 
 
+@pytest.mark.requires_agent_backend
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 

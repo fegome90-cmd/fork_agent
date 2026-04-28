@@ -1,6 +1,8 @@
-"""Tests for AgentManager lifecycle integration — duplicate suppression via lifecycle service."""
-
 from __future__ import annotations
+
+import pytest
+
+"""Tests for AgentManager lifecycle integration — duplicate suppression via lifecycle service."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -45,6 +47,7 @@ def _make_config(name: str = "test-agent", tmux_session: str = "test-mgr-session
     )
 
 
+@pytest.mark.requires_tmux
 class TestAgentManagerWithoutLifecycle:
     """When lifecycle service is not wired, manager behaves as before."""
 
@@ -56,6 +59,7 @@ class TestAgentManagerWithoutLifecycle:
         manager.terminate_agent("test-agent")
 
 
+@pytest.mark.requires_tmux
 class TestAgentManagerWithLifecycle:
     """When lifecycle service is wired, duplicate spawns are suppressed."""
 
@@ -200,6 +204,7 @@ class TestAgentManagerWithLifecycle:
         manager.terminate_agent("test-agent")
 
 
+@pytest.mark.requires_tmux
 class TestBugHuntLifecycleDedup:
     """Tests for bug-hunt canonical key strategy and lifecycle contract."""
 

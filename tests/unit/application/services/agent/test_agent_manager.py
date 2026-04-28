@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.application.services.agent.agent_manager import (
     AgentConfig,
     AgentManager,
@@ -13,6 +15,7 @@ from src.application.services.agent.agent_manager import (
 )
 
 
+@pytest.mark.requires_tmux
 class TestCircuitBreaker:
     def test_initial_state_closed(self) -> None:
         cb = CircuitBreaker()
@@ -53,6 +56,7 @@ class TestCircuitBreaker:
         assert cb.can_execute() is False
 
 
+@pytest.mark.requires_tmux
 class TestAgentConfig:
     def test_defaults(self) -> None:
         config = AgentConfig(
@@ -65,6 +69,7 @@ class TestAgentConfig:
         assert config.tmux_session is None
 
 
+@pytest.mark.requires_tmux
 class TestTmuxAgent:
     def test_creates_session_name(self) -> None:
         config = AgentConfig(
@@ -86,6 +91,7 @@ class TestTmuxAgent:
         assert agent.tmux_session == "custom-session"
 
 
+@pytest.mark.requires_tmux
 class TestAgentManager:
     def test_spawn_and_terminate(self) -> None:
         manager = AgentManager()
@@ -143,6 +149,7 @@ class TestAgentManager:
         manager.stop_health_monitoring()
 
 
+@pytest.mark.requires_tmux
 class TestReconcileSessions:
     @patch("subprocess.run")
     def test_reconcile_no_sessions(self, mock_run: MagicMock) -> None:
@@ -198,6 +205,7 @@ class TestReconcileSessions:
         assert "test-reconcile-agent" in result.registered_agents
 
 
+@pytest.mark.requires_tmux
 class TestCleanupOrphans:
     @patch("subprocess.run")
     def test_cleanup_dry_run_reports_orphans(self, mock_run: MagicMock) -> None:
@@ -235,6 +243,7 @@ class TestCleanupOrphans:
         manager.terminate_agent("test-cleanup")
 
 
+@pytest.mark.requires_tmux
 class TestGetHealthStatus:
     @patch("subprocess.run")
     def test_health_status_returns_correct_structure(self, mock_run: MagicMock) -> None:
@@ -250,6 +259,7 @@ class TestGetHealthStatus:
         assert "runtime_sessions_count" in status
 
 
+@pytest.mark.requires_tmux
 class TestListRuntimeSessions:
     @patch("subprocess.run")
     def test_list_runtime_sessions_filters_prefix(self, mock_run: MagicMock) -> None:

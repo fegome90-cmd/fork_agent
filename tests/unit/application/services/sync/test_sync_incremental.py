@@ -1,13 +1,14 @@
+from __future__ import annotations
+
+import pytest
+
 """Tests for incremental sync: mutation tracking, export/import, git backend."""
 
-from __future__ import annotations
 
 import gzip
 import sqlite3
 import tempfile
 from pathlib import Path
-
-import pytest
 
 from src.domain.entities.observation import Observation
 from src.domain.entities.sync import SyncChunk, SyncMutation, SyncStatus
@@ -95,6 +96,7 @@ def _make_test_db() -> tuple[sqlite3.Connection, Path]:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.requires_git
 class TestSyncEntities:
     def test_sync_chunk_valid(self) -> None:
         chunk = SyncChunk(
@@ -149,6 +151,7 @@ class TestSyncEntities:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.requires_git
 class TestMutationTracking:
     def test_create_records_mutation(self) -> None:
         """When sync_repo is wired, create() records an insert mutation."""
@@ -222,6 +225,7 @@ class TestMutationTracking:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.requires_git
 class TestIncrementalSync:
     def test_export_incremental_empty(self, tmp_path: Path) -> None:
         """No mutations → no chunks."""
@@ -386,6 +390,7 @@ class TestIncrementalSync:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.requires_git
 class TestGitSyncBackend:
     def test_init_repo(self, tmp_path: Path) -> None:
         git = GitSyncBackend(sync_dir=tmp_path)

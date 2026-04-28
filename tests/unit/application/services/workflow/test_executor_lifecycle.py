@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+import pytest
+
 """Tests for WorkflowExecutor lifecycle integration — duplicate suppression via lifecycle service."""
 
-from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -55,6 +58,7 @@ def _make_executor(lifecycle: AgentLaunchLifecycleService | None = None) -> Work
     )
 
 
+@pytest.mark.requires_agent_backend
 class TestWorkflowExecutorWithoutLifecycle:
     """When lifecycle service is not wired, executor behaves as before."""
 
@@ -80,6 +84,7 @@ class TestWorkflowExecutorWithoutLifecycle:
         assert r1.session_name != r2.session_name  # Different sessions — no dedup
 
 
+@pytest.mark.requires_agent_backend
 class TestWorkflowExecutorWithLifecycle:
     """When lifecycle service is wired, duplicate launches are suppressed."""
 
@@ -200,6 +205,7 @@ class TestWorkflowExecutorWithLifecycle:
         assert executor._tmux.create_session.call_count == 1
 
 
+@pytest.mark.requires_agent_backend
 class TestAPIAgentsLifecycleDedup:
     """Tests for API /agents route lifecycle integration.
 

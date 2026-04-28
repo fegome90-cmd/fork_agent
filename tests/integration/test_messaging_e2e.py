@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 """E2E tests for inter-agent messaging with real tmux.
 
 These tests require tmux to be installed and available in PATH.
 They create real tmux sessions and test the full messaging flow.
 """
 
-from __future__ import annotations
 
 import contextlib
 import subprocess
@@ -77,6 +78,7 @@ def messenger(temp_db: Path) -> AgentMessenger:
     return AgentMessenger(orchestrator=orchestrator, store=store)
 
 
+@pytest.mark.integration
 class TestTmuxSessionLifecycle:
     """Tests for tmux session creation and cleanup."""
 
@@ -117,6 +119,7 @@ class TestTmuxSessionLifecycle:
         assert session_name not in [s.name for s in sessions]
 
 
+@pytest.mark.integration
 class TestMessageSendAndCapture:
     """Tests for sending messages and capturing them."""
 
@@ -206,6 +209,7 @@ class TestMessageSendAndCapture:
         assert FORK_MSG_SHORT_PREFIX not in content
 
 
+@pytest.mark.integration
 class TestMessageBroadcast:
     """Tests for broadcasting messages to all sessions."""
 
@@ -277,6 +281,7 @@ class TestMessageBroadcast:
         assert len(messages) >= 1, f"No messages stored for {target_agent}"
 
 
+@pytest.mark.integration
 class TestMessageProtocolE2E:
     """End-to-end tests for message protocol."""
 
@@ -328,6 +333,7 @@ class TestMessageProtocolE2E:
         assert any(m.correlation_id == "test-corr-123" for m in messages)
 
 
+@pytest.mark.integration
 class TestMessageHistory:
     """Tests for message history functionality."""
 

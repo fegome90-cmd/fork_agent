@@ -1,9 +1,12 @@
+from __future__ import annotations
+
+import pytest
+
 """Integration tests: full sync roundtrip using real DI wiring.
 
 Tests create_container → export → import into a fresh container → verify data.
 """
 
-from __future__ import annotations
 
 from pathlib import Path
 
@@ -32,6 +35,7 @@ def _make_obs(
     )
 
 
+@pytest.mark.integration
 class TestSyncRoundtripIntegration:
     def test_insert_update_delete_roundtrip(self, tmp_path: Path) -> None:
         """Insert+update+delete on DB-A, export, import into DB-B, verify."""

@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 """Integration tests for FASE 4 UX commands.
 
 Tests query and timeline commands with structured queries.
 """
 
-from __future__ import annotations
 
 import json
 import tempfile
@@ -98,6 +99,7 @@ def populated_db(temp_db: Path) -> Path:
     return temp_db
 
 
+@pytest.mark.integration
 class TestQueryCommand:
     """Tests for 'memory query query' command."""
 
@@ -207,6 +209,7 @@ class TestQueryCommand:
         assert result.exit_code == 0
 
 
+@pytest.mark.integration
 class TestTimelineCommand:
     """Tests for 'memory query timeline' command."""
 
@@ -280,6 +283,7 @@ class TestTimelineCommand:
         assert "No events found" in result.output
 
 
+@pytest.mark.integration
 class TestPrivacySanitization:
     """Tests for privacy sanitization in output."""
 
