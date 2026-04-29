@@ -11,6 +11,7 @@ Tests fpel freeze/check/seal/status via Typer CLI runner:
 
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
@@ -375,3 +376,45 @@ class TestSealFailureExitCodes:
         from src.interfaces.cli.commands.fpel import seal_failure_exit_code
 
         assert seal_failure_exit_code(reason) == expected_exit
+
+
+# ---------------------------------------------------------------------------
+# FPEL disabled — CLI exits gracefully, does not crash with NoneType
+# ---------------------------------------------------------------------------
+
+
+class TestFpelDisabledGracefulExit:
+    """When FPEL_ENABLED is unset, CLI commands must exit with error, not crash."""
+
+    def test_freeze_exits_when_disabled(self) -> None:
+        """freeze command exits with code 1 when FPEL is disabled."""
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_ENABLED", None)
+            result = runner.invoke(app, ["freeze", "--target-id", "t1", "--content", "x"])
+
+        assert result.exit_code == 1
+        assert "disabled" in result.output.lower() or "FPEL_ENABLED" in result.output
+
+    def test_seal_exits_when_disabled(self) -> None:
+        """seal command exits with code 1 when FPEL is disabled."""
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_ENABLED", None)
+            result = runner.invoke(app, ["seal", "--target-id", "t1"])
+
+        assert result.exit_code == 1
+
+    def test_status_exits_when_disabled(self) -> None:
+        """status command exits with code 1 when FPEL is disabled."""
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_ENABLED", None)
+            result = runner.invoke(app, ["status", "--target-id", "t1"])
+
+        assert result.exit_code == 1
+
+    def test_check_exits_when_disabled(self) -> None:
+        """check command exits with code 1 when FPEL is disabled."""
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_ENABLED", None)
+            result = runner.invoke(app, ["check", "--target-id", "t1"])
+
+        assert result.exit_code == 1

@@ -28,10 +28,22 @@ def seal_failure_exit_code(reason: SealFailureReason) -> int:
 
 
 def _get_fpel_service():
-    """Build FPELAuthorizationService via infrastructure container."""
+    """Build FPELAuthorizationService via infrastructure container.
+
+    Returns None when FPEL_ENABLED is not set — callers must handle this.
+    """
     from src.infrastructure.persistence.container import get_fpel_service
 
     return get_fpel_service()
+
+
+def _require_fpel_service():
+    """Get FPEL service or exit with error if FPEL is disabled."""
+    service = _get_fpel_service()
+    if service is None:
+        console.print("[red]Error: FPEL is disabled. Set FPEL_ENABLED=1 to enable.[/red]")
+        raise typer.Exit(1)
+    return service
 
 
 @app.command("freeze")
@@ -41,7 +53,7 @@ def freeze_proposal(
 ) -> None:
     """Create an immutable frozen snapshot of a proposal."""
 
-    service = _get_fpel_service()
+    service = _require_fpel_service()
     frozen = service.freeze(target_id=target_id, content=content)
     console.print("[green]Proposal frozen.[/green]")
     console.print(f"  frozen_proposal_id: {frozen.frozen_proposal_id}")
@@ -54,7 +66,7 @@ def check_proposal(
     target_id: Annotated[str, typer.Option("--target-id", help="Target to check")],
 ) -> None:
     """Run checks on a frozen proposal (writes evidence only, does NOT seal)."""
-    service = _get_fpel_service()
+    service = _require_fpel_service()
     decision = service.check(target_id=target_id)
     console.print(f"  status: {decision.status.value}")
     if decision.reason:
@@ -69,7 +81,7 @@ def seal_proposal(
     """Validate invariants and create sealed PASS, or report failure reason."""
     from src.domain.entities.fpel import SealedVerdict
 
-    service = _get_fpel_service()
+    service = _require_fpel_service()
     result = service.seal(target_id=target_id)
 
     if isinstance(result, SealedVerdict):
@@ -89,7 +101,7 @@ def status_proposal(
     target_id: Annotated[str, typer.Option("--target-id", help="Target to check status")],
 ) -> None:
     """Report current FPEL authorization status."""
-    service = _get_fpel_service()
+    service = _require_fpel_service()
     decision = service.check_sealed(target_id=target_id)
 
     console.print(f"  status:             {decision.status.value}")
