@@ -477,8 +477,11 @@ def execute(
     # plan.session_id when executing the workflow as a whole.
     fpel_port = get_fpel_authorization_port()
     if fpel_port is not None:
+        from src.infrastructure.persistence.fpel_content_hash import compute_plan_hash
+
+        current_hash = compute_plan_hash(plan)
         resolved_target_id = task_id if task_id else plan.session_id
-        decision = fpel_port.check_sealed(resolved_target_id)
+        decision = fpel_port.check_sealed(resolved_target_id, current_hash=current_hash)
         if not decision.allowed:
             reason_str = decision.reason.value if decision.reason else "unknown"
             typer.echo(

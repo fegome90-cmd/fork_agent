@@ -568,7 +568,10 @@ class TestFPELSealedGate:
 
         assert result.status == OrchestrationTaskStatus.IN_PROGRESS
         assert result.owner == "worker"
-        mock_fpel.check_sealed.assert_called_once_with(TASK_ID)
+        mock_fpel.check_sealed.assert_called_once()
+        call_args = mock_fpel.check_sealed.call_args
+        assert call_args[0][0] == TASK_ID
+        assert "current_hash" in call_args[1], "check_sealed() MUST receive current_hash"
         repo.cas_save.assert_called_once()
 
     def test_start_blocks_candidate_verdict(self) -> None:

@@ -650,6 +650,122 @@ class TestWorkflowExecuteFPELGate:
         assert "HASH_MISMATCH" in result.output or "sealed PASS" in result.output
 
 
+class TestWorkflowExecuteHashAuthority:
+    """Verify that workflow execute passes current_hash to check_sealed()."""
+
+    def test_execute_passes_plan_hash_to_gate(self, tmp_path: Path) -> None:
+        """workflow execute MUST compute and pass current_hash from plan."""
+        from src.infrastructure.persistence.fpel_content_hash import compute_plan_hash
+
+        plan_state = PlanState(
+            session_id="hash-auth-test",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[Task(id="t-1", slug="auth", description="Add JWT auth")],
+        )
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        sealed_decision = AuthorizationDecision(
+            allowed=True,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-1",
+            content_hash="abc123",
+            reason=None,
+            seal_id="seal-1",
+            sealed_at=datetime.now(UTC),
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = sealed_decision
+
+        executor_result = MagicMock()
+        exec_state = ExecuteState(
+            session_id="hash-auth-exec",
+            phase=WorkflowPhase.EXECUTING,
+            tasks=plan_state.tasks,
+        )
+        executor_result.exec_state = exec_state
+        executor_result.spawned_sessions = []
+        executor_result.errors = []
+        mock_executor = MagicMock()
+        mock_executor.execute_plan.return_value = executor_result
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code == 0
+        call_kwargs = mock_fpel_port.check_sealed.call_args[1]
+        assert "current_hash" in call_kwargs
+        assert call_kwargs["current_hash"] == compute_plan_hash(plan_state)
+
+    def test_execute_post_freeze_task_change_blocks(self, tmp_path: Path) -> None:
+        """If tasks change after freeze, execute blocked by HASH_MISMATCH.
+
+        Demonstrates: plan frozen with tasks=[t-1: JWT], then tasks changed
+        to tasks=[t-1: OAuth]. The gate detects drift via current_hash.
+        """
+        plan_state = PlanState(
+            session_id="drift-test",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[Task(id="t-1", slug="auth", description="Add OAuth")],
+        )
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        drift_decision = AuthorizationDecision(
+            allowed=False,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-1",
+            content_hash="original-hash",
+            reason=SealFailureReason.HASH_MISMATCH,
+            seal_id=None,
+            sealed_at=None,
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = drift_decision
+
+        mock_executor = MagicMock()
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code != 0
+        mock_executor.execute_plan.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 RED: FPEL Runtime Wiring — fail-closed + target_id namespace
 # ---------------------------------------------------------------------------
