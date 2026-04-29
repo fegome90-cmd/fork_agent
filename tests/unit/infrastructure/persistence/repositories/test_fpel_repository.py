@@ -16,7 +16,13 @@ def _create_repo(tmp_path: Path) -> tuple[DatabaseConnection, SqliteFPELReposito
 
     db_path = tmp_path / "test_fpel.db"
     config = DatabaseConfig(db_path=db_path)
-    migrations_dir = Path(__file__).resolve().parents[5] / "src" / "infrastructure" / "persistence" / "migrations"
+    migrations_dir = (
+        Path(__file__).resolve().parents[5]
+        / "src"
+        / "infrastructure"
+        / "persistence"
+        / "migrations"
+    )
     run_migrations(config, migrations_dir)
     conn = DatabaseConnection(config=config)
     repo = SqliteFPELRepository(connection=conn)

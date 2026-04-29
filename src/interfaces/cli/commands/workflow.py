@@ -94,7 +94,7 @@ def _get_hook_service() -> HookService:
             return cast(HookService, ctx.obj["hook_service"])
     except RuntimeError:
         pass
-    return _get_shared_hook_service()  # type: ignore[no-any-return]
+    return _get_shared_hook_service()
 
 
 def _dispatch_event(event: object, context: str = "") -> None:

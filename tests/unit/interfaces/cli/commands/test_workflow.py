@@ -662,11 +662,15 @@ class TestGetFpelAuthorizationPortFailClosed:
         """Container init failure → MUST raise, not return None."""
         from src.interfaces.cli.commands.workflow import get_fpel_authorization_port
 
-        with patch(
-            "src.infrastructure.persistence.container.get_container",
-            side_effect=RuntimeError("DB connection failed"),
-        ), patch.dict("os.environ", {"FPEL_ENABLED": "1"}), pytest.raises(
-            (RuntimeError, Exception),
+        with (
+            patch(
+                "src.infrastructure.persistence.container.get_container",
+                side_effect=RuntimeError("DB connection failed"),
+            ),
+            patch.dict("os.environ", {"FPEL_ENABLED": "1"}),
+            pytest.raises(
+                (RuntimeError, Exception),
+            ),
         ):
             get_fpel_authorization_port()
 

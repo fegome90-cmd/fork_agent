@@ -15,6 +15,7 @@ Tests cover:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -68,12 +69,9 @@ class _JsonRpcResponse:
         MCP tool errors are returned as results with ``isError: True``,
         not as JSON-RPC error objects.  Both forms are checked.
         """
-        if self.error is not None:
-            return True
-        # MCP spec: tool errors are results with isError flag.
-        if isinstance(self.result, dict) and self.result.get("isError") is True:
-            return True
-        return False
+        return self.error is not None or (
+            isinstance(self.result, dict) and self.result.get("isError") is True
+        )
 
 
 class _McpSubprocessClient:
@@ -127,10 +125,8 @@ class _McpSubprocessClient:
 
     def close(self) -> None:
         """Terminate the MCP server subprocess."""
-        try:
+        with contextlib.suppress(OSError):
             self._proc.stdin.close()  # type: ignore[union-attr]
-        except OSError:
-            pass
         try:
             self._proc.terminate()
             self._proc.wait(timeout=5)

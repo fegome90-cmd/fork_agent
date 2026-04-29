@@ -24,7 +24,13 @@ def _setup_db(tmp_path: Path) -> Path:
     from src.infrastructure.persistence.database import DatabaseConfig
 
     config = DatabaseConfig(db_path=db_path)
-    migrations_dir = Path(__file__).resolve().parents[2] / "src" / "infrastructure" / "persistence" / "migrations"
+    migrations_dir = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "infrastructure"
+        / "persistence"
+        / "migrations"
+    )
     run_migrations(config, migrations_dir)
     return db_path
 

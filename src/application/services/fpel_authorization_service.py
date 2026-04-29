@@ -37,7 +37,9 @@ class FPELAuthorizationService:
     # FPELAuthorizationPort.check_sealed
     # ------------------------------------------------------------------
 
-    def check_sealed(self, target_id: str, current_hash: str | None = None) -> AuthorizationDecision:
+    def check_sealed(
+        self, target_id: str, current_hash: str | None = None
+    ) -> AuthorizationDecision:
         """Check whether target has valid sealed PASS for current frozen hash.
 
         When current_hash is provided by the caller, uses it directly for
@@ -72,7 +74,11 @@ class FPELAuthorizationService:
             )
 
         # Sealed verdict exists — check for post-seal drift
-        effective_hash = current_hash if current_hash is not None else self._repo.get_current_content_hash(target_id)
+        effective_hash = (
+            current_hash
+            if current_hash is not None
+            else self._repo.get_current_content_hash(target_id)
+        )
         if effective_hash is not None and detect_scope_change(sealed.content_hash, effective_hash):
             return AuthorizationDecision(
                 allowed=False,

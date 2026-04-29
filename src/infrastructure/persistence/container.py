@@ -172,7 +172,8 @@ def _get_create_container():
 # This works because __getattr__ resolves it.
 def create_container(db_path=None, export_dir=None) -> Container:
     """Create a DI container (lazy-loaded, patchable for tests)."""
-    return _get_create_container()(db_path, export_dir)
+    fn = _get_create_container()
+    return fn(db_path, export_dir)  # type: ignore[no-any-return]
 
 
 def get_container(db_path: Path | None = None) -> Container:
@@ -216,7 +217,7 @@ def get_hook_service() -> HookService:
         from src.application.services.orchestration.hook_service import HookService
 
         _hook_service = HookService()
-    return _hook_service  # type: ignore
+    return _hook_service
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +377,7 @@ def get_agent_messenger(db_path: Path | None = None):
 
 def get_database_connection(db_path: Path | None = None) -> DatabaseConnection:
     """Get the DatabaseConnection instance."""
-    return get_container(db_path).database_connection()  # type: ignore[no-any-return]
+    return get_container(db_path).database_connection()
 
 
 # ---------------------------------------------------------------------------

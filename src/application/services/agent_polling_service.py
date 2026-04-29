@@ -585,7 +585,7 @@ class AgentPollingService:
             # Prefer the direct FK link (RC-4+)
             launch = None
             if run.launch_id is not None:
-                launch = self._lifecycle_service.registry.get_by_launch_id(run.launch_id)
+                launch = self._lifecycle_service.get_launch(run.launch_id)
             # Legacy fallback: resolve by canonical_key
             if launch is None and run.canonical_key is not None:
                 launch = self._lifecycle_service.get_active_launch(run.canonical_key)
