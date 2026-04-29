@@ -473,6 +473,8 @@ def execute(
         )
 
     # FPEL gate: sealed PASS required for workflow execute
+    # target_id semantics: task_id when executing a specific task,
+    # plan.session_id when executing the workflow as a whole.
     fpel_port = get_fpel_authorization_port()
     if fpel_port is not None:
         resolved_target_id = task_id if task_id else plan.session_id

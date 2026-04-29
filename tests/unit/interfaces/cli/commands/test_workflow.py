@@ -734,3 +734,68 @@ class TestTargetIdUsesTaskIdNotSessionId:
             f"target_id should NOT be plan.session_id, got: {called_target_id}"
         )
         assert "task" in called_target_id.lower() or called_target_id == "task-real-001"
+
+
+class TestTargetIdFallsBackToSessionId:
+    """Verify that FPEL gate uses plan.session_id when no task_id is provided."""
+
+    def test_target_id_uses_session_id_when_no_task_id(self, tmp_path: Path) -> None:
+        """Without task_id, check_sealed() MUST receive plan.session_id."""
+        plan_state = PlanState(
+            session_id="workflow-session-abc",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[Task(id="task-001", slug="my-task", description="do thing")],
+        )
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        sealed_decision = AuthorizationDecision(
+            allowed=True,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-1",
+            content_hash="abc123",
+            reason=None,
+            seal_id="seal-1",
+            sealed_at=datetime.now(UTC),
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = sealed_decision
+
+        executor_result = MagicMock()
+        exec_state = ExecuteState(
+            session_id="fpel-test-exec",
+            phase=WorkflowPhase.EXECUTING,
+            tasks=plan_state.tasks,
+        )
+        executor_result.exec_state = exec_state
+        executor_result.spawned_sessions = []
+        executor_result.errors = []
+        mock_executor = MagicMock()
+        mock_executor.execute_plan.return_value = executor_result
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            # execute WITHOUT task_id argument
+            result = runner.invoke(get_app(), ["execute"])
+
+        assert result.exit_code == 0
+        called_target_id = mock_fpel_port.check_sealed.call_args[0][0]
+        assert called_target_id == "workflow-session-abc", (
+            f"target_id should be plan.session_id when no task_id, got: {called_target_id}"
+        )
