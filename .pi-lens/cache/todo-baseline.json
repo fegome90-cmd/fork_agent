@@ -4,7 +4,7 @@
       "type": "TODO",
       "message": "migrate all callers to cas_update_status",
       "file": "src/infrastructure/persistence/repositories/poll_run_repository.py",
-      "line": 121,
+      "line": 122,
       "column": 6
     },
     {

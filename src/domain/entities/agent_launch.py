@@ -108,6 +108,10 @@ class AgentLaunch:
         request_fingerprint: Fingerprint for spotting identical repeated requests.
         last_error: Last failure detail.
         quarantine_reason: Why a record was blocked from relaunch.
+        parent_launch_id: Optional UUID of the parent launch (delegation lineage).
+        role: Orchestrator role (e.g., explorer, architect, implementer).
+        model: Assigned LLM model identifier.
+        output_artifact: Path to the written output artifact file.
     """
 
     launch_id: str
@@ -133,6 +137,10 @@ class AgentLaunch:
     request_fingerprint: str | None = None
     last_error: str | None = None
     quarantine_reason: str | None = None
+    parent_launch_id: str | None = None
+    role: str | None = None
+    model: str | None = None
+    output_artifact: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.launch_id, str) or not self.launch_id:
@@ -155,6 +163,27 @@ class AgentLaunch:
             raise ValueError(
                 f"owner_type must be one of {sorted(_VALID_OWNER_TYPES)} (got {self.owner_type!r})"
             )
+        if self.parent_launch_id is not None:
+            if not self.parent_launch_id.strip():
+                raise ValueError("parent_launch_id must be non-empty when provided")
+            if self.parent_launch_id == self.launch_id:
+                raise ValueError("parent_launch_id cannot equal launch_id (self-cycle)")
+        for _fname, _fval in {
+            "role": self.role,
+            "model": self.model,
+            "output_artifact": self.output_artifact,
+        }.items():
+            if _fval is not None and not _fval.strip():
+                raise ValueError(f"{_fname} must be non-empty when provided")
+
+    @property
+    def display_name(self) -> str:
+        """Human-readable label — NOT an authority.
+
+        Format: {role}:{launch_id[:8]}
+        """
+        role_part = self.role or "unknown"
+        return f"{role_part}:{self.launch_id[:8]}"
 
     def can_transition_to(self, target: LaunchStatus) -> bool:
         """Check if transitioning to target status is allowed."""

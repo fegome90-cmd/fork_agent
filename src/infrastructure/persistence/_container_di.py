@@ -12,6 +12,7 @@ from pathlib import Path
 from dependency_injector import containers, providers
 
 from src.application.services.cleanup_service import CleanupService
+from src.application.services.fpel_authorization_service import FPELAuthorizationService
 from src.application.services.memory_service import MemoryService
 from src.application.services.messaging.agent_messenger import AgentMessenger
 from src.application.services.scheduler_service import SchedulerService
@@ -31,6 +32,7 @@ from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConn
 from src.infrastructure.persistence.health_check import HealthCheckService
 from src.infrastructure.persistence.message_store import MessageStore
 from src.infrastructure.persistence.migrations import MigrationRunner
+from src.infrastructure.persistence.repositories.fpel_repository import SqliteFPELRepository
 from src.infrastructure.persistence.repositories.observation_repository import ObservationRepository
 from src.infrastructure.persistence.repositories.promise_repository import PromiseContractRepository
 from src.infrastructure.persistence.repositories.scheduled_task_repository import (
@@ -162,6 +164,17 @@ class Container(containers.DeclarativeContainer):
         WorkspaceManager,
         git_executor=git_executor,
         config=workspace_config,
+    )
+
+    # FPEL (Frozen Proposal Evidence Loop) wiring
+    fpel_repository = providers.Singleton(
+        SqliteFPELRepository,
+        connection=database_connection,
+    )
+
+    fpel_authorization_service = providers.Singleton(
+        FPELAuthorizationService,
+        repo=fpel_repository,
     )
 
 

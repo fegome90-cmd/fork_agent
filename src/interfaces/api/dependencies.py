@@ -77,7 +77,7 @@ def get_memory_service(db_path: str = "") -> MemoryService:
 
 def get_hook_service() -> HookService:
     """Get HookService singleton — delegates to canonical container."""
-    return _get_hook_service()  # type: ignore[no-any-return]
+    return _get_hook_service()
 
 
 def get_promise_repository() -> PromiseContractRepository:

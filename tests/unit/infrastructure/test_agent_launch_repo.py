@@ -42,7 +42,11 @@ def _make_repo(tmp_path: Path) -> SqliteAgentLaunchRepository:
                 prompt_digest TEXT,
                 request_fingerprint TEXT,
                 last_error TEXT,
-                quarantine_reason TEXT
+                quarantine_reason TEXT,
+                parent_launch_id TEXT REFERENCES agent_launch_registry(launch_id),
+                role TEXT,
+                model TEXT,
+                output_artifact TEXT
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_launch_per_key
                 ON agent_launch_registry (canonical_key)

@@ -1,7 +1,8 @@
 """Workflow state management.
 
 State Schema Versioning:
-- v3 (current): Includes goal and derived_requirements in PlanState
+- v4 (current): Includes frozen_proposal_id and frozen_content_hash in PlanState
+- v3 (legacy): Includes goal and derived_requirements in PlanState
 - v2 (legacy): Includes decisions field in PlanState
 - v1 (legacy): No decisions field - auto-migrated on load
 - v0 (legacy): No schema_version field - auto-migrated on load
@@ -26,7 +27,7 @@ from src.domain.entities.derived_requirement import (
 from src.domain.entities.goal import Goal
 from src.domain.entities.user_decision import DecisionStatus, UserDecision
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 class StateError(Exception):
@@ -92,6 +93,8 @@ class PlanState:
     derived_requirements: tuple[DerivedRequirement, ...] = ()
     schema_version: int = CURRENT_SCHEMA_VERSION
     migrated_from: int | None = None
+    frozen_proposal_id: str | None = None
+    frozen_content_hash: str | None = None
 
     def to_json(self) -> dict:
         return {
@@ -144,6 +147,8 @@ class PlanState:
                 }
                 for r in self.derived_requirements
             ],
+            "frozen_proposal_id": self.frozen_proposal_id,
+            "frozen_content_hash": self.frozen_content_hash,
         }
 
     @classmethod
@@ -175,7 +180,11 @@ class PlanState:
         if schema_version == 2:
             migrated_from = 2
 
-        schema_version = 3  # Always use current version
+        # Migration: v3 -> v4 (add frozen_proposal_id and frozen_content_hash)
+        if schema_version == 3:
+            migrated_from = 3
+
+        schema_version = 4  # Always use current version
 
         # Parse tasks with new fields
         tasks = [
@@ -243,6 +252,8 @@ class PlanState:
             derived_requirements=derived_requirements,
             schema_version=schema_version,
             migrated_from=migrated_from,
+            frozen_proposal_id=data.get("frozen_proposal_id"),
+            frozen_content_hash=data.get("frozen_content_hash"),
         )
 
     def save(self, path: Path) -> None:
@@ -292,6 +303,8 @@ class PlanState:
             derived_requirements=self.derived_requirements,
             schema_version=self.schema_version,
             migrated_from=self.migrated_from,
+            frozen_proposal_id=self.frozen_proposal_id,
+            frozen_content_hash=self.frozen_content_hash,
         )
 
     def get_decision(self, key: str) -> UserDecision | None:
@@ -351,7 +364,7 @@ class ExecuteState:
         migrated_from: int | None = None
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 3
+            schema_version = 4
 
         tasks = [
             Task(
@@ -452,7 +465,7 @@ class VerifyState:
         migrated_from: int | None = None
         if schema_version == 0:
             migrated_from = 0
-            schema_version = 3
+            schema_version = 4
 
         return cls(
             session_id=data["session_id"],

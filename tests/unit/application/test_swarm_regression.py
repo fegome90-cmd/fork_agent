@@ -62,7 +62,11 @@ def _make_service(tmp_path: Path, lease_ms: int = 300_000) -> AgentLaunchLifecyc
                 prompt_digest TEXT,
                 request_fingerprint TEXT,
                 last_error TEXT,
-                quarantine_reason TEXT
+                quarantine_reason TEXT,
+                parent_launch_id TEXT REFERENCES agent_launch_registry(launch_id),
+                role TEXT,
+                model TEXT,
+                output_artifact TEXT
             );
             CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_launch_per_key
                 ON agent_launch_registry (canonical_key)
@@ -911,6 +915,7 @@ class MockPollRunRepo:
         pane_id: str | None = None,
         pid: int | None = None,
         pgid: int | None = None,
+        launch_id: str | None = None,
     ) -> bool:
         from dataclasses import replace
 
@@ -924,6 +929,7 @@ class MockPollRunRepo:
             launch_pid=pid,
             launch_pgid=pgid,
             launch_recorded_at=1,
+            launch_id=launch_id,
         )
         return True
 

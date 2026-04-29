@@ -34,6 +34,7 @@ class PollRunRepository(Protocol):
         pane_id: str | None = None,
         pid: int | None = None,
         pgid: int | None = None,
+        launch_id: str | None = None,
     ) -> bool: ...
 
     def remove(self, run_id: str) -> None: ...

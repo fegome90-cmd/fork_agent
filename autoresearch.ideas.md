@@ -33,3 +33,25 @@
 - pytest-xdist — TRIED, 37 failures from shared SQLite state
 - Event-based stop for health_monitor — not benchmarked, production-only benefit
 - Improving benchmark score past 98 — would require LSP in benchmark (tests adapter, not skill)
+
+## Sub-agent Spawn Optimization (Converged ✅)
+
+- **Baseline**: 39,630ms average spawn (38-40s range)
+- **Bottleneck**: Model API latency (33-35s = 88%), pi startup (5s = 12%)
+- **Orchestration overhead**: 762ms total = 1.3% of cycle — negligible
+- **Memory CLI vs sqlite3**: 290ms vs 30ms per call (9-10x gap) but can't bypass CLI (FTS5 + metadata)
+- **Conclusion**: Spawn latency is bounded by provider API. No code optimization can help.
+- **Real opportunities**: (1) faster providers, (2) fewer round-trips via better prompting, (3) batch memory calls
+
+## Dead Ideas (do not revisit)
+
+- Cross-process session reuse — only benefits shell mode
+- httpx.Client pooling — saves ~5ms, diminishing returns
+- HTTP/2 keep-alive — requires server changes
+- DB integrity monitoring — not measurable in autoresearch
+- pytest-xdist — TRIED, 37 failures from shared SQLite state
+- Event-based stop for health_monitor — not benchmarked, production-only benefit
+- Improving benchmark score past 98 — would require LSP in benchmark (tests adapter, not skill)
+- **Memory CLI optimization** — 1.3% of total cycle, negligible
+- **skill-resolver optimization** — 88ms, already fast
+- **enforce-envelope optimization** — 82ms, already fast

@@ -322,16 +322,18 @@ class AgentPollingService:
             status=PollRunStatus.QUEUED,
             poll_run_dir=str(run_dir),
             canonical_key=_canonical_key,
+            launch_id=lifecycle_launch_id,
         )
         self._poll_run_repo.save(run)
 
         # Start the task on the Task Board
         try:
             self._task_service.start(task_id, owner=POLL_AGENT_OWNER)
-        except TaskTransitionError:
-            self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, "Task already started")
+        except TaskTransitionError as exc:
+            error_msg = str(exc)
+            self._poll_run_repo.update_status(run_id, PollRunStatus.FAILED, error_msg)
             if lifecycle_launch_id is not None and self._lifecycle_service is not None:
-                self._lifecycle_service.mark_failed(lifecycle_launch_id, "Task already started")
+                self._lifecycle_service.mark_failed(lifecycle_launch_id, error_msg)
             result = self._poll_run_repo.get_by_id(run_id)
             if result is None:
                 raise ValueError(f"Poll run '{run_id}' disappeared") from None
@@ -382,6 +384,7 @@ class AgentPollingService:
             pane_id=handle.pane_id,
             pid=handle.pid,
             pgid=handle.pgid,
+            launch_id=lifecycle_launch_id,
         )
         if not metadata_saved:
             self._terminate_launch_handle(handle, run_id)
@@ -571,11 +574,21 @@ class AgentPollingService:
     def _finalize_launch(
         self, run: PollRun, *, failed: bool = False, error: str | None = None
     ) -> None:
-        """Best-effort finalization of the AgentLaunch for a completed/failed run."""
-        if self._lifecycle_service is None or run.canonical_key is None:
+        """Best-effort finalization of the AgentLaunch for a completed/failed run.
+
+        Resolves the authoritative launch via ``run.launch_id`` first (if present),
+        falling back to ``canonical_key`` lookup for legacy runs without the FK.
+        """
+        if self._lifecycle_service is None:
             return
         try:
-            launch = self._lifecycle_service.get_active_launch(run.canonical_key)
+            # Prefer the direct FK link (RC-4+)
+            launch = None
+            if run.launch_id is not None:
+                launch = self._lifecycle_service.get_launch(run.launch_id)
+            # Legacy fallback: resolve by canonical_key
+            if launch is None and run.canonical_key is not None:
+                launch = self._lifecycle_service.get_active_launch(run.canonical_key)
             if launch is None:
                 return
             if failed:

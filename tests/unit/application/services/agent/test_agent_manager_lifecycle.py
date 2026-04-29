@@ -23,6 +23,7 @@ def _make_claimed_launch(launch_id: str = "launch-mgr-001") -> AgentLaunch:
         owner_type="agent",
         owner_id="test-agent",
         status=LaunchStatus.RESERVED,
+        role="manager-agent",
     )
 
 
@@ -35,6 +36,7 @@ def _make_active_launch(launch_id: str = "launch-mgr-001") -> AgentLaunch:
         owner_id="test-agent",
         status=LaunchStatus.ACTIVE,
         tmux_session="agent-test-agent-session",
+        role="manager-agent",
     )
 
 
@@ -237,6 +239,7 @@ class TestBugHuntLifecycleDedup:
             owner_type="batch",
             owner_id="abc12345",
             status=LaunchStatus.ACTIVE,
+            role="hunter-agent",
         )
         lifecycle.request_launch.return_value = LaunchAttempt(
             launch=None,

@@ -153,6 +153,21 @@ class TestMemoryEventMetadata:
                 pid=-1,
             )
 
+    def test_invalid_launch_id_hex_rejected(self) -> None:
+        """Test that invalid launch_id hex is rejected."""
+        with pytest.raises(ValidationError, match="must be a 32-character hex string"):
+            MemoryEventMetadata(
+                event_type="agent_spawned",
+                run_id="run-123",
+                task_id="task-456",
+                agent_id="agent:0",
+                session_name="session-1",
+                timestamp_ms=1234567890000,
+                mode="worktree",
+                idempotency_key="run-123:task-456:agent_spawned:0",
+                launch_id="invalid-uuid-with-xyz",
+            )
+
 
 class TestGenerateIdempotencyKey:
     """Tests for idempotency key generation."""

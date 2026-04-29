@@ -51,6 +51,18 @@ from src.interfaces.cli.dependencies import get_hook_service as _get_shared_hook
 logger = logging.getLogger(__name__)
 
 
+def get_fpel_authorization_port():
+    """Get the FPELAuthorizationPort instance.
+
+    Returns FPELAuthorizationService when FPEL_ENABLED=1.
+    Returns None when FPEL is disabled.
+    Raises RuntimeError on container init failure (never silently returns None when enabled).
+    """
+    from src.infrastructure.persistence.container import get_fpel_service
+
+    return get_fpel_service()
+
+
 class ShipPreflightError(Exception):
     """Raised when ship preflight checks fail."""
 
@@ -82,7 +94,7 @@ def _get_hook_service() -> HookService:
             return cast(HookService, ctx.obj["hook_service"])
     except RuntimeError:
         pass
-    return _get_shared_hook_service()  # type: ignore[no-any-return]
+    return _get_shared_hook_service()
 
 
 def _dispatch_event(event: object, context: str = "") -> None:
@@ -459,6 +471,22 @@ def execute(
             phase=WorkflowPhase.EXECUTING,
             tasks=plan.tasks,
         )
+
+    # FPEL gate: sealed PASS required for workflow execute
+    # target_id semantics: task_id when executing a specific task,
+    # plan.session_id when executing the workflow as a whole.
+    fpel_port = get_fpel_authorization_port()
+    if fpel_port is not None:
+        resolved_target_id = task_id if task_id else plan.session_id
+        decision = fpel_port.check_sealed(resolved_target_id)
+        if not decision.allowed:
+            reason_str = decision.reason.value if decision.reason else "unknown"
+            typer.echo(
+                f"Error: Workflow execute blocked — sealed PASS required. "
+                f"Status: {decision.status.value}, reason: {reason_str}",
+                err=True,
+            )
+            raise typer.Exit(1)  # noqa: B904
 
     # Delegate to WorkflowExecutor
     executor = get_workflow_executor()

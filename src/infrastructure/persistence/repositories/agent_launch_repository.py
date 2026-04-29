@@ -29,6 +29,10 @@ class SqliteAgentLaunchRepository:
         owner_type: str,
         owner_id: str,
         lease_expires_at: int,
+        *,
+        role: str | None = None,
+        parent_launch_id: str | None = None,
+        model: str | None = None,
     ) -> AgentLaunch | None:
         """Atomically claim a RESERVED launch slot.
 
@@ -42,8 +46,9 @@ class SqliteAgentLaunchRepository:
                 conn.execute(
                     """INSERT INTO agent_launch_registry
                        (launch_id, canonical_key, surface, owner_type, owner_id,
-                        status, created_at, reserved_at, lease_expires_at)
-                       VALUES (?, ?, ?, ?, ?, 'RESERVED', ?, ?, ?)""",
+                        status, created_at, reserved_at, lease_expires_at,
+                        role, parent_launch_id, model)
+                       VALUES (?, ?, ?, ?, ?, 'RESERVED', ?, ?, ?, ?, ?, ?)""",
                     (
                         launch_id,
                         canonical_key,
@@ -53,6 +58,9 @@ class SqliteAgentLaunchRepository:
                         now_ms,
                         now_ms,
                         lease_expires_at,
+                        role,
+                        parent_launch_id,
+                        model,
                     ),
                 )
             logger.info(
@@ -125,6 +133,7 @@ class SqliteAgentLaunchRepository:
         process_pgid: int | None = None,
         tmux_session: str | None = None,
         tmux_pane_id: str | None = None,
+        output_artifact: str | None = None,
         clear_lease: bool = False,
     ) -> bool:
         """CAS update — only succeeds if current status matches expected_status.
@@ -164,7 +173,8 @@ class SqliteAgentLaunchRepository:
                     process_pid = COALESCE(?, process_pid),
                     process_pgid = COALESCE(?, process_pgid),
                     tmux_session = COALESCE(?, tmux_session),
-                    tmux_pane_id = COALESCE(?, tmux_pane_id)"""
+                    tmux_pane_id = COALESCE(?, tmux_pane_id),
+                    output_artifact = COALESCE(?, output_artifact)"""
         if clear_lease:
             set_clause += ",\n                        lease_expires_at = NULL"
 
@@ -187,6 +197,7 @@ class SqliteAgentLaunchRepository:
                         process_pgid,
                         tmux_session,
                         tmux_pane_id,
+                        output_artifact,
                         launch_id,
                         expected_status.value,
                     ),
@@ -306,4 +317,8 @@ class SqliteAgentLaunchRepository:
             request_fingerprint=row["request_fingerprint"],
             last_error=row["last_error"],
             quarantine_reason=row["quarantine_reason"],
+            parent_launch_id=row["parent_launch_id"],
+            role=row["role"],
+            model=row["model"],
+            output_artifact=row["output_artifact"],
         )
