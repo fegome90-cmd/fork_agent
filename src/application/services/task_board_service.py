@@ -203,7 +203,7 @@ class TaskBoardService:
 
         # FPEL gate: sealed PASS required for implementation start
         if self._fpel_port is not None:
-            from src.infrastructure.persistence.fpel_content_hash import compute_task_hash
+            from src.domain.services.fpel_content_hash import compute_task_hash
 
             current_hash = compute_task_hash(task)
             decision = self._fpel_port.check_sealed(task_id, current_hash=current_hash)

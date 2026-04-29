@@ -1,7 +1,7 @@
-"""FPEL content hash computation for call sites.
+"""FPEL content hash computation — canonical hash functions for domain entities.
 
-Provides canonical hash functions for domain entities (OrchestrationTask,
-PlanState) so that call sites can pass `current_hash` to `check_sealed()`.
+Provides stable SHA-256 hash functions so that freeze() and check_sealed()
+use identical canonicalization for the same target type.
 
 The hash captures the **content** of the entity (what it describes), NOT
 its lifecycle state (status, timestamps). This ensures that post-freeze
@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 
-from src.application.services.workflow.state import PlanState
 from src.domain.entities.fpel import compute_content_hash
 from src.domain.entities.orchestration_task import OrchestrationTask
 
@@ -30,7 +29,6 @@ def compute_task_hash(task: OrchestrationTask) -> str:
     """
     content = task.plan_text
     if content is None:
-        # Fallback: canonicalize subject + description
         parts = [task.subject]
         if task.description:
             parts.append(task.description)
@@ -38,20 +36,25 @@ def compute_task_hash(task: OrchestrationTask) -> str:
     return compute_content_hash(content)
 
 
-def compute_plan_hash(plan: PlanState) -> str:
-    """Compute canonical SHA-256 hash of a PlanState's content.
+def compute_plan_task_hash(task_id: str, slug: str, description: str) -> str:
+    """Compute canonical SHA-256 hash of a single plan task's content.
 
-    Serializes the task list (id + slug + description) as canonical JSON.
-    Intentionally excludes: `session_id`, `phase`, `status`, `started_at`,
-    `decisions` — these are lifecycle metadata, not the work content.
+    Used when workflow execute targets a specific task_id — the hash
+    scope matches the task, not the entire plan.
     """
-    task_data = [
-        {
-            "id": t.id,
-            "slug": t.slug,
-            "description": t.description,
-        }
-        for t in plan.tasks
-    ]
+    data = {"id": task_id, "slug": slug, "description": description}
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return compute_content_hash(canonical)
+
+
+def compute_plan_hash_from_tasks(tasks: list[dict[str, str]]) -> str:
+    """Compute canonical SHA-256 hash of a plan's task list.
+
+    Accepts a list of dicts with id/slug/description keys — no dependency
+    on application-layer types.
+
+    Serializes as sorted JSON to ensure deterministic hashing.
+    """
+    task_data = [{"id": t["id"], "slug": t["slug"], "description": t["description"]} for t in tasks]
     canonical = json.dumps(task_data, sort_keys=True, separators=(",", ":"))
     return compute_content_hash(canonical)

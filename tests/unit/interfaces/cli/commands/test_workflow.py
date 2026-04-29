@@ -655,7 +655,7 @@ class TestWorkflowExecuteHashAuthority:
 
     def test_execute_passes_plan_hash_to_gate(self, tmp_path: Path) -> None:
         """workflow execute MUST compute and pass current_hash from plan."""
-        from src.infrastructure.persistence.fpel_content_hash import compute_plan_hash
+        from src.domain.services.fpel_content_hash import compute_plan_hash_from_tasks
 
         plan_state = PlanState(
             session_id="hash-auth-test",
@@ -712,7 +712,10 @@ class TestWorkflowExecuteHashAuthority:
         assert result.exit_code == 0
         call_kwargs = mock_fpel_port.check_sealed.call_args[1]
         assert "current_hash" in call_kwargs
-        assert call_kwargs["current_hash"] == compute_plan_hash(plan_state)
+        expected_hash = compute_plan_hash_from_tasks(
+            [{"id": t.id, "slug": t.slug, "description": t.description} for t in plan_state.tasks]
+        )
+        assert call_kwargs["current_hash"] == expected_hash
 
     def test_execute_post_freeze_task_change_blocks(self, tmp_path: Path) -> None:
         """If tasks change after freeze, execute blocked by HASH_MISMATCH.
@@ -764,6 +767,122 @@ class TestWorkflowExecuteHashAuthority:
 
         assert result.exit_code != 0
         mock_executor.execute_plan.assert_not_called()
+
+
+class TestWorkflowExecuteTaskScopedHash:
+    """Verify task-scoped hash when execute is called with task_id."""
+
+    def test_execute_with_task_id_uses_task_hash_not_plan_hash(self, tmp_path: Path) -> None:
+        """When task_id provided, current_hash must be task-level, not plan-level."""
+        from src.domain.services.fpel_content_hash import (
+            compute_plan_hash_from_tasks,
+            compute_plan_task_hash,
+        )
+
+        plan_state = PlanState(
+            session_id="scope-test",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[
+                Task(id="t-1", slug="auth", description="Add JWT"),
+                Task(id="t-2", slug="db", description="Add migrations"),
+            ],
+        )
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        sealed_decision = AuthorizationDecision(
+            allowed=True,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-1",
+            content_hash="abc123",
+            reason=None,
+            seal_id="seal-1",
+            sealed_at=datetime.now(UTC),
+        )
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = sealed_decision
+
+        executor_result = MagicMock()
+        exec_state = ExecuteState(
+            session_id="scope-exec",
+            phase=WorkflowPhase.EXECUTING,
+            tasks=plan_state.tasks,
+        )
+        executor_result.exec_state = exec_state
+        executor_result.spawned_sessions = []
+        executor_result.errors = []
+        mock_executor = MagicMock()
+        mock_executor.execute_plan.return_value = executor_result
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute", "t-1"])
+
+        assert result.exit_code == 0
+        call_kwargs = mock_fpel_port.check_sealed.call_args[1]
+        actual_hash = call_kwargs["current_hash"]
+
+        # Must be task-scoped hash, NOT plan-level hash
+        task_hash = compute_plan_task_hash("t-1", "auth", "Add JWT")
+        plan_hash = compute_plan_hash_from_tasks(
+            [{"id": t.id, "slug": t.slug, "description": t.description} for t in plan_state.tasks]
+        )
+        assert actual_hash == task_hash, (
+            f"Expected task hash {task_hash[:16]}, got {actual_hash[:16]}"
+        )
+        assert actual_hash != plan_hash, "Must NOT be plan-level hash"
+
+    def test_execute_task_id_not_found_in_plan(self, tmp_path: Path) -> None:
+        """When task_id not in plan.tasks, execute must exit with error."""
+        plan_state = PlanState(
+            session_id="not-found-test",
+            phase=WorkflowPhase.OUTLINED,
+            tasks=[Task(id="t-1", slug="auth", description="Add JWT")],
+        )
+        plan_path = tmp_path / "plan-state.json"
+        plan_state.save(plan_path)
+
+        mock_fpel_port = MagicMock()
+        mock_executor = MagicMock()
+
+        with (
+            patch(
+                "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                return_value=plan_path,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_execute_state_path",
+                return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.dependencies.get_workflow_executor",
+                return_value=mock_executor,
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
+            ),
+        ):
+            result = runner.invoke(get_app(), ["execute", "nonexistent-task"])
+
+        assert result.exit_code != 0
+        mock_fpel_port.check_sealed.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

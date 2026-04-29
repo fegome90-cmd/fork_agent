@@ -247,7 +247,7 @@ class TestHashAuthority:
         call_hash = fpel.check_sealed.call_args[1]["current_hash"]
         assert call_hash is not None
 
-        from src.infrastructure.persistence.fpel_content_hash import compute_task_hash
+        from src.domain.services.fpel_content_hash import compute_task_hash
 
         expected = compute_task_hash(_make_task(plan_text="# Plan A"))
         assert call_hash == expected
@@ -270,7 +270,7 @@ class TestHashAuthority:
             service.start(TASK_ID, owner="worker")
 
         call_hash = fpel.check_sealed.call_args[1]["current_hash"]
-        from src.infrastructure.persistence.fpel_content_hash import compute_task_hash
+        from src.domain.services.fpel_content_hash import compute_task_hash
 
         expected = compute_task_hash(_make_task(plan_text="# Plan B — MODIFIED"))
         assert call_hash == expected

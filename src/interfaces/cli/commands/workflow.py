@@ -475,12 +475,28 @@ def execute(
     # FPEL gate: sealed PASS required for workflow execute
     # target_id semantics: task_id when executing a specific task,
     # plan.session_id when executing the workflow as a whole.
+    # Hash scope must match target scope: task-level hash for task targets,
+    # plan-level hash for workflow targets.
     fpel_port = get_fpel_authorization_port()
     if fpel_port is not None:
-        from src.infrastructure.persistence.fpel_content_hash import compute_plan_hash
+        from src.domain.services.fpel_content_hash import (
+            compute_plan_hash_from_tasks,
+            compute_plan_task_hash,
+        )
 
-        current_hash = compute_plan_hash(plan)
         resolved_target_id = task_id if task_id else plan.session_id
+        if task_id:
+            target_task = next((t for t in plan.tasks if t.id == task_id), None)
+            if target_task is None:
+                typer.echo(f"Error: Task '{task_id}' not found in plan", err=True)
+                raise typer.Exit(1)
+            current_hash = compute_plan_task_hash(
+                target_task.id, target_task.slug, target_task.description
+            )
+        else:
+            current_hash = compute_plan_hash_from_tasks(
+                [{"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks]
+            )
         decision = fpel_port.check_sealed(resolved_target_id, current_hash=current_hash)
         if not decision.allowed:
             reason_str = decision.reason.value if decision.reason else "unknown"

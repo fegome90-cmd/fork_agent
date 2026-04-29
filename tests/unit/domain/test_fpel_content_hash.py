@@ -1,21 +1,28 @@
-"""Tests for FPEL content hash computation at call sites.
+"""Tests for FPEL content hash computation — canonical hash functions.
 
 Verifies that:
 1. OrchestrationTask has a stable canonical hash
-2. PlanState has a stable canonical hash
-3. Changes to fields produce different hashes
-4. Same content produces same hash (idempotent)
+2. Plan task list has a stable canonical hash
+3. Single plan task hash is stable and scope-correct
+4. Changes to fields produce different hashes
+5. Same content produces same hash (idempotent)
 """
 
-from src.application.services.workflow.state import PlanState, Task, WorkflowPhase
+from dataclasses import replace
+
 from src.domain.entities.orchestration_task import (
     OrchestrationTask,
     OrchestrationTaskStatus,
 )
-from src.infrastructure.persistence.fpel_content_hash import (
-    compute_plan_hash,
+from src.domain.services.fpel_content_hash import (
+    compute_plan_hash_from_tasks,
+    compute_plan_task_hash,
     compute_task_hash,
 )
+
+
+def _task_dict(tid: str = "t-001", slug: str = "auth", desc: str = "Add JWT") -> dict[str, str]:
+    return {"id": tid, "slug": slug, "description": desc}
 
 
 class TestComputeTaskHash:
@@ -59,13 +66,8 @@ class TestComputeTaskHash:
             plan_text="# Original plan",
         )
         frozen_hash = compute_task_hash(task)
-
-        # Simulate post-freeze change
-        from dataclasses import replace
-
         modified = replace(task, plan_text="# Modified plan")
         current_hash = compute_task_hash(modified)
-
         assert frozen_hash != current_hash, "Drift MUST be detected"
 
     def test_no_plan_text_uses_subject_and_description(self) -> None:
@@ -82,8 +84,6 @@ class TestComputeTaskHash:
 
     def test_status_change_does_not_change_hash(self) -> None:
         """Hash is content-based, not status-based."""
-        from dataclasses import replace
-
         task = OrchestrationTask(
             id="t-001",
             subject="Add auth",
@@ -93,65 +93,49 @@ class TestComputeTaskHash:
         h_approved = compute_task_hash(task)
         task_in_progress = replace(task, status=OrchestrationTaskStatus.IN_PROGRESS)
         h_in_progress = compute_task_hash(task_in_progress)
-        # Status change should NOT change hash — content hasn't changed
         assert h_approved == h_in_progress
 
 
-class TestComputePlanHash:
-    """PlanState canonical hash computation."""
+class TestComputePlanHashFromTasks:
+    """Plan task-list canonical hash computation."""
 
-    def test_stable_hash_same_plan(self) -> None:
-        """Same plan always produces same hash."""
-        plan = PlanState(
-            session_id="sess-001",
-            phase=WorkflowPhase.OUTLINED,
-            tasks=[
-                Task(id="t-001", slug="auth", description="Add JWT"),
-            ],
-        )
-        h1 = compute_plan_hash(plan)
-        h2 = compute_plan_hash(plan)
+    def test_stable_hash_same_tasks(self) -> None:
+        h1 = compute_plan_hash_from_tasks([_task_dict()])
+        h2 = compute_plan_hash_from_tasks([_task_dict()])
         assert h1 == h2
 
     def test_different_tasks_different_hash(self) -> None:
-        """Changed tasks produce different hash."""
-        plan_a = PlanState(
-            session_id="sess-001",
-            phase=WorkflowPhase.OUTLINED,
-            tasks=[Task(id="t-001", slug="auth", description="Add JWT")],
-        )
-        plan_b = PlanState(
-            session_id="sess-001",
-            phase=WorkflowPhase.OUTLINED,
-            tasks=[Task(id="t-001", slug="auth", description="Add OAuth")],
-        )
-        assert compute_plan_hash(plan_a) != compute_plan_hash(plan_b)
+        ha = compute_plan_hash_from_tasks([_task_dict(desc="Add JWT")])
+        hb = compute_plan_hash_from_tasks([_task_dict(desc="Add OAuth")])
+        assert ha != hb
 
     def test_post_freeze_drift_detected(self) -> None:
-        """If tasks change after freeze, hash drift is detected."""
-        plan = PlanState(
-            session_id="sess-001",
-            phase=WorkflowPhase.OUTLINED,
-            tasks=[Task(id="t-001", slug="auth", description="JWT")],
-        )
-        frozen_hash = compute_plan_hash(plan)
-
-        modified = PlanState(
-            session_id="sess-001",
-            phase=WorkflowPhase.OUTLINED,
-            tasks=[Task(id="t-001", slug="auth", description="JWT + OAuth")],
-        )
-        current_hash = compute_plan_hash(modified)
-
-        assert frozen_hash != current_hash, "Drift MUST be detected"
+        frozen = compute_plan_hash_from_tasks([_task_dict(desc="JWT")])
+        current = compute_plan_hash_from_tasks([_task_dict(desc="JWT + OAuth")])
+        assert frozen != current, "Drift MUST be detected"
 
     def test_empty_plan_stable_hash(self) -> None:
-        """Empty plan (no tasks) produces stable hash."""
-        plan = PlanState(
-            session_id="sess-empty",
-            phase=WorkflowPhase.PLANNING,
-            tasks=[],
-        )
-        h = compute_plan_hash(plan)
+        h = compute_plan_hash_from_tasks([])
         assert isinstance(h, str)
         assert len(h) == 64
+
+
+class TestComputePlanTaskHash:
+    """Single plan task hash — used for task-scoped targets."""
+
+    def test_stable_hash(self) -> None:
+        h1 = compute_plan_task_hash("t-1", "auth", "Add JWT")
+        h2 = compute_plan_task_hash("t-1", "auth", "Add JWT")
+        assert h1 == h2
+
+    def test_different_description_different_hash(self) -> None:
+        ha = compute_plan_task_hash("t-1", "auth", "JWT")
+        hb = compute_plan_task_hash("t-1", "auth", "OAuth")
+        assert ha != hb
+
+    def test_task_hash_differs_from_plan_hash(self) -> None:
+        """Task-level hash ≠ plan-level hash (different scope)."""
+        td = _task_dict()
+        task_hash = compute_plan_task_hash(td["id"], td["slug"], td["description"])
+        plan_hash = compute_plan_hash_from_tasks([td])
+        assert task_hash != plan_hash, "Task hash MUST differ from plan hash (scope isolation)"
