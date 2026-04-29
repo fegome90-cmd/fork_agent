@@ -411,7 +411,7 @@ class TestFPELSharedGate:
         """Create a TaskBoardService mock that gates via FPELAuthorizationPort.
 
         Simulates the real TaskBoardService.start() behavior:
-        if fpel_port is set, calls check_sealed() and raises ValueError on denial.
+        if fpel_port is set, calls check_sealed() and raises TaskTransitionError on denial.
         """
         ts = MagicMock(spec=TaskBoardService)
         ts.list.return_value = [task]
@@ -463,7 +463,7 @@ class TestFPELSharedGate:
     def test_denied_start_never_spawns_agent(self) -> None:
         """Denied FPEL gate → task start raises, agent never spawns.
 
-        When TaskBoardService.start() raises ValueError (FPEL denial),
+        When TaskBoardService.start() raises TaskTransitionError (FPEL denial),
         the polling service records a FAILED run and never calls _spawn_agent.
         """
         denied_decision = AuthorizationDecision(
@@ -483,7 +483,7 @@ class TestFPELSharedGate:
             runs = svc.poll_once()
 
         # The run is recorded but FAILED (from _spawn_run catching TaskTransitionError
-        # when start() raises — actually ValueError, caught by except TaskTransitionError)
+        # when start() raises TaskTransitionError on FPEL denial)
         assert len(runs) == 1
         # Agent was never spawned
         mock_spawn.assert_not_called()

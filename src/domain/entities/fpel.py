@@ -117,6 +117,10 @@ class FrozenProposal:
             raise ValueError("frozen_proposal_id must be a non-empty string")
         if not isinstance(self.target_id, str) or not self.target_id:
             raise ValueError("target_id must be a non-empty string")
+        if not isinstance(self.content_hash, str) or not self.content_hash:
+            raise ValueError("content_hash must be a non-empty string")
+        if self.content_hash != compute_content_hash(self.content):
+            raise ValueError("content_hash must match canonical hash of content")
 
     @property
     def is_active(self) -> bool:

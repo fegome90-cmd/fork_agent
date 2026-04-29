@@ -69,15 +69,18 @@ class TestCheckSealedCurrentHash:
             FrozenProposal,
             FrozenProposalLifecycle,
             SealedVerdict,
+            compute_content_hash,
         )
         from src.domain.ports.fpel_repository import FPELRepository
 
+        content = "proposal content for hash test"
+        real_hash = compute_content_hash(content)
         repo = MagicMock(spec=FPELRepository)
         frozen = FrozenProposal(
             frozen_proposal_id="fp-001",
             target_id="target-1",
-            content_hash="hash-original",
-            content="proposal",
+            content_hash=real_hash,
+            content=content,
             lifecycle=FrozenProposalLifecycle.ACTIVE,
         )
         repo.get_active_frozen_proposal.return_value = frozen
@@ -85,13 +88,13 @@ class TestCheckSealedCurrentHash:
             frozen_proposal_id="fp-001",
             verdict="SEALED_PASS",
             sealed_at=datetime.now(tz=UTC),
-            content_hash="hash-original",
+            content_hash=real_hash,
         )
-        repo.get_current_content_hash.return_value = "hash-original"
+        repo.get_current_content_hash.return_value = real_hash
 
         service = FPELAuthorizationService(repo=repo)
 
-        decision = service.check_sealed("target-1", current_hash="hash-original")
+        decision = service.check_sealed("target-1", current_hash=real_hash)
 
         assert decision.allowed is True
         repo.get_current_content_hash.assert_not_called()
