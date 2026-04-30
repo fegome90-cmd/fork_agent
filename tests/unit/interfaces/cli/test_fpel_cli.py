@@ -1,12 +1,14 @@
 """Unit tests for FPEL CLI commands — Task 1.3.
 
-Tests fpel freeze/check/seal/status via Typer CLI runner:
+Tests fpel freeze/check/seal/status/fail via Typer CLI runner:
 - freeze: creates frozen snapshot
 - check: writes evidence only (no sealed PASS)
 - seal: success outputs SealedVerdict, failure outputs SealFailureReason
 - status: with records reports hash/candidate/sealed/reason; without freeze returns NOT_FROZEN
 - only seal creates sealed PASS
 - parametrized exit codes from SealFailureReason
+- fail: success exits 0 with confirmation (S7)
+- fail: no active proposal exits 12 (S8)
 """
 
 from __future__ import annotations
@@ -58,6 +60,7 @@ def _make_service() -> tuple[FPELAuthorizationService, MagicMock]:
     repo.get_sealed_verdict.return_value = None
     repo.get_current_content_hash.return_value = None
     repo.get_candidate_verdict.return_value = None
+    repo.is_failed.return_value = False
     return FPELAuthorizationService(repo=repo), repo
 
 
@@ -418,3 +421,47 @@ class TestFpelDisabledGracefulExit:
             result = runner.invoke(app, ["check", "--target-id", "t1"])
 
         assert result.exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 1.10 — fpel fail command (S7, S8)
+# ---------------------------------------------------------------------------
+
+
+class TestFailCommand:
+    """fpel fail --target-id X [--reason R] — exit 0 on success, 12 on error."""
+
+    def test_fail_success_with_reason(self) -> None:
+        """fpel fail --target-id X --reason R exits 0 and prints confirmation (S7)."""
+        service, repo = _make_service()
+        frozen = _make_frozen()
+        repo.get_active_frozen_proposal.return_value = frozen
+
+        with _patch_service(service):
+            result = runner.invoke(
+                app, ["fail", "--target-id", TARGET_ID, "--reason", "audit failure"]
+            )
+
+        assert result.exit_code == 0
+        assert "fp-" in result.output or "frozen_proposal_id" in result.output
+
+    def test_fail_success_without_reason(self) -> None:
+        """fpel fail --target-id X (no reason) exits 0 (S7)."""
+        service, repo = _make_service()
+        frozen = _make_frozen()
+        repo.get_active_frozen_proposal.return_value = frozen
+
+        with _patch_service(service):
+            result = runner.invoke(app, ["fail", "--target-id", TARGET_ID])
+
+        assert result.exit_code == 0
+
+    def test_fail_no_active_proposal_exits_12(self) -> None:
+        """fpel fail --target-id X exits 12 when no active proposal (S8)."""
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+
+        with _patch_service(service):
+            result = runner.invoke(app, ["fail", "--target-id", TARGET_ID])
+
+        assert result.exit_code == 12

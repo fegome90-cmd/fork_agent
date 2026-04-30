@@ -61,3 +61,14 @@ class FPELRepository(Protocol):
     def save_fpel_status(self, target_id: str, status: str) -> None:
         """Update the FPEL status for target."""
         ...
+
+    def mark_failed(self, frozen_proposal_id: str, reason: str | None = None) -> None:
+        """INSERT OR IGNORE — idempotent terminal FAIL marker.
+
+        First-write-wins for reason: subsequent calls with different reason are silently ignored.
+        """
+        ...
+
+    def is_failed(self, frozen_proposal_id: str) -> bool:
+        """Single PK lookup — returns True if proposal has FAIL marker."""
+        ...

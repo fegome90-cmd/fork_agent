@@ -58,6 +58,18 @@ class FPELAuthorizationService:
                 sealed_at=None,
             )
 
+        # FAIL guard — BEFORE sealed verdict lookup (D2, R2)
+        if self._repo.is_failed(frozen.frozen_proposal_id):
+            return AuthorizationDecision(
+                allowed=False,
+                status=FPELStatus.TERMINAL_FAIL,
+                frozen_proposal_id=frozen.frozen_proposal_id,
+                content_hash=frozen.content_hash,
+                reason=SealFailureReason.TERMINAL_FAIL,
+                seal_id=None,
+                sealed_at=None,
+            )
+
         sealed = self._repo.get_sealed_verdict(frozen.frozen_proposal_id)
         if sealed is None:
             # No sealed verdict — check if candidate exists
@@ -99,6 +111,24 @@ class FPELAuthorizationService:
             seal_id=sealed.frozen_proposal_id,
             sealed_at=sealed.sealed_at,
         )
+
+    # ------------------------------------------------------------------
+    # mark_fail
+    # ------------------------------------------------------------------
+
+    def mark_fail(self, target_id: str, reason: str | None = None) -> FrozenProposal:
+        """Resolve active proposal for target and mark it failed.
+
+        Works on any active proposal, including sealed ones (emergency stop).
+        Raises ValueError if no active proposal exists.
+        Returns the FrozenProposal (from get_active, unchanged).
+        Idempotent: second call is no-op, original reason preserved.
+        """
+        frozen = self._repo.get_active_frozen_proposal(target_id)
+        if frozen is None:
+            raise ValueError(f"No active frozen proposal for target '{target_id}'")
+        self._repo.mark_failed(frozen.frozen_proposal_id, reason)
+        return frozen
 
     # ------------------------------------------------------------------
     # freeze
@@ -253,6 +283,10 @@ class FPELAuthorizationService:
         frozen = self._repo.get_active_frozen_proposal(target_id)
         if frozen is None:
             return SealFailureReason.NO_FROZEN_PROPOSAL
+
+        # FAIL guard — reject seal for failed proposals (S6)
+        if self._repo.is_failed(frozen.frozen_proposal_id):
+            return SealFailureReason.TERMINAL_FAIL
 
         # Check for existing sealed verdict (idempotency)
         existing = self._repo.get_sealed_verdict(frozen.frozen_proposal_id)
