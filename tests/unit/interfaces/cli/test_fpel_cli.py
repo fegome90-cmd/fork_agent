@@ -592,7 +592,7 @@ def _mock_from_plan(session_id: str):
 
 
 class TestTargetIdValidation:
-    """10 tests: 4 unit (pure helper), 4 wiring (CLI integration), 2 content-route."""
+    """10 tests: 4 unit (pure helper), 4 wiring (CLI integration), 2 content-route + 2 allow-override wiring."""
 
     # --- Unit tests on pure helper (no mocks needed) ---
 
@@ -659,6 +659,48 @@ class TestTargetIdValidation:
                 app, ["snapshot-legacy", "--target-id", "plan-222", "--from-plan", "plan-111"]
             )
         assert result.exit_code == 1
+
+    # --- Allow-override wiring tests (Copilot review feedback) ---
+
+    def test_freeze_from_task_allow_override_warns_and_proceeds(self) -> None:
+        """freeze --from-task with mismatch + --allow-target-mismatch → exit 0 + Warning."""
+        service, repo = _make_service()
+        repo.get_all_frozen_proposals.return_value = []
+        with _patch_service(service), _mock_from_task("task-abc"):
+            result = runner.invoke(
+                app,
+                [
+                    "freeze",
+                    "--target-id",
+                    "task-xyz",
+                    "--from-task",
+                    "task-abc",
+                    "--allow-target-mismatch",
+                ],
+            )
+        assert result.exit_code == 0
+        assert "Warning" in result.output
+
+    def test_snapshot_from_task_alias_override_warns_and_proceeds(self) -> None:
+        """snapshot-legacy --from-task with mismatch + --allow-target-alias → exit 0 + Warning."""
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.is_failed.return_value = False
+        with _patch_service(service), _mock_from_task("task-abc"):
+            result = runner.invoke(
+                app,
+                [
+                    "snapshot-legacy",
+                    "--target-id",
+                    "task-xyz",
+                    "--from-task",
+                    "task-abc",
+                    "--allow-target-alias",
+                ],
+            )
+        assert result.exit_code == 0
+        assert "Warning" in result.output
 
     # --- Content-route tests (fixed assertions) ---
 

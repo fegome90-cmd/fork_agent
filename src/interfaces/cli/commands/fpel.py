@@ -99,8 +99,15 @@ def freeze_proposal(
         bool,
         typer.Option(
             "--allow-target-mismatch",
-            "--allow-target-alias",
             help="Allow target_id to differ from source ID",
+        ),
+    ] = False,
+    allow_target_alias: Annotated[
+        bool,
+        typer.Option(
+            "--allow-target-alias",
+            hidden=True,
+            help="Backward-compatible alias for --allow-target-mismatch",
         ),
     ] = False,
 ) -> None:
@@ -110,6 +117,7 @@ def freeze_proposal(
     (canonical hash matches what check_sealed() computes at runtime).
     Use --content for low-level/arbitrary content (not hash-authority compliant).
     """
+    _allow_override = allow_target_mismatch or allow_target_alias
     sources = [content is not None, from_task is not None, from_plan is not None]
     if sum(sources) != 1:
         console.print(
@@ -129,7 +137,7 @@ def freeze_proposal(
             console.print(f"[red]Error: Task '{from_task}' not found[/red]")
             raise typer.Exit(1)
         should_proceed, msg = _validate_target_id_match(
-            target_id, from_task, "task", allow_target_mismatch
+            target_id, from_task, "task", _allow_override
         )
         if not should_proceed:
             console.print(f"[red]{msg}[/red]")
@@ -167,7 +175,7 @@ def freeze_proposal(
             )
             raise typer.Exit(1)
         should_proceed, msg = _validate_target_id_match(
-            target_id, from_plan, "plan", allow_target_mismatch
+            target_id, from_plan, "plan", _allow_override
         )
         if not should_proceed:
             console.print(f"[red]{msg}[/red]")
@@ -295,8 +303,15 @@ def snapshot_legacy(
         bool,
         typer.Option(
             "--allow-target-mismatch",
-            "--allow-target-alias",
             help="Allow target_id to differ from source ID",
+        ),
+    ] = False,
+    allow_target_alias: Annotated[
+        bool,
+        typer.Option(
+            "--allow-target-alias",
+            hidden=True,
+            help="Backward-compatible alias for --allow-target-mismatch",
         ),
     ] = False,
 ) -> None:
@@ -306,6 +321,7 @@ def snapshot_legacy(
     (canonical hash matches what check_sealed() computes at runtime).
     Use --content for low-level/arbitrary content (NOT hash-authority compliant).
     """
+    _allow_override = allow_target_mismatch or allow_target_alias
     sources = [content is not None, from_task is not None, from_plan is not None]
     if sum(sources) != 1:
         console.print(
@@ -334,7 +350,7 @@ def snapshot_legacy(
                 console.print(f"[red]Error: Task '{from_task}' not found[/red]")
                 raise typer.Exit(1)
             should_proceed, msg = _validate_target_id_match(
-                target_id, from_task, "task", allow_target_mismatch
+                target_id, from_task, "task", _allow_override
             )
             if not should_proceed:
                 console.print(f"[red]{msg}[/red]")
@@ -374,7 +390,7 @@ def snapshot_legacy(
                 )
                 raise typer.Exit(1)
             should_proceed, msg = _validate_target_id_match(
-                target_id, from_plan, "plan", allow_target_mismatch
+                target_id, from_plan, "plan", _allow_override
             )
             if not should_proceed:
                 console.print(f"[red]{msg}[/red]")
