@@ -306,7 +306,7 @@ class TestAuthorizationDecision:
 
 
 class TestSealedVerdict:
-    def test_has_exactly_4_fields(self) -> None:
+    def test_has_exactly_5_fields(self) -> None:
         import dataclasses
 
         fields = {f.name for f in dataclasses.fields(SealedVerdict)}
@@ -315,6 +315,7 @@ class TestSealedVerdict:
             "verdict",
             "sealed_at",
             "content_hash",
+            "source",
         }
         assert fields == expected
 
