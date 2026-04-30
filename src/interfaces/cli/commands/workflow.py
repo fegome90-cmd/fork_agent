@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 def get_fpel_authorization_port():
     """Get the FPELAuthorizationPort instance.
 
-    Returns FPELAuthorizationService when FPEL_ENABLED=1.
+    Returns FPELAuthorizationService unless FPEL_DISABLED=1.
     Returns None when FPEL is disabled.
     Raises RuntimeError on container init failure (never silently returns None when enabled).
     """

@@ -342,12 +342,12 @@ def get_memory_service_auto():
 
 
 def get_fpel_service(db_path: Path | None = None):
-    """Return wired FPELAuthorizationService when FPEL_ENABLED=1, None when disabled.
+    """Return wired FPELAuthorizationService unless FPEL_DISABLED=1, None when disabled.
 
     Raises:
         RuntimeError: On container init failure when FPEL is enabled.
     """
-    if os.environ.get("FPEL_ENABLED", "").strip() != "1":
+    if os.environ.get("FPEL_DISABLED", "").strip() == "1":
         return None
     return get_container(db_path).fpel_authorization_service()
 

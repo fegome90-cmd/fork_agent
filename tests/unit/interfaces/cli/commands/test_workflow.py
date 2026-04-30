@@ -77,6 +77,9 @@ class TestWorkflowExecute:
         plan_path = tmp_path / "plan-state.json"
         plan_state.save(plan_path)
 
+        mock_fpel_port = MagicMock()
+        mock_fpel_port.check_sealed.return_value = MagicMock(allowed=True)
+
         with (
             patch(
                 "src.interfaces.cli.commands.workflow.get_plan_state_path",
@@ -85,6 +88,10 @@ class TestWorkflowExecute:
             patch(
                 "src.interfaces.cli.commands.workflow.get_execute_state_path",
                 return_value=tmp_path / "execute-state.json",
+            ),
+            patch(
+                "src.interfaces.cli.commands.workflow.get_fpel_authorization_port",
+                return_value=mock_fpel_port,
             ),
         ):
             result = runner.invoke(get_app(), ["execute"])
@@ -902,7 +909,7 @@ class TestGetFpelAuthorizationPortFailClosed:
                 "src.infrastructure.persistence.container.get_container",
                 side_effect=RuntimeError("DB connection failed"),
             ),
-            patch.dict("os.environ", {"FPEL_ENABLED": "1"}),
+            patch.dict("os.environ", {}, clear=False),
             pytest.raises(
                 (RuntimeError, Exception),
             ),
