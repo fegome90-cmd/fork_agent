@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+import logging
+from typing import Annotated, Literal
 
 import typer
 from rich.console import Console
@@ -11,6 +12,7 @@ from src.domain.entities.fpel import SealFailureReason
 
 app = typer.Typer(help="FPEL: freeze, check, seal, and verify proposals.")
 console = Console()
+logger = logging.getLogger(__name__)
 
 # Map SealFailureReason → unique CLI exit code
 _SEAL_FAILURE_EXIT_CODES: dict[SealFailureReason, int] = {
@@ -46,6 +48,34 @@ def _require_fpel_service():
     return service
 
 
+def _validate_target_id_match(
+    target_id: str,
+    source_id: str,
+    source_type: Literal["task", "plan"],
+    allow_mismatch: bool,
+) -> tuple[bool, str]:
+    """Validate target_id matches source entity ID.
+
+    Returns (should_proceed, message):
+      - (True, ""): IDs match, proceed silently.
+      - (True, "Warning: ..."): IDs differ but allowed, proceed with warning.
+      - (False, "Error: ..."): IDs differ and not allowed, abort.
+    """
+    if not target_id or target_id == source_id:
+        return True, ""
+    if allow_mismatch:
+        return (
+            True,
+            f"Warning: --target-id ({target_id}) differs from "
+            f"--from-{source_type} ({source_id}). Proceeding with --allow-target-mismatch.",
+        )
+    return (
+        False,
+        f"Error: --target-id ({target_id}) does not match "
+        f"--from-{source_type} ({source_id}). Use --allow-target-mismatch to override.",
+    )
+
+
 @app.command("freeze")
 def freeze_proposal(
     target_id: Annotated[str, typer.Option("--target-id", help="Target task or workflow ID")],
@@ -65,6 +95,21 @@ def freeze_proposal(
             "--from-plan", help="Plan session ID — freeze with canonical hash from plan state"
         ),
     ] = None,
+    allow_target_mismatch: Annotated[
+        bool,
+        typer.Option(
+            "--allow-target-mismatch",
+            help="Allow target_id to differ from source ID",
+        ),
+    ] = False,
+    allow_target_alias: Annotated[
+        bool,
+        typer.Option(
+            "--allow-target-alias",
+            hidden=True,
+            help="Backward-compatible alias for --allow-target-mismatch",
+        ),
+    ] = False,
 ) -> None:
     """Create an immutable frozen snapshot of a proposal.
 
@@ -72,6 +117,7 @@ def freeze_proposal(
     (canonical hash matches what check_sealed() computes at runtime).
     Use --content for low-level/arbitrary content (not hash-authority compliant).
     """
+    _allow_override = allow_target_mismatch or allow_target_alias
     sources = [content is not None, from_task is not None, from_plan is not None]
     if sum(sources) != 1:
         console.print(
@@ -90,6 +136,20 @@ def freeze_proposal(
         if task is None:
             console.print(f"[red]Error: Task '{from_task}' not found[/red]")
             raise typer.Exit(1)
+        should_proceed, msg = _validate_target_id_match(
+            target_id, from_task, "task", _allow_override
+        )
+        if not should_proceed:
+            console.print(f"[red]{msg}[/red]")
+            raise typer.Exit(1)
+        if msg:
+            console.print(f"[yellow]{msg}[/yellow]")
+            logger.warning(
+                "Target-ID mismatch override: target=%s source=%s type=%s",
+                target_id,
+                from_task,
+                "task",
+            )
         frozen = service.freeze_task(
             target_id=target_id,
             plan_text=task.plan_text,
@@ -114,11 +174,26 @@ def freeze_proposal(
                 f"[red]Error: Plan session_id '{plan.session_id}' does not match --from-plan '{from_plan}'[/red]"
             )
             raise typer.Exit(1)
+        should_proceed, msg = _validate_target_id_match(
+            target_id, from_plan, "plan", _allow_override
+        )
+        if not should_proceed:
+            console.print(f"[red]{msg}[/red]")
+            raise typer.Exit(1)
+        if msg:
+            console.print(f"[yellow]{msg}[/yellow]")
+            logger.warning(
+                "Target-ID mismatch override: target=%s source=%s type=%s",
+                target_id,
+                from_plan,
+                "plan",
+            )
         tasks_data = [
             {"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks
         ]
         frozen = service.freeze_plan(target_id=target_id, tasks=tasks_data)
     else:
+        # No guard: content route has no entity ID for comparison.
         frozen = service.freeze(target_id=target_id, content=content)
 
     console.print("[green]Proposal frozen.[/green]")
@@ -224,6 +299,21 @@ def snapshot_legacy(
             "--from-plan", help="Plan session ID — snapshot with canonical plan hash authority"
         ),
     ] = None,
+    allow_target_mismatch: Annotated[
+        bool,
+        typer.Option(
+            "--allow-target-mismatch",
+            help="Allow target_id to differ from source ID",
+        ),
+    ] = False,
+    allow_target_alias: Annotated[
+        bool,
+        typer.Option(
+            "--allow-target-alias",
+            hidden=True,
+            help="Backward-compatible alias for --allow-target-mismatch",
+        ),
+    ] = False,
 ) -> None:
     """Create a legacy-approved snapshot (freeze + seal with source=LEGACY_APPROVED).
 
@@ -231,6 +321,7 @@ def snapshot_legacy(
     (canonical hash matches what check_sealed() computes at runtime).
     Use --content for low-level/arbitrary content (NOT hash-authority compliant).
     """
+    _allow_override = allow_target_mismatch or allow_target_alias
     sources = [content is not None, from_task is not None, from_plan is not None]
     if sum(sources) != 1:
         console.print(
@@ -242,6 +333,7 @@ def snapshot_legacy(
 
     try:
         if content is not None:
+            # No guard: content route has no entity ID for comparison.
             console.print(
                 "[yellow]Warning: --content is NOT hash-authority compliant. "
                 "Post-snapshot runtime checks may produce HASH_MISMATCH. "
@@ -257,6 +349,20 @@ def snapshot_legacy(
             if task is None:
                 console.print(f"[red]Error: Task '{from_task}' not found[/red]")
                 raise typer.Exit(1)
+            should_proceed, msg = _validate_target_id_match(
+                target_id, from_task, "task", _allow_override
+            )
+            if not should_proceed:
+                console.print(f"[red]{msg}[/red]")
+                raise typer.Exit(1)
+            if msg:
+                console.print(f"[yellow]{msg}[/yellow]")
+                logger.warning(
+                    "Target-ID mismatch override: target=%s source=%s type=%s",
+                    target_id,
+                    from_task,
+                    "task",
+                )
             frozen, sealed = service.snapshot_legacy_task(
                 target_id=target_id,
                 plan_text=task.plan_text,
@@ -283,6 +389,20 @@ def snapshot_legacy(
                     f"[red]Error: Plan session_id '{plan.session_id}' does not match --from-plan '{from_plan}'[/red]"
                 )
                 raise typer.Exit(1)
+            should_proceed, msg = _validate_target_id_match(
+                target_id, from_plan, "plan", _allow_override
+            )
+            if not should_proceed:
+                console.print(f"[red]{msg}[/red]")
+                raise typer.Exit(1)
+            if msg:
+                console.print(f"[yellow]{msg}[/yellow]")
+                logger.warning(
+                    "Target-ID mismatch override: target=%s source=%s type=%s",
+                    target_id,
+                    from_plan,
+                    "plan",
+                )
             tasks_data = [
                 {"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks
             ]
