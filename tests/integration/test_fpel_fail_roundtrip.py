@@ -191,7 +191,10 @@ class TestTransitiveCoverage:
         service.mark_fail(target_id="workflow-target", reason="workflow fail test")
 
         # Simulate what workflow execute does: call check_sealed via the FPEL service
-        with patch.dict(os.environ, {"DB_PATH": str(tmp_path / "fpel_fail_integration.db")}):
+        with patch.dict(
+            os.environ, {"DB_PATH": str(tmp_path / "fpel_fail_integration.db")}, clear=False
+        ):
+            os.environ.pop("FPEL_DISABLED", None)
             fpel_port = get_fpel_service(db_path=tmp_path / "fpel_fail_integration.db")
 
         assert fpel_port is not None
