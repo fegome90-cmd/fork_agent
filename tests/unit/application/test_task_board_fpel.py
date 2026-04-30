@@ -99,7 +99,7 @@ def _denied_decision(
 
 class TestStartGatesViaFPEL:
     def test_start_calls_fpel_check_sealed(self) -> None:
-        """start() must call FPELAuthorizationPort.check_sealed()."""
+        """start() must call FPELAuthorizationPort.check_sealed() with current_hash."""
         service, repo, fpel = _make_service_with_fpel()
         repo.get_by_id.return_value = _make_task()
         fpel.check_sealed.return_value = _sealed_pass_decision()
@@ -108,7 +108,12 @@ class TestStartGatesViaFPEL:
             mock_time.time.return_value = NOW_MS / 1000
             service.start(TASK_ID, owner="worker")
 
-        fpel.check_sealed.assert_called_once_with(TASK_ID)
+        fpel.check_sealed.assert_called_once()
+        call_args = fpel.check_sealed.call_args
+        assert call_args[0][0] == TASK_ID
+        assert call_args[1].get("current_hash") is not None, (
+            "check_sealed() MUST receive current_hash from caller"
+        )
 
     def test_sealed_pass_allows_start(self) -> None:
         """Sealed PASS authorizes APPROVED → IN_PROGRESS."""
@@ -221,3 +226,51 @@ class TestBackwardCompat:
             result = service.start(TASK_ID, owner="worker")
 
         assert result.status == OrchestrationTaskStatus.IN_PROGRESS
+
+
+# ---------------------------------------------------------------------------
+# Hash authority: current_hash computed from task content
+# ---------------------------------------------------------------------------
+
+
+class TestHashAuthority:
+    def test_start_passes_content_hash_to_gate(self) -> None:
+        """start() computes current_hash from task and passes to check_sealed."""
+        service, repo, fpel = _make_service_with_fpel()
+        repo.get_by_id.return_value = _make_task(plan_text="# Plan A")
+        fpel.check_sealed.return_value = _sealed_pass_decision()
+
+        with patch("src.application.services.task_board_service.time") as mock_time:
+            mock_time.time.return_value = NOW_MS / 1000
+            service.start(TASK_ID, owner="worker")
+
+        call_hash = fpel.check_sealed.call_args[1]["current_hash"]
+        assert call_hash is not None
+
+        from src.domain.services.fpel_content_hash import compute_task_hash
+
+        expected = compute_task_hash(_make_task(plan_text="# Plan A"))
+        assert call_hash == expected
+
+    def test_post_freeze_plan_change_blocks_start(self) -> None:
+        """If plan_text changes after freeze, start() blocked by HASH_MISMATCH."""
+        service, repo, fpel = _make_service_with_fpel()
+        repo.get_by_id.return_value = _make_task(plan_text="# Plan B — MODIFIED")
+        fpel.check_sealed.return_value = AuthorizationDecision(
+            allowed=False,
+            status=FPELStatus.SEALED_PASS,
+            frozen_proposal_id="fp-001",
+            content_hash="original_hash_not_matching",
+            reason=SealFailureReason.HASH_MISMATCH,
+            seal_id=None,
+            sealed_at=None,
+        )
+
+        with pytest.raises(TaskTransitionError, match="sealed PASS"):
+            service.start(TASK_ID, owner="worker")
+
+        call_hash = fpel.check_sealed.call_args[1]["current_hash"]
+        from src.domain.services.fpel_content_hash import compute_task_hash
+
+        expected = compute_task_hash(_make_task(plan_text="# Plan B — MODIFIED"))
+        assert call_hash == expected

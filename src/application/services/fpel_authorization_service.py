@@ -127,6 +127,40 @@ class FPELAuthorizationService:
         self._repo.save_frozen_proposal(proposal)
         return proposal
 
+    def freeze_task(
+        self, target_id: str, plan_text: str | None, subject: str, description: str | None = None
+    ) -> FrozenProposal:
+        """Freeze with canonical hash from an OrchestrationTask's content.
+
+        Computes the same hash as ``compute_task_hash()`` so that
+        ``check_sealed(current_hash=...)`` produces consistent results.
+        """
+        content = plan_text
+        if content is None:
+            parts = [subject]
+            if description:
+                parts.append(description)
+            content = "\n".join(parts)
+        return self.freeze(target_id, content)
+
+    def freeze_plan(self, target_id: str, tasks: list[dict[str, str]]) -> FrozenProposal:
+        """Freeze with canonical hash from a plan's task list.
+
+        Computes the same hash as ``compute_plan_hash_from_tasks()`` so that
+        ``check_sealed(current_hash=...)`` produces consistent results.
+
+        Args:
+            target_id: The plan session ID.
+            tasks: List of dicts with id/slug/description keys.
+        """
+        import json
+
+        task_data = [
+            {"id": t["id"], "slug": t["slug"], "description": t["description"]} for t in tasks
+        ]
+        canonical = json.dumps(task_data, sort_keys=True, separators=(",", ":"))
+        return self.freeze(target_id, canonical)
+
     # ------------------------------------------------------------------
     # check
     # ------------------------------------------------------------------

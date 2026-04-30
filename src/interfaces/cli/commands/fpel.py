@@ -49,12 +49,78 @@ def _require_fpel_service():
 @app.command("freeze")
 def freeze_proposal(
     target_id: Annotated[str, typer.Option("--target-id", help="Target task or workflow ID")],
-    content: Annotated[str, typer.Option("--content", help="Proposal content to freeze")],
+    content: Annotated[
+        str | None,
+        typer.Option(
+            "--content", help="Raw content to freeze (low-level, not hash-authority compliant)"
+        ),
+    ] = None,
+    from_task: Annotated[
+        str | None,
+        typer.Option("--from-task", help="Task ID — freeze with canonical hash from task board"),
+    ] = None,
+    from_plan: Annotated[
+        str | None,
+        typer.Option(
+            "--from-plan", help="Plan session ID — freeze with canonical hash from plan state"
+        ),
+    ] = None,
 ) -> None:
-    """Create an immutable frozen snapshot of a proposal."""
+    """Create an immutable frozen snapshot of a proposal.
+
+    Use --from-task or --from-plan for hash-authority compliant freeze
+    (canonical hash matches what check_sealed() computes at runtime).
+    Use --content for low-level/arbitrary content (not hash-authority compliant).
+    """
+    sources = [content is not None, from_task is not None, from_plan is not None]
+    if sum(sources) != 1:
+        console.print(
+            "[red]Error: Provide exactly one of --content, --from-task, --from-plan[/red]"
+        )
+        raise typer.Exit(1)
 
     service = _require_fpel_service()
-    frozen = service.freeze(target_id=target_id, content=content)
+
+    if from_task is not None:
+        from src.infrastructure.persistence.container import get_container
+
+        container = get_container()
+        task_board = container.task_board_service()
+        task = task_board.get(from_task)
+        if task is None:
+            console.print(f"[red]Error: Task '{from_task}' not found[/red]")
+            raise typer.Exit(1)
+        frozen = service.freeze_task(
+            target_id=target_id,
+            plan_text=task.plan_text,
+            subject=task.subject,
+            description=task.description,
+        )
+    elif from_plan is not None:
+        from src.interfaces.cli.commands.workflow import get_plan_state_path
+
+        plan_path = get_plan_state_path()
+        if not plan_path.exists():
+            console.print("[red]Error: No plan state found. Run 'workflow outline' first.[/red]")
+            raise typer.Exit(1)
+        from src.application.services.workflow.state import PlanState
+
+        plan = PlanState.load(plan_path)
+        if plan is None:
+            console.print("[red]Error: Failed to load plan state.[/red]")
+            raise typer.Exit(1)
+        if plan.session_id != from_plan:
+            console.print(
+                f"[red]Error: Plan session_id '{plan.session_id}' does not match --from-plan '{from_plan}'[/red]"
+            )
+            raise typer.Exit(1)
+        tasks_data = [
+            {"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks
+        ]
+        frozen = service.freeze_plan(target_id=target_id, tasks=tasks_data)
+    else:
+        frozen = service.freeze(target_id=target_id, content=content)
+
     console.print("[green]Proposal frozen.[/green]")
     console.print(f"  frozen_proposal_id: {frozen.frozen_proposal_id}")
     console.print(f"  content_hash:       {frozen.content_hash[:16]}...")
