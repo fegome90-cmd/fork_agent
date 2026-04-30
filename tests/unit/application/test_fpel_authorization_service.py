@@ -115,10 +115,162 @@ class TestSealedPassAllowed:
             content_hash=frozen.content_hash,
         )
         repo.get_sealed_verdict.return_value = sealed
-
         decision = service.check_sealed(target_id=TASK_ID)
+
         assert decision.allowed is True
         assert decision.status == FPELStatus.SEALED_PASS
+
+
+class TestSnapshotLegacyTaskHashAuthority:
+    def test_task_hash_allows_check_sealed_with_same_hash(self) -> None:
+        from src.domain.entities.orchestration_task import (
+            OrchestrationTask,
+            OrchestrationTaskStatus,
+        )
+        from src.domain.services.fpel_content_hash import compute_task_hash
+
+        task = OrchestrationTask(
+            id=TASK_ID,
+            subject="Implement feature X",
+            description="Detailed description here",
+            status=OrchestrationTaskStatus.APPROVED,
+            plan_text="This is the approved plan content",
+        )
+        canonical_hash = compute_task_hash(task)
+
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy_task(
+            target_id=TASK_ID,
+            plan_text=task.plan_text,
+            subject=task.subject,
+            description=task.description,
+        )
+        assert frozen.content_hash == canonical_hash
+
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed
+        repo.get_current_content_hash.return_value = frozen.content_hash
+
+        decision = service.check_sealed(TASK_ID, current_hash=canonical_hash)
+        assert decision.allowed is True
+        assert decision.status == FPELStatus.SEALED_PASS
+
+    def test_task_hash_blocks_after_content_change(self) -> None:
+        from src.domain.entities.orchestration_task import (
+            OrchestrationTask,
+            OrchestrationTaskStatus,
+        )
+
+        task = OrchestrationTask(
+            id=TASK_ID,
+            subject="Implement feature X",
+            status=OrchestrationTaskStatus.APPROVED,
+            plan_text="Original plan",
+        )
+
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy_task(
+            target_id=TASK_ID,
+            plan_text=task.plan_text,
+            subject=task.subject,
+            description=task.description,
+        )
+
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed
+
+        changed_hash = compute_content_hash("MODIFIED plan content")
+        decision = service.check_sealed(TASK_ID, current_hash=changed_hash)
+        assert decision.allowed is False
+        assert decision.reason == SealFailureReason.HASH_MISMATCH
+
+    def test_task_hash_uses_subject_when_no_plan_text(self) -> None:
+        from src.domain.entities.orchestration_task import (
+            OrchestrationTask,
+            OrchestrationTaskStatus,
+        )
+        from src.domain.services.fpel_content_hash import compute_task_hash
+
+        task = OrchestrationTask(
+            id=TASK_ID,
+            subject="My task subject",
+            description="My task desc",
+            status=OrchestrationTaskStatus.APPROVED,
+            plan_text=None,
+        )
+        canonical_hash = compute_task_hash(task)
+
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, _ = service.snapshot_legacy_task(
+            target_id=TASK_ID,
+            plan_text=None,
+            subject=task.subject,
+            description=task.description,
+        )
+        assert frozen.content_hash == canonical_hash
+
+
+class TestSnapshotLegacyPlanHashAuthority:
+    def test_plan_hash_allows_check_sealed_with_same_hash(self) -> None:
+        from src.domain.services.fpel_content_hash import compute_plan_hash_from_tasks
+
+        tasks = [
+            {"id": "t1", "slug": "task-one", "description": "First task"},
+            {"id": "t2", "slug": "task-two", "description": "Second task"},
+        ]
+        canonical_hash = compute_plan_hash_from_tasks(tasks)
+
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy_plan(target_id="plan-123", tasks=tasks)
+        assert frozen.content_hash == canonical_hash
+
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed
+        repo.get_current_content_hash.return_value = frozen.content_hash
+
+        decision = service.check_sealed("plan-123", current_hash=canonical_hash)
+        assert decision.allowed is True
+
+    def test_plan_hash_blocks_after_content_change(self) -> None:
+        from src.domain.services.fpel_content_hash import compute_plan_hash_from_tasks
+
+        tasks = [
+            {"id": "t1", "slug": "task-one", "description": "First task"},
+        ]
+
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy_plan(target_id="plan-456", tasks=tasks)
+
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed
+
+        changed_tasks = [
+            {"id": "t1", "slug": "task-one", "description": "MODIFIED task"},
+        ]
+        changed_hash = compute_plan_hash_from_tasks(changed_tasks)
+        decision = service.check_sealed("plan-456", current_hash=changed_hash)
+        assert decision.allowed is False
+        assert decision.reason == SealFailureReason.HASH_MISMATCH
 
 
 # ---------------------------------------------------------------------------
@@ -216,14 +368,13 @@ class TestSealIdempotency:
 class TestReFreezeAfterFailure:
     def test_re_freeze_creates_new_id_and_supersedes_previous(self) -> None:
         """After seal failure, re-freeze creates new frozen_proposal_id and
-        marks the previous one as SUPERSEDED."""
+        marks the previous one as SUPERSEDED atomically via supersede_ids."""
         service, repo = _make_service()
         old_frozen = _make_frozen()
         # Re-freeze: no active frozen (previous was consumed), but old exists in history
         repo.get_active_frozen_proposal.return_value = None
         repo.get_all_frozen_proposals.return_value = [old_frozen]
         repo.save_frozen_proposal.return_value = None
-        repo.mark_superseded.return_value = None
 
         new_frozen = service.freeze(
             target_id=TASK_ID,
@@ -232,7 +383,13 @@ class TestReFreezeAfterFailure:
         assert new_frozen.frozen_proposal_id != old_frozen.frozen_proposal_id
         assert new_frozen.content_hash != old_frozen.content_hash
         assert new_frozen.is_active
-        repo.mark_superseded.assert_called_once_with(old_frozen.frozen_proposal_id)
+        # Atomic supersede: save_frozen_proposal called with supersede_ids
+        repo.save_frozen_proposal.assert_called_once()
+        call_kwargs = repo.save_frozen_proposal.call_args
+        assert call_kwargs.kwargs.get("supersede_ids") == [old_frozen.frozen_proposal_id] or \
+               (len(call_kwargs.args) > 1 and call_kwargs.args[1] == [old_frozen.frozen_proposal_id])
+        # mark_superseded should NOT be called (replaced by atomic supersede_ids)
+        repo.mark_superseded.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -866,7 +1023,6 @@ class TestMarkFailOnSealedEmergencyStop:
         """mark_fail on sealed proposal persists failure — overrides seal (S13)."""
         service, repo = _make_service()
         frozen = _setup_frozen(repo)
-        # Proposal has a sealed verdict — still active
         sealed = SealedVerdict(
             frozen_proposal_id=frozen.frozen_proposal_id,
             verdict="SEALED_PASS",
@@ -879,3 +1035,120 @@ class TestMarkFailOnSealedEmergencyStop:
 
         assert result.frozen_proposal_id == frozen.frozen_proposal_id
         repo.mark_failed.assert_called_once_with(frozen.frozen_proposal_id, "emergency revocation")
+
+
+class TestSnapshotLegacyHappyPath:
+    def test_snapshot_legacy_creates_frozen_and_sealed(self) -> None:
+        content = "legacy approved content"
+        content_hash = compute_content_hash(content)
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy(target_id=TASK_ID, content=content)
+
+        assert frozen.target_id == TASK_ID
+        assert frozen.content_hash == content_hash
+        assert sealed.frozen_proposal_id == frozen.frozen_proposal_id
+        assert sealed.verdict == "SEALED_PASS"
+        assert sealed.source == "LEGACY_APPROVED"
+        assert sealed.content_hash == content_hash
+        repo.save_frozen_with_sealed_verdict.assert_called_once_with(frozen, sealed, supersede_ids=[])
+
+
+class TestSnapshotLegacyIdempotent:
+    def test_snapshot_legacy_returns_existing_if_already_sealed(self) -> None:
+        content = "legacy approved content"
+        content_hash = compute_content_hash(content)
+        service, repo = _make_service()
+        frozen = _make_frozen(content=content)
+        sealed_existing = SealedVerdict(
+            frozen_proposal_id=frozen.frozen_proposal_id,
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash=content_hash,
+            source="LEGACY_APPROVED",
+        )
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed_existing
+        repo.is_failed.return_value = False
+
+        frozen_result, sealed_result = service.snapshot_legacy(target_id=TASK_ID, content=content)
+
+        assert frozen_result is frozen
+        assert sealed_result is sealed_existing
+        repo.save_frozen_proposal.assert_not_called()
+        repo.save_sealed_verdict.assert_not_called()
+
+
+class TestSnapshotLegacyNoExisting:
+    def test_snapshot_legacy_creates_new_when_no_active(self) -> None:
+        content = "legacy content"
+        content_hash = compute_content_hash(content)
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy(target_id=TASK_ID, content=content)
+
+        assert frozen.content_hash == content_hash
+        assert sealed.source == "LEGACY_APPROVED"
+
+
+class TestSnapshotLegacyAlreadySealedNonLegacy:
+    def test_snapshot_legacy_returns_existing_non_legacy_sealed(self) -> None:
+        content = "some content"
+        content_hash = compute_content_hash(content)
+        service, repo = _make_service()
+        frozen = _make_frozen(content=content)
+        sealed_non_legacy = SealedVerdict(
+            frozen_proposal_id=frozen.frozen_proposal_id,
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash=content_hash,
+            source=None,
+        )
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed_non_legacy
+        repo.is_failed.return_value = False
+
+        frozen_result, sealed_result = service.snapshot_legacy(target_id=TASK_ID, content=content)
+
+        assert sealed_result is sealed_non_legacy
+        repo.save_sealed_verdict.assert_not_called()
+
+
+class TestSnapshotLegacyRaisesOnFailed:
+    def test_snapshot_legacy_raises_value_error_on_failed_proposal(self) -> None:
+        service, repo = _make_service()
+        frozen = _make_frozen()
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.is_failed.return_value = True
+
+        with pytest.raises(ValueError, match="failed"):
+            service.snapshot_legacy(target_id=TASK_ID, content="content")
+
+
+class TestSnapshotLegacyThenCheckSealed:
+    def test_snapshot_legacy_then_check_sealed_returns_sealed_pass(self) -> None:
+        content = "legacy content"
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        frozen, sealed = service.snapshot_legacy(target_id=TASK_ID, content=content)
+
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.get_sealed_verdict.return_value = sealed
+        repo.get_current_content_hash.return_value = frozen.content_hash
+
+        decision = service.check_sealed(target_id=TASK_ID)
+
+        assert decision.allowed is True
+        assert decision.status == FPELStatus.SEALED_PASS

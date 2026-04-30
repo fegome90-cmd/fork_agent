@@ -8,8 +8,13 @@ Tests:
 - reason persistence round-trip (R6)
 """
 
+from datetime import UTC, datetime
 from pathlib import Path
+from sqlite3 import IntegrityError
 
+import pytest
+
+from src.domain.entities.fpel import FrozenProposal, SealedVerdict, compute_content_hash
 from src.infrastructure.persistence.database import DatabaseConfig, DatabaseConnection
 from src.infrastructure.persistence.migrations import run_migrations
 from src.infrastructure.persistence.repositories.fpel_repository import SqliteFPELRepository
@@ -243,3 +248,102 @@ class TestReasonRoundTrip:
             ).fetchone()
         assert row is not None
         assert row["reason"] == "blocked by audit"
+
+
+class TestSealedVerdictSourceRoundTrip:
+    def test_source_none_round_trip(self, tmp_path: Path) -> None:
+        conn, repo = _create_repo(tmp_path)
+        from datetime import UTC, datetime
+
+        from src.domain.entities.fpel import SealedVerdict
+
+        with conn as c:
+            c.execute(
+                "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content) "
+                "VALUES (?, ?, ?, ?)",
+                ("fp-src-001", "target-src", "hash-src", "content-src"),
+            )
+            c.commit()
+
+        sv = SealedVerdict(
+            frozen_proposal_id="fp-src-001",
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash="hash-src",
+            source=None,
+        )
+        repo.save_sealed_verdict(sv)
+
+        result = repo.get_sealed_verdict("fp-src-001")
+        assert result is not None
+        assert result.source is None
+
+    def test_source_legacy_approved_round_trip(self, tmp_path: Path) -> None:
+        conn, repo = _create_repo(tmp_path)
+        from datetime import UTC, datetime
+
+        from src.domain.entities.fpel import SealedVerdict
+
+        with conn as c:
+            c.execute(
+                "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content) "
+                "VALUES (?, ?, ?, ?)",
+                ("fp-src-002", "target-src2", "hash-src2", "content-src2"),
+            )
+            c.commit()
+
+        sv = SealedVerdict(
+            frozen_proposal_id="fp-src-002",
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash="hash-src2",
+            source="LEGACY_APPROVED",
+        )
+        repo.save_sealed_verdict(sv)
+
+        result = repo.get_sealed_verdict("fp-src-002")
+        assert result is not None
+        assert result.source == "LEGACY_APPROVED"
+
+
+class TestSaveFrozenWithSealedVerdictAtomic:
+    def test_atomic_save_persists_both(self, tmp_path: Path) -> None:
+        conn, repo = _create_repo(tmp_path)
+        proposal = FrozenProposal(
+            frozen_proposal_id="fp-atomic-001",
+            target_id="target-atomic",
+            content_hash=compute_content_hash("atomic content"),
+            content="atomic content",
+        )
+        verdict = SealedVerdict(
+            frozen_proposal_id="fp-atomic-001",
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash=proposal.content_hash,
+            source="LEGACY_APPROVED",
+        )
+        repo.save_frozen_with_sealed_verdict(proposal, verdict)
+
+        assert repo.get_active_frozen_proposal("target-atomic") is not None
+        assert repo.get_sealed_verdict("fp-atomic-001") is not None
+
+    def test_atomic_failure_leaves_no_partial_state(self, tmp_path: Path) -> None:
+        conn, repo = _create_repo(tmp_path)
+        proposal = FrozenProposal(
+            frozen_proposal_id="fp-atomic-fail",
+            target_id="target-fail",
+            content_hash=compute_content_hash("will fail"),
+            content="will fail",
+        )
+        bad_verdict = SealedVerdict(
+            frozen_proposal_id="NONEXISTENT_FK",
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash="hash",
+            source="LEGACY_APPROVED",
+        )
+        with pytest.raises(IntegrityError):
+            repo.save_frozen_with_sealed_verdict(proposal, bad_verdict)
+
+        assert repo.get_active_frozen_proposal("target-fail") is None
+        assert repo.get_sealed_verdict("fp-atomic-fail") is None

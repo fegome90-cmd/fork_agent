@@ -5,6 +5,7 @@ Infrastructure layer implements this protocol against SQLite.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
 from src.domain.entities.fpel import FrozenProposal, SealedVerdict
@@ -22,8 +23,15 @@ class FPELRepository(Protocol):
         """Return all frozen proposals (including SUPERSEDED) for target."""
         ...
 
-    def save_frozen_proposal(self, proposal: FrozenProposal) -> None:
-        """Persist a new frozen proposal."""
+    def save_frozen_proposal(
+        self, proposal: FrozenProposal, supersede_ids: Sequence[str] = ()
+    ) -> None:
+        """Persist a new frozen proposal.
+
+        Args:
+            proposal: The frozen proposal to persist.
+            supersede_ids: IDs of existing proposals to mark SUPERSEDED atomically.
+        """
         ...
 
     def mark_superseded(self, frozen_proposal_id: str) -> None:
@@ -71,4 +79,19 @@ class FPELRepository(Protocol):
 
     def is_failed(self, frozen_proposal_id: str) -> bool:
         """Single PK lookup — returns True if proposal has FAIL marker."""
+        ...
+
+    def save_frozen_with_sealed_verdict(
+        self,
+        proposal: FrozenProposal,
+        verdict: SealedVerdict,
+        supersede_ids: Sequence[str] = (),
+    ) -> None:
+        """Atomic: persist frozen proposal + sealed verdict in one transaction.
+
+        Args:
+            proposal: The frozen proposal to persist.
+            verdict: The sealed verdict to persist.
+            supersede_ids: IDs of existing proposals to mark SUPERSEDED atomically.
+        """
         ...

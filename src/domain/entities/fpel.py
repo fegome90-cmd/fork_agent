@@ -16,6 +16,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from typing import ClassVar
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -137,12 +138,31 @@ class SealedVerdict:
         verdict: Always "SEALED_PASS".
         sealed_at: Timestamp when sealing occurred.
         content_hash: Hash of the content at seal time.
+        source: Origin of the seal (e.g. 'LEGACY_APPROVED'), None for normal seal flow.
     """
 
     frozen_proposal_id: str
     verdict: str
     sealed_at: datetime
     content_hash: str
+    source: str | None = None
+
+    _VALID_SOURCES: ClassVar[frozenset[str]] = frozenset(
+        {"LEGACY_APPROVED", "MANUAL_OVERRIDE", "AUTO_SEAL"}
+    )
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.frozen_proposal_id, str) or not self.frozen_proposal_id:
+            raise ValueError("frozen_proposal_id must be a non-empty string")
+        if self.verdict != "SEALED_PASS":
+            raise ValueError(f"verdict must be 'SEALED_PASS', got '{self.verdict}'")
+        if not isinstance(self.content_hash, str) or not self.content_hash:
+            raise ValueError("content_hash must be a non-empty string")
+        if self.source is not None and self.source not in self._VALID_SOURCES:
+            raise ValueError(
+                f"SealedVerdict.source must be one of {sorted(self._VALID_SOURCES)} "
+                f"or None, got '{self.source}'"
+            )
 
 
 @dataclass(frozen=True)
