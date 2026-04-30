@@ -29,7 +29,7 @@ from src.domain.entities.fpel import (
     compute_content_hash,
 )
 from src.domain.ports.fpel_repository import FPELRepository
-from src.interfaces.cli.commands.fpel import app
+from src.interfaces.cli.commands.fpel import _validate_target_id_match, app
 
 runner = CliRunner()
 
@@ -526,3 +526,148 @@ class TestSnapshotLegacyCommand:
 
         assert result.exit_code == 13
         assert "active unsealed" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Target-ID Mismatch Guard (Issue #51)
+# ---------------------------------------------------------------------------
+
+
+def _mock_from_task(task_id: str):
+    """Patch get_container() chain so --from-task route resolves a mock task.
+
+    FRAGILE: patches src.infrastructure.persistence.container.get_container.
+    If that import path changes, this helper and all tests using it will break.
+    """
+    task = MagicMock()
+    task.id = task_id
+    task.plan_text = "test plan"
+    task.subject = "test subject"
+    task.description = "test description"
+    mock_board = MagicMock()
+    mock_board.get.return_value = task
+    mock_container = MagicMock()
+    mock_container.task_board_service.return_value = mock_board
+    return patch(
+        "src.infrastructure.persistence.container.get_container",
+        return_value=mock_container,
+    )
+
+
+def _mock_from_plan(session_id: str):
+    """Patch get_plan_state_path() + PlanState.load() for --from-plan route.
+
+    FRAGILE: patches src.interfaces.cli.commands.workflow.get_plan_state_path
+    and src.application.services.workflow.state.PlanState.load.
+    If either import path changes, this helper and all tests using it will break.
+
+    Returns a single ExitStack-based context manager that applies both patches.
+    """
+    from contextlib import ExitStack
+
+    plan = MagicMock()
+    plan.session_id = session_id
+    plan.tasks = []
+    plan_path = MagicMock()
+    plan_path.exists.return_value = True
+
+    class _PlanMock(ExitStack):
+        def __enter__(self):
+            super().__enter__()
+            p1 = self.enter_context(
+                patch(
+                    "src.interfaces.cli.commands.workflow.get_plan_state_path",
+                    return_value=plan_path,
+                )
+            )
+            p2 = self.enter_context(
+                patch(
+                    "src.application.services.workflow.state.PlanState.load",
+                    return_value=plan,
+                )
+            )
+            return (p1, p2)
+
+    return _PlanMock()
+
+
+class TestTargetIdValidation:
+    """10 tests: 4 unit (pure helper), 4 wiring (CLI integration), 2 content-route."""
+
+    # --- Unit tests on pure helper (no mocks needed) ---
+
+    def test_match_returns_proceed_empty(self) -> None:
+        result = _validate_target_id_match("task-abc", "task-abc", "task", False)
+        assert result == (True, "")
+
+    def test_mismatch_deny_returns_error(self) -> None:
+        should_proceed, msg = _validate_target_id_match("task-xyz", "task-abc", "task", False)
+        assert should_proceed is False
+        assert "Error" in msg
+        assert "task-xyz" in msg
+        assert "task-abc" in msg
+
+    def test_mismatch_allow_returns_warning(self) -> None:
+        should_proceed, msg = _validate_target_id_match("task-xyz", "task-abc", "plan", True)
+        assert should_proceed is True
+        assert "Warning" in msg
+        assert "task-xyz" in msg
+
+    def test_empty_target_id_returns_proceed(self) -> None:
+        assert _validate_target_id_match("", "task-abc", "task", False) == (True, "")
+
+    # --- Wiring tests (CLI integration via CliRunner) ---
+
+    def test_freeze_from_task_mismatch_exits_1(self) -> None:
+        service, repo = _make_service()
+        repo.get_all_frozen_proposals.return_value = []
+        with (_patch_service(service), _mock_from_task("task-abc")):
+            result = runner.invoke(app, ["freeze", "--target-id", "task-xyz", "--from-task", "task-abc"])
+        assert result.exit_code == 1
+        assert "task-xyz" in result.output
+        assert "task-abc" in result.output
+
+    def test_freeze_from_plan_mismatch_exits_1(self) -> None:
+        service, repo = _make_service()
+        repo.get_all_frozen_proposals.return_value = []
+        with (_patch_service(service), _mock_from_plan("plan-111")):
+            result = runner.invoke(app, ["freeze", "--target-id", "plan-222", "--from-plan", "plan-111"])
+        assert result.exit_code == 1
+
+    def test_snapshot_from_task_mismatch_exits_1(self) -> None:
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.is_failed.return_value = False
+        with (_patch_service(service), _mock_from_task("task-abc")):
+            result = runner.invoke(app, ["snapshot-legacy", "--target-id", "task-xyz", "--from-task", "task-abc"])
+        assert result.exit_code == 1
+
+    def test_snapshot_from_plan_mismatch_exits_1(self) -> None:
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.is_failed.return_value = False
+        with (_patch_service(service), _mock_from_plan("plan-111")):
+            result = runner.invoke(app, ["snapshot-legacy", "--target-id", "plan-222", "--from-plan", "plan-111"])
+        assert result.exit_code == 1
+
+    # --- Content-route tests (fixed assertions) ---
+
+    def test_freeze_content_no_guard(self) -> None:
+        service, repo = _make_service()
+        repo.get_all_frozen_proposals.return_value = []
+        with _patch_service(service):
+            result = runner.invoke(app, ["freeze", "--target-id", "anything-at-all", "--content", "data"])
+        assert result.exit_code == 0
+        assert "does not match" not in result.output
+
+    def test_snapshot_content_no_guard(self) -> None:
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.is_failed.return_value = False
+        with _patch_service(service):
+            result = runner.invoke(app, ["snapshot-legacy", "--target-id", "anything-at-all", "--content", "data"])
+        assert result.exit_code == 0
+        assert "does not match" not in result.output
