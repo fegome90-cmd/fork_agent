@@ -9,6 +9,14 @@ Tests the application service implementing FPELAuthorizationPort:
 - required reports = all checkers must PASS
 - FAIL terminal blocks subsequent seal/freeze transitions
 - parametrized SealFailureReason coverage (all 5 values)
+- mark_fail happy path with reason (S1)
+- mark_fail ValueError on no active proposal (S2)
+- mark_fail idempotent — first-write-wins reason (S5)
+- check_sealed TERMINAL_FAIL for failed proposal (S3)
+- check_sealed unchanged when NOT failed (S3 neg)
+- re-freeze after fail creates clean proposal (S4)
+- seal blocks failed proposal (S6)
+- mark_fail on sealed proposal — emergency stop (S13)
 """
 
 from __future__ import annotations
@@ -55,6 +63,8 @@ def _make_frozen(
 
 def _make_service(repo: MagicMock | None = None) -> tuple[FPELAuthorizationService, MagicMock]:
     mock_repo = repo if repo is not None else MagicMock(spec=FPELRepository)
+    # Default: is_failed returns False (proposal not failed)
+    mock_repo.is_failed.return_value = False
     return FPELAuthorizationService(repo=mock_repo), mock_repo  # type: ignore[arg-type]
 
 
@@ -682,3 +692,190 @@ class TestPortContract:
         """FPELAuthorizationService must implement FPELAuthorizationPort."""
         service, _ = _make_service()
         assert isinstance(service, FPELAuthorizationPort)
+
+
+# ---------------------------------------------------------------------------
+# Task 1.2 — mark_fail happy path with reason (S1)
+# ---------------------------------------------------------------------------
+
+
+class TestMarkFailHappyPath:
+    """mark_fail(target_id, reason) resolves active proposal, persists FAIL, returns FrozenProposal."""
+
+    def test_mark_fail_returns_frozen_proposal_with_reason(self) -> None:
+        """mark_fail returns the FrozenProposal and calls repo.mark_failed with reason (S1)."""
+        service, repo = _make_service()
+        frozen = _setup_frozen(repo)
+
+        result = service.mark_fail(target_id=TASK_ID, reason="blocked by audit")
+
+        assert result.frozen_proposal_id == frozen.frozen_proposal_id
+        repo.mark_failed.assert_called_once_with(frozen.frozen_proposal_id, "blocked by audit")
+
+    def test_mark_fail_returns_same_frozen_proposal_object(self) -> None:
+        """mark_fail returns the FrozenProposal from get_active (unchanged)."""
+        service, repo = _make_service()
+        frozen = _setup_frozen(repo)
+
+        result = service.mark_fail(target_id=TASK_ID)
+
+        assert result is frozen
+
+
+# ---------------------------------------------------------------------------
+# Task 1.3 — mark_fail raises ValueError when no active proposal (S2)
+# ---------------------------------------------------------------------------
+
+
+class TestMarkFailNoActiveProposal:
+    """mark_fail raises ValueError when no active frozen proposal exists."""
+
+    def test_mark_fail_raises_value_error_no_active(self) -> None:
+        """mark_fail raises ValueError with descriptive message (S2)."""
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+
+        with pytest.raises(ValueError, match="No active frozen proposal"):
+            service.mark_fail(target_id=TASK_ID)
+
+
+# ---------------------------------------------------------------------------
+# Task 1.4 — mark_fail idempotent: first-write-wins reason (S5)
+# ---------------------------------------------------------------------------
+
+
+class TestMarkFailIdempotency:
+    """mark_fail is idempotent — second call returns same fp_id, original reason preserved."""
+
+    def test_mark_fail_idempotent_returns_same_fp_id(self) -> None:
+        """Second mark_fail returns same frozen_proposal_id (S5)."""
+        service, repo = _make_service()
+        _setup_frozen(repo)
+
+        result1 = service.mark_fail(target_id=TASK_ID, reason="first")
+        result2 = service.mark_fail(target_id=TASK_ID, reason="second")
+
+        assert result1.frozen_proposal_id == result2.frozen_proposal_id
+        # repo.mark_failed called twice (INSERT OR IGNORE handles idempotency)
+        assert repo.mark_failed.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Task 1.5 — check_sealed returns TERMINAL_FAIL for failed proposal (S3)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckSealedTerminalFail:
+    """check_sealed() returns TERMINAL_FAIL BEFORE sealed verdict lookup."""
+
+    def test_check_sealed_returns_terminal_fail_for_failed(self) -> None:
+        """Failed proposal → TERMINAL_FAIL decision without sealed verdict lookup (S3)."""
+        service, repo = _make_service()
+        frozen = _setup_frozen(repo)
+        repo.is_failed.return_value = True
+
+        decision = service.check_sealed(target_id=TASK_ID)
+
+        assert decision.allowed is False
+        assert decision.status == FPELStatus.TERMINAL_FAIL
+        assert decision.reason == SealFailureReason.TERMINAL_FAIL
+        assert decision.frozen_proposal_id == frozen.frozen_proposal_id
+        # MUST NOT perform sealed verdict lookup
+        repo.get_sealed_verdict.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Task 1.6 — check_sealed unchanged when proposal NOT failed (S3 neg)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckSealedUnchangedWhenNotFailed:
+    """check_sealed() proceeds normally when proposal is NOT failed."""
+
+    def test_check_sealed_proceeds_normally_when_not_failed(self) -> None:
+        """Non-failed proposal follows existing flow — sealed verdict IS queried (S3 neg)."""
+        service, repo = _make_service()
+        frozen = _setup_frozen(repo)
+        repo.is_failed.return_value = False
+        sealed = SealedVerdict(
+            frozen_proposal_id=frozen.frozen_proposal_id,
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash=frozen.content_hash,
+        )
+        repo.get_sealed_verdict.return_value = sealed
+
+        decision = service.check_sealed(target_id=TASK_ID)
+
+        assert decision.allowed is True
+        assert decision.status == FPELStatus.SEALED_PASS
+        # Sealed verdict WAS queried — normal flow
+        repo.get_sealed_verdict.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Task 1.7 — re-freeze after fail: new proposal NOT failed (S4)
+# ---------------------------------------------------------------------------
+
+
+class TestReFreezeAfterFail:
+    """Re-freeze after fail creates new proposal; new fp_id is NOT failed."""
+
+    def test_refreeze_creates_clean_proposal(self) -> None:
+        """New frozen_proposal_id has no FAIL marker → is_failed returns False (S4)."""
+        service, repo = _make_service()
+        old_frozen = _make_frozen()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_all_frozen_proposals.return_value = [old_frozen]
+
+        new_frozen = service.freeze(target_id=TASK_ID, content="Updated proposal content")
+
+        assert new_frozen.frozen_proposal_id != old_frozen.frozen_proposal_id
+        assert new_frozen.is_active
+
+
+# ---------------------------------------------------------------------------
+# Task 1.8 — seal blocks failed proposal (S6)
+# ---------------------------------------------------------------------------
+
+
+class TestSealBlocksFailedProposal:
+    """seal() returns TERMINAL_FAIL for failed proposal."""
+
+    def test_seal_returns_terminal_fail_for_failed(self) -> None:
+        """Failed proposal → seal returns SealFailureReason.TERMINAL_FAIL (S6)."""
+        service, repo = _make_service()
+        _setup_frozen(repo)
+        repo.is_failed.return_value = True
+
+        result = service.seal(target_id=TASK_ID)
+
+        assert isinstance(result, SealFailureReason)
+        assert result == SealFailureReason.TERMINAL_FAIL
+
+
+# ---------------------------------------------------------------------------
+# Task 1.9 — mark_fail on sealed proposal: emergency stop (S13)
+# ---------------------------------------------------------------------------
+
+
+class TestMarkFailOnSealedEmergencyStop:
+    """mark_fail works on sealed proposals — emergency stop (D8, S13)."""
+
+    def test_mark_fail_on_sealed_succeeds(self) -> None:
+        """mark_fail on sealed proposal persists failure — overrides seal (S13)."""
+        service, repo = _make_service()
+        frozen = _setup_frozen(repo)
+        # Proposal has a sealed verdict — still active
+        sealed = SealedVerdict(
+            frozen_proposal_id=frozen.frozen_proposal_id,
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash=frozen.content_hash,
+        )
+        repo.get_sealed_verdict.return_value = sealed
+
+        result = service.mark_fail(target_id=TASK_ID, reason="emergency revocation")
+
+        assert result.frozen_proposal_id == frozen.frozen_proposal_id
+        repo.mark_failed.assert_called_once_with(frozen.frozen_proposal_id, "emergency revocation")

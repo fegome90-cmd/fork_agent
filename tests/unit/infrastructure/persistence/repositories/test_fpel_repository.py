@@ -3,6 +3,9 @@
 Tests:
 - check_sealed accepts current_hash parameter from caller
 - get_reports_for includes report_content in returned dicts
+- mark_failed() INSERT OR IGNORE idempotency (S5)
+- is_failed() returns True/False correctly (S9)
+- reason persistence round-trip (R6)
 """
 
 from pathlib import Path
@@ -90,6 +93,7 @@ class TestCheckSealedCurrentHash:
             lifecycle=FrozenProposalLifecycle.ACTIVE,
         )
         repo.get_active_frozen_proposal.return_value = frozen
+        repo.is_failed.return_value = False
         repo.get_sealed_verdict.return_value = SealedVerdict(
             frozen_proposal_id="fp-001",
             verdict="SEALED_PASS",
@@ -104,3 +108,138 @@ class TestCheckSealedCurrentHash:
 
         assert decision.allowed is True
         repo.get_current_content_hash.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Task 1.1 — mark_failed + is_failed + reason round-trip (S5, S9, R6)
+# ---------------------------------------------------------------------------
+
+
+class TestMarkFailedIdempotency:
+    """mark_failed() uses INSERT OR IGNORE — first-write-wins for reason."""
+
+    def _seed_frozen(self, conn: DatabaseConnection, fp_id: str = "fp-fail-001") -> None:
+        with conn as c:
+            c.execute(
+                "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content) "
+                "VALUES (?, ?, ?, ?)",
+                (fp_id, "target-fail", "hash-fail", "fail content"),
+            )
+            c.commit()
+
+    def test_mark_failed_inserts_failure_row(self, tmp_path: Path) -> None:
+        """mark_failed() creates a row in fpel_proposal_failures."""
+        conn, repo = _create_repo(tmp_path)
+        self._seed_frozen(conn)
+
+        repo.mark_failed("fp-fail-001", reason="audit failure")
+
+        assert repo.is_failed("fp-fail-001") is True
+
+    def test_mark_failed_idempotent_second_call_no_error(self, tmp_path: Path) -> None:
+        """Second mark_failed() is no-op — INSERT OR IGNORE (S5)."""
+        conn, repo = _create_repo(tmp_path)
+        self._seed_frozen(conn)
+
+        repo.mark_failed("fp-fail-001", reason="first")
+        repo.mark_failed("fp-fail-001", reason="second")
+
+        assert repo.is_failed("fp-fail-001") is True
+
+    def test_mark_failed_first_write_wins_reason(self, tmp_path: Path) -> None:
+        """First reason preserved; subsequent calls with different reason ignored (S5)."""
+        conn, repo = _create_repo(tmp_path)
+        self._seed_frozen(conn)
+
+        repo.mark_failed("fp-fail-001", reason="first reason")
+        repo.mark_failed("fp-fail-001", reason="second reason")
+
+        # Verify first reason is preserved via direct DB read
+        with conn as c:
+            row = c.execute(
+                "SELECT reason FROM fpel_proposal_failures WHERE frozen_proposal_id = ?",
+                ("fp-fail-001",),
+            ).fetchone()
+        assert row is not None
+        assert row["reason"] == "first reason"
+
+    def test_mark_failed_without_reason(self, tmp_path: Path) -> None:
+        """mark_failed() with no reason stores NULL in reason column."""
+        conn, repo = _create_repo(tmp_path)
+        self._seed_frozen(conn)
+
+        repo.mark_failed("fp-fail-001", reason=None)
+
+        assert repo.is_failed("fp-fail-001") is True
+        with conn as c:
+            row = c.execute(
+                "SELECT reason FROM fpel_proposal_failures WHERE frozen_proposal_id = ?",
+                ("fp-fail-001",),
+            ).fetchone()
+        assert row is not None
+        assert row["reason"] is None
+
+
+class TestIsFailed:
+    """is_failed() returns True when failed, False otherwise (S9)."""
+
+    def test_is_failed_true_when_failure_row_exists(self, tmp_path: Path) -> None:
+        """is_failed() returns True for a failed proposal."""
+        conn, repo = _create_repo(tmp_path)
+        with conn as c:
+            c.execute(
+                "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content) "
+                "VALUES (?, ?, ?, ?)",
+                ("fp-failed", "target-x", "hash-x", "content-x"),
+            )
+            c.execute(
+                "INSERT INTO fpel_proposal_failures (frozen_proposal_id, reason) VALUES (?, ?)",
+                ("fp-failed", "some reason"),
+            )
+            c.commit()
+
+        assert repo.is_failed("fp-failed") is True
+
+    def test_is_failed_false_when_no_failure_row(self, tmp_path: Path) -> None:
+        """is_failed() returns False for a non-failed proposal (S9)."""
+        conn, repo = _create_repo(tmp_path)
+        with conn as c:
+            c.execute(
+                "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content) "
+                "VALUES (?, ?, ?, ?)",
+                ("fp-clean", "target-y", "hash-y", "content-y"),
+            )
+            c.commit()
+
+        assert repo.is_failed("fp-clean") is False
+
+    def test_is_failed_false_for_unknown_id(self, tmp_path: Path) -> None:
+        """is_failed() returns False for a proposal that doesn't exist."""
+        conn, repo = _create_repo(tmp_path)
+
+        assert repo.is_failed("fp-nonexistent") is False
+
+
+class TestReasonRoundTrip:
+    """Reason persists correctly and is retrievable (R6)."""
+
+    def test_reason_round_trip_via_direct_read(self, tmp_path: Path) -> None:
+        """Reason stored via mark_failed() is readable from DB."""
+        conn, repo = _create_repo(tmp_path)
+        with conn as c:
+            c.execute(
+                "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content) "
+                "VALUES (?, ?, ?, ?)",
+                ("fp-reason", "target-r", "hash-r", "content-r"),
+            )
+            c.commit()
+
+        repo.mark_failed("fp-reason", reason="blocked by audit")
+
+        with conn as c:
+            row = c.execute(
+                "SELECT reason FROM fpel_proposal_failures WHERE frozen_proposal_id = ?",
+                ("fp-reason",),
+            ).fetchone()
+        assert row is not None
+        assert row["reason"] == "blocked by audit"

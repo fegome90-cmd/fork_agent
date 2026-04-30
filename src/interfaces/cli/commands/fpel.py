@@ -180,3 +180,25 @@ def status_proposal(
         console.print(f"  blocking_reason:    {decision.reason.value}")
     if decision.sealed_at:
         console.print(f"  sealed_at:          {decision.sealed_at.isoformat()}")
+
+
+@app.command("fail")
+def fail_proposal(
+    target_id: Annotated[
+        str, typer.Option("--target-id", help="Target whose active proposal to fail")
+    ],
+    reason: Annotated[str | None, typer.Option("--reason", help="Optional failure reason")] = None,
+) -> None:
+    """Mark the active frozen proposal as failed (terminal state, no recovery)."""
+    service = _require_fpel_service()
+
+    try:
+        frozen = service.mark_fail(target_id=target_id, reason=reason)
+    except ValueError as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+        raise typer.Exit(12) from exc
+
+    console.print("[red]Proposal marked as FAILED.[/red]")
+    console.print(f"  frozen_proposal_id: {frozen.frozen_proposal_id}")
+    if reason:
+        console.print(f"  reason:             {reason}")

@@ -197,3 +197,24 @@ class SqliteFPELRepository:
                 "updated_at = datetime('now')",
                 (target_id, status),
             )
+
+    def mark_failed(self, frozen_proposal_id: str, reason: str | None = None) -> None:
+        """INSERT OR IGNORE — idempotent terminal FAIL marker.
+
+        First-write-wins for reason: subsequent calls with different reason are silently ignored.
+        """
+        with self._connection as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO fpel_proposal_failures (frozen_proposal_id, reason) "
+                "VALUES (?, ?)",
+                (frozen_proposal_id, reason),
+            )
+
+    def is_failed(self, frozen_proposal_id: str) -> bool:
+        """Single PK lookup — returns True if proposal has FAIL marker."""
+        with self._connection as conn:
+            cursor = conn.execute(
+                "SELECT 1 FROM fpel_proposal_failures WHERE frozen_proposal_id = ?",
+                (frozen_proposal_id,),
+            )
+            return cursor.fetchone() is not None
