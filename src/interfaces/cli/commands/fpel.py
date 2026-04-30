@@ -98,7 +98,8 @@ def freeze_proposal(
     allow_target_mismatch: Annotated[
         bool,
         typer.Option(
-            "--allow-target-mismatch", "--allow-target-alias",
+            "--allow-target-mismatch",
+            "--allow-target-alias",
             help="Allow target_id to differ from source ID",
         ),
     ] = False,
@@ -127,13 +128,20 @@ def freeze_proposal(
         if task is None:
             console.print(f"[red]Error: Task '{from_task}' not found[/red]")
             raise typer.Exit(1)
-        should_proceed, msg = _validate_target_id_match(target_id, from_task, "task", allow_target_mismatch)
+        should_proceed, msg = _validate_target_id_match(
+            target_id, from_task, "task", allow_target_mismatch
+        )
         if not should_proceed:
             console.print(f"[red]{msg}[/red]")
             raise typer.Exit(1)
         if msg:
             console.print(f"[yellow]{msg}[/yellow]")
-            logger.warning("Target-ID mismatch override: target=%s source=%s type=%s", target_id, from_task, "task")
+            logger.warning(
+                "Target-ID mismatch override: target=%s source=%s type=%s",
+                target_id,
+                from_task,
+                "task",
+            )
         frozen = service.freeze_task(
             target_id=target_id,
             plan_text=task.plan_text,
@@ -158,13 +166,20 @@ def freeze_proposal(
                 f"[red]Error: Plan session_id '{plan.session_id}' does not match --from-plan '{from_plan}'[/red]"
             )
             raise typer.Exit(1)
-        should_proceed, msg = _validate_target_id_match(target_id, from_plan, "plan", allow_target_mismatch)
+        should_proceed, msg = _validate_target_id_match(
+            target_id, from_plan, "plan", allow_target_mismatch
+        )
         if not should_proceed:
             console.print(f"[red]{msg}[/red]")
             raise typer.Exit(1)
         if msg:
             console.print(f"[yellow]{msg}[/yellow]")
-            logger.warning("Target-ID mismatch override: target=%s source=%s type=%s", target_id, from_plan, "plan")
+            logger.warning(
+                "Target-ID mismatch override: target=%s source=%s type=%s",
+                target_id,
+                from_plan,
+                "plan",
+            )
         tasks_data = [
             {"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks
         ]
@@ -279,7 +294,8 @@ def snapshot_legacy(
     allow_target_mismatch: Annotated[
         bool,
         typer.Option(
-            "--allow-target-mismatch", "--allow-target-alias",
+            "--allow-target-mismatch",
+            "--allow-target-alias",
             help="Allow target_id to differ from source ID",
         ),
     ] = False,
@@ -317,13 +333,20 @@ def snapshot_legacy(
             if task is None:
                 console.print(f"[red]Error: Task '{from_task}' not found[/red]")
                 raise typer.Exit(1)
-            should_proceed, msg = _validate_target_id_match(target_id, from_task, "task", allow_target_mismatch)
+            should_proceed, msg = _validate_target_id_match(
+                target_id, from_task, "task", allow_target_mismatch
+            )
             if not should_proceed:
                 console.print(f"[red]{msg}[/red]")
                 raise typer.Exit(1)
             if msg:
                 console.print(f"[yellow]{msg}[/yellow]")
-                logger.warning("Target-ID mismatch override: target=%s source=%s type=%s", target_id, from_task, "task")
+                logger.warning(
+                    "Target-ID mismatch override: target=%s source=%s type=%s",
+                    target_id,
+                    from_task,
+                    "task",
+                )
             frozen, sealed = service.snapshot_legacy_task(
                 target_id=target_id,
                 plan_text=task.plan_text,
@@ -350,13 +373,20 @@ def snapshot_legacy(
                     f"[red]Error: Plan session_id '{plan.session_id}' does not match --from-plan '{from_plan}'[/red]"
                 )
                 raise typer.Exit(1)
-            should_proceed, msg = _validate_target_id_match(target_id, from_plan, "plan", allow_target_mismatch)
+            should_proceed, msg = _validate_target_id_match(
+                target_id, from_plan, "plan", allow_target_mismatch
+            )
             if not should_proceed:
                 console.print(f"[red]{msg}[/red]")
                 raise typer.Exit(1)
             if msg:
                 console.print(f"[yellow]{msg}[/yellow]")
-                logger.warning("Target-ID mismatch override: target=%s source=%s type=%s", target_id, from_plan, "plan")
+                logger.warning(
+                    "Target-ID mismatch override: target=%s source=%s type=%s",
+                    target_id,
+                    from_plan,
+                    "plan",
+                )
             tasks_data = [
                 {"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks
             ]

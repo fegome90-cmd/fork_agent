@@ -621,8 +621,10 @@ class TestTargetIdValidation:
     def test_freeze_from_task_mismatch_exits_1(self) -> None:
         service, repo = _make_service()
         repo.get_all_frozen_proposals.return_value = []
-        with (_patch_service(service), _mock_from_task("task-abc")):
-            result = runner.invoke(app, ["freeze", "--target-id", "task-xyz", "--from-task", "task-abc"])
+        with _patch_service(service), _mock_from_task("task-abc"):
+            result = runner.invoke(
+                app, ["freeze", "--target-id", "task-xyz", "--from-task", "task-abc"]
+            )
         assert result.exit_code == 1
         assert "task-xyz" in result.output
         assert "task-abc" in result.output
@@ -630,8 +632,10 @@ class TestTargetIdValidation:
     def test_freeze_from_plan_mismatch_exits_1(self) -> None:
         service, repo = _make_service()
         repo.get_all_frozen_proposals.return_value = []
-        with (_patch_service(service), _mock_from_plan("plan-111")):
-            result = runner.invoke(app, ["freeze", "--target-id", "plan-222", "--from-plan", "plan-111"])
+        with _patch_service(service), _mock_from_plan("plan-111"):
+            result = runner.invoke(
+                app, ["freeze", "--target-id", "plan-222", "--from-plan", "plan-111"]
+            )
         assert result.exit_code == 1
 
     def test_snapshot_from_task_mismatch_exits_1(self) -> None:
@@ -639,8 +643,10 @@ class TestTargetIdValidation:
         repo.get_active_frozen_proposal.return_value = None
         repo.get_sealed_verdict.return_value = None
         repo.is_failed.return_value = False
-        with (_patch_service(service), _mock_from_task("task-abc")):
-            result = runner.invoke(app, ["snapshot-legacy", "--target-id", "task-xyz", "--from-task", "task-abc"])
+        with _patch_service(service), _mock_from_task("task-abc"):
+            result = runner.invoke(
+                app, ["snapshot-legacy", "--target-id", "task-xyz", "--from-task", "task-abc"]
+            )
         assert result.exit_code == 1
 
     def test_snapshot_from_plan_mismatch_exits_1(self) -> None:
@@ -648,8 +654,10 @@ class TestTargetIdValidation:
         repo.get_active_frozen_proposal.return_value = None
         repo.get_sealed_verdict.return_value = None
         repo.is_failed.return_value = False
-        with (_patch_service(service), _mock_from_plan("plan-111")):
-            result = runner.invoke(app, ["snapshot-legacy", "--target-id", "plan-222", "--from-plan", "plan-111"])
+        with _patch_service(service), _mock_from_plan("plan-111"):
+            result = runner.invoke(
+                app, ["snapshot-legacy", "--target-id", "plan-222", "--from-plan", "plan-111"]
+            )
         assert result.exit_code == 1
 
     # --- Content-route tests (fixed assertions) ---
@@ -658,7 +666,9 @@ class TestTargetIdValidation:
         service, repo = _make_service()
         repo.get_all_frozen_proposals.return_value = []
         with _patch_service(service):
-            result = runner.invoke(app, ["freeze", "--target-id", "anything-at-all", "--content", "data"])
+            result = runner.invoke(
+                app, ["freeze", "--target-id", "anything-at-all", "--content", "data"]
+            )
         assert result.exit_code == 0
         assert "does not match" not in result.output
 
@@ -668,6 +678,8 @@ class TestTargetIdValidation:
         repo.get_sealed_verdict.return_value = None
         repo.is_failed.return_value = False
         with _patch_service(service):
-            result = runner.invoke(app, ["snapshot-legacy", "--target-id", "anything-at-all", "--content", "data"])
+            result = runner.invoke(
+                app, ["snapshot-legacy", "--target-id", "anything-at-all", "--content", "data"]
+            )
         assert result.exit_code == 0
         assert "does not match" not in result.output

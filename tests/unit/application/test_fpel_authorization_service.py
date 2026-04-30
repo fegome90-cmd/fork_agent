@@ -386,8 +386,9 @@ class TestReFreezeAfterFailure:
         # Atomic supersede: save_frozen_proposal called with supersede_ids
         repo.save_frozen_proposal.assert_called_once()
         call_kwargs = repo.save_frozen_proposal.call_args
-        assert call_kwargs.kwargs.get("supersede_ids") == [old_frozen.frozen_proposal_id] or \
-               (len(call_kwargs.args) > 1 and call_kwargs.args[1] == [old_frozen.frozen_proposal_id])
+        assert call_kwargs.kwargs.get("supersede_ids") == [old_frozen.frozen_proposal_id] or (
+            len(call_kwargs.args) > 1 and call_kwargs.args[1] == [old_frozen.frozen_proposal_id]
+        )
         # mark_superseded should NOT be called (replaced by atomic supersede_ids)
         repo.mark_superseded.assert_not_called()
 
@@ -1055,7 +1056,9 @@ class TestSnapshotLegacyHappyPath:
         assert sealed.verdict == "SEALED_PASS"
         assert sealed.source == "LEGACY_APPROVED"
         assert sealed.content_hash == content_hash
-        repo.save_frozen_with_sealed_verdict.assert_called_once_with(frozen, sealed, supersede_ids=[])
+        repo.save_frozen_with_sealed_verdict.assert_called_once_with(
+            frozen, sealed, supersede_ids=[]
+        )
 
 
 class TestSnapshotLegacyIdempotent:
