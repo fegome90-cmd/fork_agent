@@ -404,3 +404,98 @@ class FPELAuthorizationService:
             seal_id=None,
             sealed_at=None,
         )
+
+    def snapshot_legacy(self, target_id: str, content: str) -> tuple[FrozenProposal, SealedVerdict]:
+        """Create a legacy-approved snapshot: freeze + seal with source='LEGACY_APPROVED'.
+
+        Uses ``compute_content_hash(content)`` — NOT hash-authority compliant.
+        Use ``snapshot_legacy_task`` or ``snapshot_legacy_plan`` for hash authority.
+        Bypasses checker requirements — directly seals.
+        Idempotent: returns existing if sealed verdict already exists.
+        Raises ValueError if target has a failed proposal.
+        """
+        content_hash = compute_content_hash(content)
+        return self._snapshot_legacy_inner(target_id, content, content_hash)
+
+    def snapshot_legacy_task(
+        self,
+        target_id: str,
+        plan_text: str | None,
+        subject: str,
+        description: str | None = None,
+    ) -> tuple[FrozenProposal, SealedVerdict]:
+        """Legacy snapshot using canonical task hash authority.
+
+        Computes the same hash as ``compute_task_hash()`` so that
+        ``check_sealed(current_hash=compute_task_hash(task))`` passes.
+        """
+        content = plan_text
+        if content is None:
+            parts = [subject]
+            if description:
+                parts.append(description)
+            content = "\n".join(parts)
+        content_hash = compute_content_hash(content)
+        return self._snapshot_legacy_inner(target_id, content, content_hash)
+
+    def snapshot_legacy_plan(
+        self, target_id: str, tasks: list[dict[str, str]]
+    ) -> tuple[FrozenProposal, SealedVerdict]:
+        """Legacy snapshot using canonical plan hash authority.
+
+        Computes the same hash as ``compute_plan_hash_from_tasks()`` so that
+        ``check_sealed(current_hash=compute_plan_hash(...))`` passes.
+
+        Args:
+            target_id: The plan session ID.
+            tasks: List of dicts with id/slug/description keys.
+        """
+        import json
+
+        task_data = [
+            {"id": t["id"], "slug": t["slug"], "description": t["description"]} for t in tasks
+        ]
+        canonical = json.dumps(task_data, sort_keys=True, separators=(",", ":"))
+        content_hash = compute_content_hash(canonical)
+        return self._snapshot_legacy_inner(target_id, canonical, content_hash)
+
+    def _snapshot_legacy_inner(
+        self, target_id: str, content: str, content_hash: str
+    ) -> tuple[FrozenProposal, SealedVerdict]:
+        """Shared logic for all snapshot_legacy variants.
+
+        Checks FAIL guard and idempotency, then atomically persists
+        frozen proposal + sealed verdict.
+        """
+        frozen = self._repo.get_active_frozen_proposal(target_id)
+
+        if frozen is not None:
+            if self._repo.is_failed(frozen.frozen_proposal_id):
+                raise ValueError(
+                    f"Cannot snapshot legacy for target '{target_id}': proposal already failed"
+                )
+            sealed = self._repo.get_sealed_verdict(frozen.frozen_proposal_id)
+            if sealed is not None:
+                return frozen, sealed
+
+        existing = self._repo.get_all_frozen_proposals(target_id)
+        for old_fp in existing:
+            if old_fp.is_active:
+                self._repo.mark_superseded(old_fp.frozen_proposal_id)
+
+        frozen_id = f"fp-{uuid.uuid4().hex[:12]}"
+        proposal = FrozenProposal(
+            frozen_proposal_id=frozen_id,
+            target_id=target_id,
+            content_hash=content_hash,
+            content=content,
+        )
+        sealed = SealedVerdict(
+            frozen_proposal_id=frozen_id,
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash=content_hash,
+            source="LEGACY_APPROVED",
+        )
+        self._repo.save_frozen_with_sealed_verdict(proposal, sealed)
+        return proposal, sealed

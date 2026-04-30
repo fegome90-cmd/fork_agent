@@ -137,12 +137,14 @@ class SealedVerdict:
         verdict: Always "SEALED_PASS".
         sealed_at: Timestamp when sealing occurred.
         content_hash: Hash of the content at seal time.
+        source: Origin of the seal (e.g. 'LEGACY_APPROVED'), None for normal seal flow.
     """
 
     frozen_proposal_id: str
     verdict: str
     sealed_at: datetime
     content_hash: str
+    source: str | None = None
 
 
 @dataclass(frozen=True)

@@ -202,3 +202,97 @@ def fail_proposal(
     console.print(f"  frozen_proposal_id: {frozen.frozen_proposal_id}")
     if reason:
         console.print(f"  reason:             {reason}")
+
+
+@app.command("snapshot-legacy")
+def snapshot_legacy(
+    target_id: Annotated[str, typer.Option("--target-id", help="Target ID for legacy snapshot")],
+    content: Annotated[
+        str | None,
+        typer.Option(
+            "--content",
+            help="Raw content (low-level, NOT hash-authority compliant)",
+        ),
+    ] = None,
+    from_task: Annotated[
+        str | None,
+        typer.Option("--from-task", help="Task ID — snapshot with canonical task hash authority"),
+    ] = None,
+    from_plan: Annotated[
+        str | None,
+        typer.Option(
+            "--from-plan", help="Plan session ID — snapshot with canonical plan hash authority"
+        ),
+    ] = None,
+) -> None:
+    """Create a legacy-approved snapshot (freeze + seal with source=LEGACY_APPROVED).
+
+    Use --from-task or --from-plan for hash-authority compliant snapshot
+    (canonical hash matches what check_sealed() computes at runtime).
+    Use --content for low-level/arbitrary content (NOT hash-authority compliant).
+    """
+    sources = [content is not None, from_task is not None, from_plan is not None]
+    if sum(sources) != 1:
+        console.print(
+            "[red]Error: Provide exactly one of --content, --from-task, --from-plan[/red]"
+        )
+        raise typer.Exit(1)
+
+    service = _require_fpel_service()
+
+    try:
+        if content is not None:
+            console.print(
+                "[yellow]Warning: --content is NOT hash-authority compliant. "
+                "Post-snapshot runtime checks may produce HASH_MISMATCH. "
+                "Use --from-task or --from-plan for authority.[/yellow]"
+            )
+            frozen, sealed = service.snapshot_legacy(target_id=target_id, content=content)
+        elif from_task is not None:
+            from src.infrastructure.persistence.container import get_container
+
+            container = get_container()
+            task_board = container.task_board_service()
+            task = task_board.get(from_task)
+            if task is None:
+                console.print(f"[red]Error: Task '{from_task}' not found[/red]")
+                raise typer.Exit(1)
+            frozen, sealed = service.snapshot_legacy_task(
+                target_id=target_id,
+                plan_text=task.plan_text,
+                subject=task.subject,
+                description=task.description,
+            )
+        else:
+            from src.interfaces.cli.commands.workflow import get_plan_state_path
+
+            plan_path = get_plan_state_path()
+            if not plan_path.exists():
+                console.print(
+                    "[red]Error: No plan state found. Run 'workflow outline' first.[/red]"
+                )
+                raise typer.Exit(1)
+            from src.application.services.workflow.state import PlanState
+
+            plan = PlanState.load(plan_path)
+            if plan is None:
+                console.print("[red]Error: Failed to load plan state.[/red]")
+                raise typer.Exit(1)
+            if plan.session_id != from_plan:
+                console.print(
+                    f"[red]Error: Plan session_id '{plan.session_id}' does not match --from-plan '{from_plan}'[/red]"
+                )
+                raise typer.Exit(1)
+            tasks_data = [
+                {"id": t.id, "slug": t.slug, "description": t.description} for t in plan.tasks
+            ]
+            frozen, sealed = service.snapshot_legacy_plan(target_id=target_id, tasks=tasks_data)
+    except ValueError as exc:
+        console.print(f"[red]Error: {exc}[/red]")
+        raise typer.Exit(12) from exc
+
+    console.print("[green]Legacy snapshot created.[/green]")
+    console.print(f"  frozen_proposal_id: {frozen.frozen_proposal_id}")
+    console.print(f"  verdict:            {sealed.verdict}")
+    console.print(f"  source:             {sealed.source}")
+    console.print(f"  content_hash:       {sealed.content_hash[:16]}...")

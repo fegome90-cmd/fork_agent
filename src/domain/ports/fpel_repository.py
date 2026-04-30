@@ -72,3 +72,9 @@ class FPELRepository(Protocol):
     def is_failed(self, frozen_proposal_id: str) -> bool:
         """Single PK lookup — returns True if proposal has FAIL marker."""
         ...
+
+    def save_frozen_with_sealed_verdict(
+        self, proposal: FrozenProposal, verdict: SealedVerdict
+    ) -> None:
+        """Atomic: persist frozen proposal + sealed verdict in one transaction."""
+        ...

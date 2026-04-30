@@ -465,3 +465,60 @@ class TestFailCommand:
             result = runner.invoke(app, ["fail", "--target-id", TARGET_ID])
 
         assert result.exit_code == 12
+
+
+class TestSnapshotLegacyCommand:
+    def test_snapshot_legacy_success_exit_0(self) -> None:
+        service, repo = _make_service()
+        repo.get_active_frozen_proposal.return_value = None
+        repo.get_sealed_verdict.return_value = None
+        repo.get_all_frozen_proposals.return_value = []
+        repo.is_failed.return_value = False
+
+        with _patch_service(service):
+            result = runner.invoke(
+                app,
+                ["snapshot-legacy", "--target-id", TARGET_ID, "--content", CONTENT],
+            )
+
+        assert result.exit_code == 0
+        assert "LEGACY_APPROVED" in result.output
+
+    def test_snapshot_legacy_failed_proposal_exit_12(self) -> None:
+        service, repo = _make_service()
+        frozen = _make_frozen()
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.is_failed.return_value = True
+
+        with _patch_service(service):
+            result = runner.invoke(
+                app,
+                ["snapshot-legacy", "--target-id", TARGET_ID, "--content", CONTENT],
+            )
+
+        assert result.exit_code == 12
+
+    def test_snapshot_legacy_missing_content_exit_12(self) -> None:
+        service, _ = _make_service()
+
+        with _patch_service(service):
+            result = runner.invoke(
+                app,
+                ["snapshot-legacy", "--target-id", TARGET_ID],
+            )
+
+        assert result.exit_code != 0
+
+    def test_snapshot_legacy_service_error_exit_12(self) -> None:
+        service, repo = _make_service()
+        frozen = _make_frozen()
+        repo.get_active_frozen_proposal.return_value = frozen
+        repo.is_failed.return_value = True
+
+        with _patch_service(service):
+            result = runner.invoke(
+                app,
+                ["snapshot-legacy", "--target-id", TARGET_ID, "--content", CONTENT],
+            )
+
+        assert result.exit_code == 12
