@@ -137,13 +137,12 @@ class FPELAuthorizationService:
     def freeze(self, target_id: str, content: str) -> FrozenProposal:
         """Create an immutable frozen snapshot of the proposal content.
 
-        Any existing frozen proposals for this target are marked SUPERSEDED.
+        Any existing frozen proposals for this target are marked SUPERSEDED
+        atomically within the same save operation.
         """
-        # Supersede all previous frozen proposals for this target
+        # Collect active proposal IDs for atomic supersede
         existing = self._repo.get_all_frozen_proposals(target_id)
-        for old_fp in existing:
-            if old_fp.is_active:
-                self._repo.mark_superseded(old_fp.frozen_proposal_id)
+        supersede_ids = [fp.frozen_proposal_id for fp in existing if fp.is_active]
 
         content_hash = compute_content_hash(content)
         frozen_id = f"fp-{uuid.uuid4().hex[:12]}"
@@ -154,7 +153,7 @@ class FPELAuthorizationService:
             content_hash=content_hash,
             content=content,
         )
-        self._repo.save_frozen_proposal(proposal)
+        self._repo.save_frozen_proposal(proposal, supersede_ids=supersede_ids)
         return proposal
 
     def freeze_task(
@@ -477,11 +476,13 @@ class FPELAuthorizationService:
             sealed = self._repo.get_sealed_verdict(frozen.frozen_proposal_id)
             if sealed is not None:
                 return frozen, sealed
+            raise ValueError(
+                f"Cannot snapshot legacy for target '{target_id}': "
+                f"active unsealed proposal exists (run 'fpel fail' first)"
+            )
 
         existing = self._repo.get_all_frozen_proposals(target_id)
-        for old_fp in existing:
-            if old_fp.is_active:
-                self._repo.mark_superseded(old_fp.frozen_proposal_id)
+        supersede_ids = [fp.frozen_proposal_id for fp in existing if fp.is_active]
 
         frozen_id = f"fp-{uuid.uuid4().hex[:12]}"
         proposal = FrozenProposal(
@@ -497,5 +498,5 @@ class FPELAuthorizationService:
             content_hash=content_hash,
             source="LEGACY_APPROVED",
         )
-        self._repo.save_frozen_with_sealed_verdict(proposal, sealed)
+        self._repo.save_frozen_with_sealed_verdict(proposal, sealed, supersede_ids=supersede_ids)
         return proposal, sealed

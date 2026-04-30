@@ -368,14 +368,13 @@ class TestSealIdempotency:
 class TestReFreezeAfterFailure:
     def test_re_freeze_creates_new_id_and_supersedes_previous(self) -> None:
         """After seal failure, re-freeze creates new frozen_proposal_id and
-        marks the previous one as SUPERSEDED."""
+        marks the previous one as SUPERSEDED atomically via supersede_ids."""
         service, repo = _make_service()
         old_frozen = _make_frozen()
         # Re-freeze: no active frozen (previous was consumed), but old exists in history
         repo.get_active_frozen_proposal.return_value = None
         repo.get_all_frozen_proposals.return_value = [old_frozen]
         repo.save_frozen_proposal.return_value = None
-        repo.mark_superseded.return_value = None
 
         new_frozen = service.freeze(
             target_id=TASK_ID,
@@ -384,7 +383,13 @@ class TestReFreezeAfterFailure:
         assert new_frozen.frozen_proposal_id != old_frozen.frozen_proposal_id
         assert new_frozen.content_hash != old_frozen.content_hash
         assert new_frozen.is_active
-        repo.mark_superseded.assert_called_once_with(old_frozen.frozen_proposal_id)
+        # Atomic supersede: save_frozen_proposal called with supersede_ids
+        repo.save_frozen_proposal.assert_called_once()
+        call_kwargs = repo.save_frozen_proposal.call_args
+        assert call_kwargs.kwargs.get("supersede_ids") == [old_frozen.frozen_proposal_id] or \
+               (len(call_kwargs.args) > 1 and call_kwargs.args[1] == [old_frozen.frozen_proposal_id])
+        # mark_superseded should NOT be called (replaced by atomic supersede_ids)
+        repo.mark_superseded.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1050,7 +1055,7 @@ class TestSnapshotLegacyHappyPath:
         assert sealed.verdict == "SEALED_PASS"
         assert sealed.source == "LEGACY_APPROVED"
         assert sealed.content_hash == content_hash
-        repo.save_frozen_with_sealed_verdict.assert_called_once_with(frozen, sealed)
+        repo.save_frozen_with_sealed_verdict.assert_called_once_with(frozen, sealed, supersede_ids=[])
 
 
 class TestSnapshotLegacyIdempotent:

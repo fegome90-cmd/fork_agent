@@ -393,3 +393,65 @@ class TestR2HashMismatch:
         assert detect_scope_change(sealed_hash, drifted_hash) is True
         # Same failure reason applies
         assert SealFailureReason.HASH_MISMATCH.value == "HASH_MISMATCH"
+
+
+# ---------------------------------------------------------------------------
+# 12. SealedVerdict __post_init__ full validation (T1.2 / T5.1)
+# ---------------------------------------------------------------------------
+
+
+class TestSealedVerdictValidation:
+    """Parametrized validation tests for SealedVerdict.__post_init__."""
+
+    @pytest.mark.parametrize("source", [None, "LEGACY_APPROVED", "MANUAL_OVERRIDE", "AUTO_SEAL"])
+    def test_valid_sources_pass(self, source: str | None) -> None:
+        """Valid sources (including None) MUST NOT raise."""
+        SealedVerdict(
+            frozen_proposal_id="fp-valid",
+            verdict="SEALED_PASS",
+            sealed_at=datetime.now(tz=UTC),
+            content_hash="abc123",
+            source=source,
+        )
+
+    @pytest.mark.parametrize("source", ["INVALID", "LEGACY", ""])
+    def test_invalid_source_raises(self, source: str) -> None:
+        """Invalid source strings MUST raise ValueError."""
+        with pytest.raises(ValueError, match="source"):
+            SealedVerdict(
+                frozen_proposal_id="fp-bad-source",
+                verdict="SEALED_PASS",
+                sealed_at=datetime.now(tz=UTC),
+                content_hash="abc123",
+                source=source,
+            )
+
+    def test_verdict_must_be_sealed_pass(self) -> None:
+        """Only 'SEALED_PASS' is accepted as verdict."""
+        with pytest.raises(ValueError, match="verdict"):
+            SealedVerdict(
+                frozen_proposal_id="fp-bad-verdict",
+                verdict="PASS",
+                sealed_at=datetime.now(tz=UTC),
+                content_hash="abc123",
+            )
+
+    def test_empty_frozen_proposal_id_raises(self) -> None:
+        """Empty frozen_proposal_id MUST raise ValueError."""
+        with pytest.raises(ValueError, match="frozen_proposal_id"):
+            SealedVerdict(
+                frozen_proposal_id="",
+                verdict="SEALED_PASS",
+                sealed_at=datetime.now(tz=UTC),
+                content_hash="abc123",
+            )
+
+    def test_empty_content_hash_raises(self) -> None:
+        """Empty content_hash MUST raise ValueError."""
+        with pytest.raises(ValueError, match="content_hash"):
+            SealedVerdict(
+                frozen_proposal_id="fp-no-hash",
+                verdict="SEALED_PASS",
+                sealed_at=datetime.now(tz=UTC),
+                content_hash="",
+            )

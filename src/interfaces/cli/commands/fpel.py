@@ -288,7 +288,10 @@ def snapshot_legacy(
             ]
             frozen, sealed = service.snapshot_legacy_plan(target_id=target_id, tasks=tasks_data)
     except ValueError as exc:
+        msg = str(exc)
         console.print(f"[red]Error: {exc}[/red]")
+        if "active unsealed" in msg:
+            raise typer.Exit(13) from exc
         raise typer.Exit(12) from exc
 
     console.print("[green]Legacy snapshot created.[/green]")

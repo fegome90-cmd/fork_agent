@@ -498,7 +498,7 @@ class TestSnapshotLegacyCommand:
 
         assert result.exit_code == 12
 
-    def test_snapshot_legacy_missing_content_exit_12(self) -> None:
+    def test_snapshot_legacy_missing_source_exit_1(self) -> None:
         service, _ = _make_service()
 
         with _patch_service(service):
@@ -507,13 +507,16 @@ class TestSnapshotLegacyCommand:
                 ["snapshot-legacy", "--target-id", TARGET_ID],
             )
 
-        assert result.exit_code != 0
+        assert result.exit_code == 1
+        assert "exactly one" in result.output
 
-    def test_snapshot_legacy_service_error_exit_12(self) -> None:
+    def test_snapshot_legacy_active_unsealed_exits_13(self) -> None:
+        """snapshot-legacy with active unsealed proposal exits 13 (T4.1 / T5.2)."""
         service, repo = _make_service()
         frozen = _make_frozen()
         repo.get_active_frozen_proposal.return_value = frozen
-        repo.is_failed.return_value = True
+        repo.is_failed.return_value = False
+        repo.get_sealed_verdict.return_value = None  # no seal → active unsealed
 
         with _patch_service(service):
             result = runner.invoke(
@@ -521,4 +524,5 @@ class TestSnapshotLegacyCommand:
                 ["snapshot-legacy", "--target-id", TARGET_ID, "--content", CONTENT],
             )
 
-        assert result.exit_code == 12
+        assert result.exit_code == 13
+        assert "active unsealed" in result.output

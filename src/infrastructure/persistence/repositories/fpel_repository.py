@@ -5,10 +5,12 @@ Implements the FPELRepository protocol against SQLite with:
 - Sealed verdict persistence with UNIQUE constraint enforcement
 - Checker reports and candidate verdicts
 - FPEL status tracking per target
+- Atomic supersede+save to eliminate TOCTOU windows
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -79,9 +81,18 @@ class SqliteFPELRepository:
             for row in rows
         ]
 
-    def save_frozen_proposal(self, proposal: FrozenProposal) -> None:
-        """Persist a new frozen proposal."""
+    def save_frozen_proposal(
+        self, proposal: FrozenProposal, supersede_ids: Sequence[str] = ()
+    ) -> None:
+        """Persist a new frozen proposal, atomically superseding existing ones."""
         with self._connection as conn:
+            if supersede_ids:
+                placeholders = ",".join("?" * len(supersede_ids))
+                conn.execute(
+                    f"UPDATE frozen_proposals SET lifecycle = 'SUPERSEDED' "
+                    f"WHERE frozen_proposal_id IN ({placeholders})",
+                    tuple(supersede_ids),
+                )
             conn.execute(
                 "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content, lifecycle) "
                 "VALUES (?, ?, ?, ?, ?)",
@@ -95,7 +106,13 @@ class SqliteFPELRepository:
             )
 
     def mark_superseded(self, frozen_proposal_id: str) -> None:
-        """Mark a frozen proposal as SUPERSEDED (terminal at proposal level)."""
+        """Mark a frozen proposal as SUPERSEDED (terminal at proposal level).
+
+        .. deprecated::
+            Use ``supersede_ids`` parameter on ``save_frozen_proposal`` or
+            ``save_frozen_with_sealed_verdict`` for atomic supersede+save.
+            This standalone method will be removed in a future version.
+        """
         with self._connection as conn:
             conn.execute(
                 "UPDATE frozen_proposals SET lifecycle = 'SUPERSEDED' WHERE frozen_proposal_id = ?",
@@ -231,10 +248,24 @@ class SqliteFPELRepository:
             return cursor.fetchone() is not None
 
     def save_frozen_with_sealed_verdict(
-        self, proposal: FrozenProposal, verdict: SealedVerdict
+        self,
+        proposal: FrozenProposal,
+        verdict: SealedVerdict,
+        supersede_ids: Sequence[str] = (),
     ) -> None:
-        """Atomic: persist frozen proposal + sealed verdict in one transaction."""
+        """Atomic: persist frozen proposal + sealed verdict in one transaction.
+
+        When ``supersede_ids`` is non-empty, marks those proposals SUPERSEDED
+        before inserting the new ones — all in the same ``with conn`` block.
+        """
         with self._connection as conn:
+            if supersede_ids:
+                placeholders = ",".join("?" * len(supersede_ids))
+                conn.execute(
+                    f"UPDATE frozen_proposals SET lifecycle = 'SUPERSEDED' "
+                    f"WHERE frozen_proposal_id IN ({placeholders})",
+                    tuple(supersede_ids),
+                )
             conn.execute(
                 "INSERT INTO frozen_proposals (frozen_proposal_id, target_id, content_hash, content, lifecycle) "
                 "VALUES (?, ?, ?, ?, ?)",
