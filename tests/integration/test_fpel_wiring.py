@@ -1,8 +1,8 @@
 """Integration tests for FPEL runtime wiring — Phase 3.
 
 Tests:
-- Fail-closed: FPEL_ENABLED=1, no sealed PASS → TaskTransitionError
-- Fail-open: FPEL_ENABLED unset → task transitions succeed without FPEL gate
+- Fail-closed: FPEL enabled (default), no sealed PASS → TaskTransitionError
+- Fail-open: FPEL_DISABLED=1 → task transitions succeed without FPEL gate
 """
 
 from __future__ import annotations
@@ -36,12 +36,13 @@ def _setup_db(tmp_path: Path) -> Path:
 
 
 class TestFailClosedDeniesWithoutSealedPass:
-    """FPEL_ENABLED=1 + no sealed PASS → start() denied."""
+    """FPEL enabled by default + no sealed PASS → start() denied."""
 
     def test_fail_closed_denies_without_sealed_pass(self, tmp_path: Path) -> None:
         db_path = _setup_db(tmp_path)
 
-        with patch.dict(os.environ, {"FPEL_ENABLED": "1"}):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_DISABLED", None)
             service = get_task_board_service(db_path=db_path)
 
             task = service.create(subject="FPEL integration test")
@@ -53,13 +54,12 @@ class TestFailClosedDeniesWithoutSealedPass:
 
 
 class TestFailOpenWhenDisabled:
-    """FPEL_ENABLED unset → task transitions succeed without FPEL gate."""
+    """FPEL_DISABLED=1 → task transitions succeed without FPEL gate."""
 
     def test_fail_open_when_disabled(self, tmp_path: Path) -> None:
         db_path = _setup_db(tmp_path)
 
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("FPEL_ENABLED", None)
+        with patch.dict(os.environ, {"FPEL_DISABLED": "1"}):
             service = get_task_board_service(db_path=db_path)
 
             task = service.create(subject="FPEL disabled test")

@@ -153,7 +153,8 @@ class TestTransitiveCoverage:
         )
         run_migrations(config, migrations_dir)
 
-        with patch.dict(os.environ, {"FPEL_ENABLED": "1"}):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("FPEL_DISABLED", None)
             task_board = get_task_board_service(db_path=db_path)
 
             task = task_board.create(subject="Transitive test task")
@@ -191,8 +192,9 @@ class TestTransitiveCoverage:
 
         # Simulate what workflow execute does: call check_sealed via the FPEL service
         with patch.dict(
-            os.environ, {"FPEL_ENABLED": "1", "DB_PATH": str(tmp_path / "fpel_fail_integration.db")}
+            os.environ, {"DB_PATH": str(tmp_path / "fpel_fail_integration.db")}, clear=False
         ):
+            os.environ.pop("FPEL_DISABLED", None)
             fpel_port = get_fpel_service(db_path=tmp_path / "fpel_fail_integration.db")
 
         assert fpel_port is not None

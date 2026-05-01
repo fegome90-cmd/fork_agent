@@ -32,7 +32,7 @@ def seal_failure_exit_code(reason: SealFailureReason) -> int:
 def _get_fpel_service():
     """Build FPELAuthorizationService via infrastructure container.
 
-    Returns None when FPEL_ENABLED is not set — callers must handle this.
+    Returns None when FPEL is disabled via FPEL_DISABLED=1 — callers must handle this.
     """
     from src.infrastructure.persistence.container import get_fpel_service
 
@@ -43,7 +43,7 @@ def _require_fpel_service():
     """Get FPEL service or exit with error if FPEL is disabled."""
     service = _get_fpel_service()
     if service is None:
-        console.print("[red]Error: FPEL is disabled. Set FPEL_ENABLED=1 to enable.[/red]")
+        console.print("[red]Error: FPEL is disabled via FPEL_DISABLED=1.[/red]")
         raise typer.Exit(1)
     return service
 
